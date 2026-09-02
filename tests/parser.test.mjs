@@ -1533,6 +1533,8 @@ test("Focus handoff context assembly: complete context and Problem Framer instru
   // Verify Problem Framer instructions
   assert.ok(context.includes("[PROBLEM FRAMER HANDOFF INSTRUCTION]"));
   assert.ok(context.includes("현재 repo/runtime/SSOT의 fresh evidence와 대조하여 실제 문제를 검증하라."));
+  assert.ok(context.includes("[Open-Claim Re-admission]"));
+  assert.ok(context.includes("current implementation/runtime/proof에서 closure/counterevidence를 적극적으로 탐색하고"));
   assert.ok(context.includes("Current Focus를 Next Transition까지 전진시키기 위해"));
   assert.ok(context.includes("NO_ACTION / NO_CHANGE 결론을 낸다."));
   assert.ok(context.includes("A. NOW / INDEPENDENT:"));
@@ -1654,6 +1656,59 @@ test("Area review handoff context assembly: complete context and Problem Framer 
   assert.ok(!context.includes("ChatGPT memory"));
   assert.ok(!context.includes("Custom Instructions"));
   assert.ok(!context.includes("Task A:"));
+});
+
+test("Area handoff re-admits existing negative claims instead of anchoring remediation", () => {
+  const context = buildAreaHandoffContext({
+    projectTitle: "Generic Record Service",
+    areaTitle: "Record Submission",
+    areaDetail: {
+      title: "Record Submission",
+      normalizedKey: "record submission",
+      subsections: [
+        {
+          subheading: "Meaning",
+          html: "<p>Accepts a record submission.</p>",
+          rawText: "Accepts a record submission.",
+        },
+        {
+          subheading: "Current Level",
+          html: "<p>Submission path is available.</p>",
+          rawText: "Submission path is available.",
+        },
+        {
+          subheading: "Remaining Problems",
+          html: "<ul><li>repeated submission creates duplicate records</li></ul>",
+          rawText: "- repeated submission creates duplicate records",
+        },
+        {
+          subheading: "Evidence",
+          html: "<p>Current repository tests.</p>",
+          rawText: "- Current repository tests",
+        },
+      ],
+    },
+  });
+
+  // Transport preserves the supplied claim for external re-admission; it does not decide its truth.
+  assert.ok(context.includes("#### Remaining Problems\n- repeated submission creates duplicate records"));
+
+  // Area handoff must actively falsify existing claims rather than treat them as remediation tasks.
+  assert.ok(
+    context.includes(
+      "Area Details의 `남은 문제`는 실행 task 목록이 아니라 fresh evidence로 재검증할 기존 claim이다."
+    )
+  );
+  assert.ok(
+    context.includes(
+      "각 항목을 task로 승격하기 전에 current implementation/runtime/proof에서 closure 및 counterevidence를 적극적으로 탐색하라."
+    )
+  );
+  assert.ok(
+    context.includes(
+      "이미 닫혔거나 defect가 아닌 항목은 제거 대상으로 판정하고, 전달된 모든 problem이 닫혔으면 NO_ACTION / NO_CHANGE를 낸다."
+    )
+  );
 });
 
 test("Area review handoff context assembly: minimal context without optional details/focus", () => {
@@ -1954,7 +2009,11 @@ test("Area Detail Evidence Admission: Area with Meaning + Current Level + Eviden
   assert.ok(handoffArea1.includes("#### 의미\n과거 데이터의 일괄 수집"));
   assert.ok(handoffArea1.includes("#### 현재 수준\n일일 500만 건"));
   assert.ok(handoffArea1.includes("#### 근거\n- 야간 배치"));
-  assert.equal(handoffArea1.includes("남은 문제"), false, "Handoff for Area 1 must not manufacture '남은 문제'");
+  assert.equal(
+    handoffArea1.includes("#### 남은 문제\n"),
+    false,
+    "Handoff for Area 1 must not manufacture an Area Details '남은 문제' subsection"
+  );
   assert.equal(handoffArea1.includes("없음"), false, "Handoff must not contain filler '없음'");
 
   // 6. Handoff context formatting for Area 2 includes Remaining Problems and Reopen Conditions
@@ -1967,9 +2026,6 @@ test("Area Detail Evidence Admission: Area with Meaning + Current Level + Eviden
   assert.ok(handoffArea2.includes("#### 남은 문제\n- 파티션 리밸런싱"));
   assert.ok(handoffArea2.includes("#### 다시 열리는 조건\n- 카프카 클러스터"));
 });
-
-
-
 
 
 

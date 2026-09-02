@@ -67,16 +67,21 @@ cockpit
         ↓
 2. 현재 repo / runtime / SSOT의 최신 실제 증거(fresh evidence)와 대조
         ↓
-3. 멘탈 모델 델타 테스트 (Mental Model Delta Test) 수행
+3. 기존 open/negative claim 재입장·반증 패스 (Open-Claim Re-admission / Falsification)
+   - `남은 문제`, `직면한 문제`, `다음 전환`의 선행조건, material한 `현재 수준` limitation을
+     기존 문구가 아니라 fresh evidence로 다시 심사한다.
+   - 각 claim에 대해 현재 구현/runtime/proof가 이미 닫혔거나 모순되는지 적극적으로 탐색한다.
+        ↓
+4. 멘탈 모델 델타 테스트 (Mental Model Delta Test) 수행
    - "현재 PROGRESS.md를 그대로 보여주면 사용자가 프로젝트의 현재 capability,
       Current Stage, Current Focus, material gaps, proof, Next Transition을 오해하는가?"
         ↓
    ├── YES (실질적 차이 존재) → 영향받은 표면만 보수적으로 갱신 (Targeted Refresh)
    └── NO (실질적 차이 없음) → PROGRESS.md 수정하지 않음 (Untouched)
         ↓
-4. cockpit check 실행하여 구조적 완전성(PASS) 확인
+5. cockpit check 실행하여 구조적 완전성(PASS) 확인
         ↓
-5. cockpit 실행 (뷰어 론칭)
+6. cockpit 실행 (뷰어 론칭)
 ```
 
 > **핵심 원칙**: 최신성 대조(Freshness Check)는 항상 수행하되, 파일 수정(File Mutation)은 실질적인 멘탈 모델 변화(Material Semantic Delta)가 있을 때만 수행합니다.
@@ -164,6 +169,19 @@ repo / runtime / 관련 SSOT (최신 실제 증거)
      * UNKNOWN: 증거 부족 (모르는 상태 인정)
      * REJECT: 모순되거나, 가상이거나, 진부화되었거나, 막연한 추측임
    - 모순을 사전에 해결하며, 확인되지 않은 가상 주장은 작성 대상에서 배제한다.
+   - 기존 PROGRESS.md 문구에는 evidentiary grandfather right가 없다. 특히 `남은 문제`, `직면한 문제`,
+     `다음 전환`의 선행조건 및 material한 `현재 수준` limitation은 이미 적혀 있다는 이유만으로
+     현재 유효하다고 간주하지 않는다.
+   - **OPEN-CLAIM RE-ADMISSION / FALSIFICATION PASS (transient)**를 수행한다:
+     1. 위 고감쇠 open/negative claim을 모두 추출한다.
+     2. 각 claim에 대해 현재 구현/runtime/proof가 이미 닫거나 모순하는지 적극적으로 탐색하고,
+        가장 가까운 semantic owner와 직접 proof를 확인한다.
+     3. 각 claim을 정확히 하나로 임시 분류한다: `STILL_OPEN`, `CLOSED`, `PROOF_GAP`, `NOT_ADMITTED`.
+     4. 분류는 추론 중에만 유지하며 PROGRESS.md, registry, schema, DB에 기록하지 않는다.
+   - `STILL_OPEN`은 current positive evidence가 미충족 invariant/acceptance/workflow 또는 필요한
+     proof boundary를 직접 보여줄 때만 사용한다. `CLOSED`는 현재 구현/runtime/proof가 gap의 해소를
+     확립할 때, `PROOF_GAP`은 capability는 있을 수 있으나 요구된 exact proof가 없을 때, `NOT_ADMITTED`는
+     추측·선택적 개선·미래 기능·사용자 소유 결정 또는 현재 defect가 아닌 경우에 사용한다.
 
 6. PASS 6 — 초안 작성 및 멘탈 모델 분해 (First Synthesis & Map Decomposition):
    - 실제 프로젝트 시맨틱에 기반하여 지도를 분해한다 (단순 폴더 구조 복사 금지).
@@ -179,6 +197,10 @@ repo / runtime / 관련 SSOT (최신 실제 증거)
      * 가상의 성능 수치 / 처리량 (예: 10k msg/s 등)
      * 가상의 규정 / 컴플라이언스
      * 가상의 미래 단계 / 가상의 장애 / 가상의 정해진 방향
+   - 기존 material open/negative claim마다 closure 및 counterevidence를 찾는다. 예전 문구를 지지하는
+     근거만 재확인하지 말고, 현재 evidence가 해당 claim을 닫거나 반증하는지 먼저 공격적으로 확인한다.
+   - negative claim을 current defect, proof gap, future enhancement, user-owned product decision으로
+     구분한다. current defect가 아닌 항목을 `남은 문제`로 되살리거나 작업으로 승격하지 않는다.
    - "이 주장의 구체적 증거가 저장소 어디에 있는가?"에 답할 수 없다면 즉시 삭제하거나 한계를 명시한다 (Zero Tolerance for Plausible Fiction).
 
 8. PASS 8 — 독자 중심 종합 및 구조 사전 검사 (Reader Reconstruction & Structural Preflight):
@@ -258,10 +280,12 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
 2. 합성 전 대조 및 모순 제거 (Reconciliation Before Synthesis):
    - 첫 번째 훑어보기 직후 템플릿을 채우지 않는다.
    - 축 간의 충돌(문서와 코드의 불일치, 진부화된 로드맵 등)을 먼저 식별하고 사실 기반으로 조정한다.
+   - 기존 open/negative claim도 예전에 admitted 되었다는 이유로 유지하지 않으며, closure/counterevidence를 찾는 재입장 심사를 통과한 것만 현재 문맥에 남긴다.
 
 3. 미확인 주장의 엄격한 배제 (Omission Over Fabrication):
    - 불확실하거나 증거가 없는 영역은 억지로 지어내지 않고 UNKNOWN으로 두거나 생략한다.
-   - `남은 문제`, `직면한 문제`, `확정된 방향`, `다시 열리는 조건`은 긍정적 증거가 있을 때만 작성하며, 없으면 섹션 자체를 완전히 생략한다.
+   - `남은 문제`, `직면한 문제`, `확정된 방향`, `다시 열리는 조건`은 현재 긍정적 증거가 있을 때만 작성하며, 없으면 섹션 자체를 완전히 생략한다.
+   - `UNKNOWN != PROBLEM`, `ABSENCE OF PROOF != PROOF OF DEFECT`이며, 정확한 acceptance contract가 그 proof를 요구하고 그 부재가 현재 blocker인 경우에만 예외로 다룬다.
 
 4. Current Focus와 Current Stage의 분리 (Separation of Current Focus & Current Stage):
    - **Current Focus (`## 현재 집중`)**: 사용자 소유의 핵심 관심사. 단순 commit 수, 코드 변경량, 현재 executor task 등으로 자동 추론하지 않으며, 사용자 방향 증거가 없으면 생략한다.
@@ -296,6 +320,11 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
   C. CURRENT FOCUS: 사용자가 현재 어떤 product/problem을 중요하게 보고 있는가 (명시적 사용자 방향 증거가 없다면 기존 Focus를 보존하고, 단순 Git 커밋/활동량/현재 task만으로 Focus를 임의 추론하거나 이동하지 마)
   D. RECENT PROGRESS: 단순 커밋 로그가 아닌 실질적 변경에 따른 시맨틱 전환 이력 기록
 독자 관점의 필수 항목(의미, 현재 수준, 근거)과 명시적 관계 문법을 엄격히 유지하고,
+기존 `남은 문제`, `직면한 문제`, `다음 전환`의 선행조건 및 material한 `현재 수준` limitation을
+모두 open claim으로 재입장시켜, 이미 닫혔거나 현재 defect가 아닌지 closure/counterevidence를 적극적으로 탐색해줘.
+첫 substantial assimilation에서는 모든 Area와 project-level claim을 재검증하고, 일반 bounded-task refresh에서는
+직접 영향받은 Area와 truth가 달라질 수 있는 project-level `직면한 문제`/`다음 전환`만 재검증해줘.
+각 claim은 추론 중에만 `STILL_OPEN`/`CLOSED`/`PROOF_GAP`/`NOT_ADMITTED` 중 정확히 하나로 분류하고 이 label을 저장하지 마.
 실제 증거로 확인된 미해결 문제(증거가 없으면 '남은 문제' 섹션을 생략하며, '없음'을 날조하지 마)와 다단계 향후 여정을 보존하며,
 확인되지 않은 성공이나 가상의 문제를 성급히 주장/날조하지 마.
 저장 전 반드시 `cockpit check`를 실행하여 구조적 완전성을 기계적으로 증명해줘."
@@ -309,10 +338,11 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
 
 #### 1. 멘탈 모델 델타 테스트 (Mental Model Delta Test)
 외부 역량 에이전트는 다음 핵심 질문을 통해 `PROGRESS.md` 수정 여부를 판단합니다:
-> **“현재 PROGRESS.md를 그대로 보여주면, 사용자가 프로젝트의 capability, 위치(Current Stage frontier), 관심점(Current Focus), material gaps, proof 또는 다음 경로(Next Transition)를 실질적으로 잘못 이해하게 되는가?”**
+> **“현재 PROGRESS.md를 그대로 보여주면, 사용자가 프로젝트의 capability, 위치(Current Stage frontier), 관심점(Current Focus), material gaps, proof 또는 다음 경로(Next Transition)를 실질적으로 잘못 이해하게 되는가? 특히 fresh evidence가 이미 닫혔거나 잘못 분류했거나 더 이상 적용되지 않는 problem, blocker, limitation 또는 Next Transition prerequisite를 현재 문서가 계속 보존하고 있지는 않은가?”**
 
 - **NO (실질적 오해 없음)** → `PROGRESS.md`를 일체 수정하지 않습니다 (Unchanged).
 - **YES (실질적 왜곡 발생)** → 영향을 받는 시맨틱 표면만 선별적으로 보수적 갱신합니다 (Targeted Refresh).
+- 닫힌 `남은 문제` 하나를 제거하는 것은 Current Stage/Focus가 움직이지 않거나 이번 task에서 새 feature가 추가되지 않아도 material semantic delta다. `FRONTIER UNCHANGED`와 `PROGRESS NO_CHANGE`를 동일시하지 않는다.
 
 *이 테스트는 외부 역량 에이전트의 지능적 판단 규칙이며, 기계적 점수화(score)나 파서 차원의 기계적 검증으로 대체하지 않습니다.*
 
@@ -321,11 +351,14 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
 - **“시간의 경과는 재확인(recheck)의 이유이지, 파일 수정(mutate)의 이유가 아니다 (Time is a reason to recheck, not a reason to mutate).”**
 - 시간이 흘렀다는 이유만으로 문서를 수정하지 않습니다.
 - Git 프로젝트라면 외부 에이전트는 필요 시 `PROGRESS.md`의 마지막 유용한 기준선 이후의 실질적 변경 이력(Change Trace)을 비례적으로 확인할 수 있습니다 (기계적으로 전체 Git 이력을 재생하거나 고정 커밋 수를 강제하지 않음).
+- 첫 substantial assimilation/re-entry에서는 최신 change trace 범위를 넘어 모든 기존 high-decay open/negative claim을 재입장시킨다.
+- 일반 bounded-task targeted refresh에서는 직접 영향받은 Area의 claim을 재입장시키고, task가 truth를 바꿀 수 있는 project-level `직면한 문제`와 `다음 전환` prerequisite도 확인한다. 무관한 stable Area를 기계적으로 재검색하지 않는다.
 
 #### 3. 유계 태스크 종료(Bounded Task Closure) 및 발행과의 관계
 - 태스크 종료나 커밋/발행 자체가 자동 파일 수정 트리거가 아닙니다.
 - Bounded Task Closure는 *“이 작업으로 프로젝트 멘탈 모델이 실질적으로 달라졌는가?”*를 점검하는 **진입 심사 체크포인트(Admission Checkpoint)**입니다.
 - 실질적인 시맨틱 델타가 발생했다면 해당 작업 흐름 안에서 영향받은 `PROGRESS.md`를 갱신하는 것이 기본 운영 방식이며, 델타가 없다면 문서를 건드리지 않습니다.
+- 기존 open claim이 fresh evidence로 `CLOSED`/`NOT_ADMITTED`로 판정되어 제거되거나, `PROOF_GAP`으로 재표현되어야 하는 것도 semantic delta다.
 - 일회성 Execution Wave 생성 자체 역시 갱신 트리거가 아닙니다.
 
 #### 4. Current Focus 보존 특별 규칙
@@ -389,9 +422,12 @@ PROGRESS.md 보수적 갱신
 **핵심 원칙:**
 - **Execution Wave 비영속화**: Execution Wave, 태스크 목록, 상태 머신, 에이전트 배정 등은 Cockpit이나 `PROGRESS.md`의 persistent state가 아닙니다. Cockpit에 태스크 관리자/백로그 엔진을 추가하지 않으며, `PROGRESS.md`에 `## Execution Wave` 같은 임시 실행 상태를 기록하지 않습니다.
 - **Problem Framer의 역할과 계약**: 복사된 프로젝트 문맥을 전달받은 외부 Problem Framer가 최신 코드/런타임/도메인 실제 증거와 대조하여 문제를 검증합니다.
+  - Area Details의 `남은 문제`는 실행 task 목록이 아니라 재검증 대상 claim이다. 각 항목을 task로 승격하기 전에 current evidence로 closure/counterevidence를 적극적으로 탐색하고, 이미 닫혔거나 defect가 아닌 항목은 제거 대상으로 판정한다.
   - 문제가 없으면 무리하게 작업을 제조하지 않고 `NO_ACTION`으로 종료합니다.
+  - 전달된 문제가 모두 닫혔거나 추가 조치가 불필요하면 `NO_ACTION / NO_CHANGE`를 유지합니다.
   - 문제가 있으면 지금 확정 가능한 최대 범위에서 `NOW` (병렬 독립 작업), `SERIAL NOW` (동일 표면/상태 공유로 순차 실행이 필요한 작업), `WAIT FOR EVIDENCE` (결과 대기)로 분류하고, 실행 가능한 모든 작업에 대해 executor-neutral 로컬 에이전트 프롬프트를 같은 응답에서 산출합니다.
 - **PROGRESS.md 갱신 시점**: Execution Wave가 생성되었다는 이유만으로 `PROGRESS.md`를 갱신하지 않습니다. Bounded tasks가 실제로 완료되어 프로젝트의 객관적 상태나 사용자 관심사(Current Focus)가 실질적으로 달라졌을 때만 해당 멘탈 모델 표면을 갱신합니다.
+- **판단 소유권**: claim의 closure/falsification/re-admission은 외부 capable agent가 수행하며, Cockpit binary는 이 판단을 자동화하지 않고 읽기 전용 deterministic presentation/context transport만 제공합니다.
 
 ---
 
@@ -461,7 +497,11 @@ STABLE CONTEXT (영속적 맥락 프레임)
 - **`의미` (필수)**: 해당 영역의 실질적인 목적, 역할 및 경계 맥락 (저장소를 모르는 사람도 이해할 수 있는 설명)
 - **`현재 수준` (필수)**: 현재 실제로 수립되었거나 증명된 구현/기능 수준 (과대평가 방지 한계 포함)
 - **`근거` (필수)**: 현재 수준 및 상태 주장을 뒷받침하는 실제 코드, 테스트, 런타임, 커밋 증거
-- **`남은 문제` (선택 사항)**: 신선한 증거로 뒷받침되는 구체적 미해결 문제들 (증거가 없는 영역은 섹션 자체를 생략하며, '없음'이나 가상의 위험을 날조하지 않음)
+- **`남은 문제` (선택 사항)**: 기존에 적혀 있다는 사실이나 명시적 close가 없다는 이유가 아니라, current positive evidence가 material한 invariant/acceptance/workflow가 아직 충족되지 않음을 보여줄 때만 보존한다. 얕은 scan에서 구현을 찾지 못한 것, 이론적 edge case, generic technical debt, "could improve", future feature는 근거가 아니다.
+  - 보존 전에는 각 항목을 적극적으로 falsify한다. `UNKNOWN != PROBLEM`, `ABSENCE OF PROOF != PROOF OF DEFECT`이며, 정확한 acceptance contract가 proof를 요구하고 그 부재가 material current blocker인 경우에만 proof 부재를 문제로 다룬다.
+  - 의미상 `남은 문제`에 자연스럽게 들어가는 것은 **A. CURRENT DEFECT**(기존 필수 invariant가 위반됨)다. **B. PROOF GAP**은 capability가 있을 수 있으나 required exact proof가 없는 상태로 `현재 수준`/`근거`/acceptance frontier에 비례해 표현하고, **C. FUTURE ENHANCEMENT**는 defect로 만들지 않으며, **D. USER-OWNED PRODUCT DECISION**은 agent가 임의로 결정하지 않는다.
+  - 이 구분은 재입장 추론 중의 transient 판단일 뿐 schema나 registry로 저장하지 않는다. 현재 claim은 `STILL_OPEN`/`CLOSED`/`PROOF_GAP`/`NOT_ADMITTED` 중 정확히 하나로 임시 분류한다.
+- **`직면한 문제`·`다음 전환`의 선행조건·material한 `현재 수준` limitation**: 모두 동일한 high-decay negative claim으로 취급하여 fresh evidence로 재입장시킨다. 현재 defect가 아니라면 문제/실행 task로 유지하지 않는다.
 - **`다시 열리는 조건` (선택 사항)**: 기존에 안정화되었던 영역을 다시 검토하거나 재작업해야 하는 향후 조건/근거
 
 ### 마크다운 섹션 구성

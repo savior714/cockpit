@@ -53,12 +53,13 @@ B1.2 Frontier Grid 비주얼 디렉션 구현. 명시적 마크다운 목록 문
 우측 상단 기본 화면에 프로젝트의 현재 상황, 다음 전환, 직면한 문제, 현재 집중을 표시하고, 외부 Problem Framer 연계를 위한 표준화된 Handoff 마크다운을 클립보드로 전송하는 컴포넌트.
 
 #### 현재 수준
-Current Focus 유무에 따른 조건부 렌더링, `assembleFocusHandoffContext`를 통한 Execution Wave(NOW/SERIAL NOW/WAIT FOR EVIDENCE) 프레이밍 가이드라인 결합 클립보드 복사 함수 및 DOM 피드백 구조 구현 및 단위 테스트 검증.
+Current Focus 유무에 따른 조건부 렌더링, `buildFocusHandoffContext`를 통한 Execution Wave(NOW/SERIAL NOW/WAIT FOR EVIDENCE) 프레이밍 가이드라인 결합 클립보드 복사 함수 및 DOM 피드백 구조, Area handoff의 기존 `남은 문제` anti-anchoring 및 `NO_ACTION / NO_CHANGE` 지침이 구현되어 단위 테스트로 검증됨.
 
 #### 근거
 - `src/parser.ts:L850-1050`
 - `src/main.ts`
 - `tests/parser.test.mjs` (Handoff 컨텍스트 조립 검증)
+- `src/parser.ts:L1128-1273` (Focus/Area handoff contract and anti-anchoring instruction)
 
 ### 영역 상세 검사기
 
@@ -124,12 +125,13 @@ Current Focus 유무에 따른 조건부 렌더링, `assembleFocusHandoffContext
 - `tests/package-smoke.test.mjs` (현재 격리 테스트 경계)
 
 ## 현재 상황
-Cockpit은 마크다운 파서, 네이티브 맵 렌더러, 영역 검사기, Handoff 컨텍스트 전송, 루프백 서버 및 `cockpit check` 구조 검사기 등 핵심 런타임을 구현하고 단위 및 패키지 격리 스모크 테스트를 통과했습니다. 가상 데이터(Orion 데모) 제거와 사실 기반 PROGRESS 수립 및 다중 패스 증거 동화 계약 공식화가 완료되었으며, 내부 개발 상의 실질적 결함 없이 안정적인 배포 검증 단계에 도달해 있습니다.
+Cockpit은 마크다운 파서, 네이티브 맵 렌더러, 영역 검사기, Handoff 컨텍스트 전송, 루프백 서버 및 `cockpit check` 구조 검사기 등 핵심 런타임을 구현하고 단위 및 패키지 격리 스모크 테스트를 통과했습니다. 가상 데이터(Orion 데모) 제거와 사실 기반 PROGRESS 수립, 다중 패스 증거 동화 및 기존 open/negative claim 재입장·반증 계약 공식화가 완료되었으며, 내부 개발 상의 실질적 결함 없이 안정적인 배포 검증 단계에 도달해 있습니다.
 
 ## 다음 전환
 실제 외부 프로젝트 저장소 환경에서 Cockpit을 전역 설치하고, 외부 역량 에이전트가 제안된 운영 워크플로우(Operator Workflow)에 따라 실제 PROGRESS.md를 점검하고 시각화하는 실환경 이식성 검증을 수행합니다.
 
 ## 최근 진척
+- **기존 open claim 재입장 및 stale negative claim 반증 계약 확립** — 기존 `남은 문제`·`직면한 문제`·`다음 전환` 선행조건·material limitation을 자동 승계하지 않고, 외부 capable agent가 fresh implementation/runtime/proof의 closure와 counterevidence를 먼저 탐색하도록 하여 닫힌 문제의 잔존 표시와 무근거 remediation task 승격을 방지함.
 - **사실 기반 프로젝트 상태 재구축 및 다중 패스 증거 동화 계약 정립** — 가상의 데모(Orion) 멘탈 모델을 제거하고 실제 저장소 증거 기반의 PROGRESS를 수립함과 동시에, 4대 증거 축 대조 및 적대적 모순 심사를 거치는 이식 가능한 외부 에이전트 운영 계약과 닫힘 시점 정합성 규칙을 확립함.
 - **프론티어 그리드(B1.2) 비주얼 디렉션 및 컨텍스트 계층 개편** — 대시보드 클리셰와 AI UI 문법을 제거하고, 상단 지도 및 프론티어 강조, 하단 최근 진척 중심의 에디토리얼 정보 계층을 확립함.
 - **영역 상세 증거 진입 계약 정합화** — `남은 문제` 섹션을 증거가 입증된 경우에만 작성하도록 선택적 섹션으로 전환하고 불필요한 플레이스홀더를 배제함.
@@ -144,6 +146,7 @@ Cockpit은 프로젝트의 `PROGRESS.md`를 읽어 대화형 프로젝트 지도
 ## 확정된 방향
 - Cockpit은 순수 읽기 전용 뷰어이며, 파일 갱신 및 멘탈 모델 최신화는 외부 역량 에이전트(Claude, ChatGPT, Gemini 등)가 전담함.
 - 일반 마크다운(`PROGRESS.md`)을 유일한 현황 저장소로 사용하며 독자적인 데이터베이스나 스키마를 요구하지 않음.
+- 기존 PROGRESS.md의 open/negative claim에는 evidentiary grandfather right가 없으며, 유지되는 `남은 문제`는 current positive evidence가 입증하는 현재 defect/필수 proof blocker여야 함. closure/falsification 분류는 외부 agent의 transient reasoning으로만 수행함.
 - 문제 중심의 사용자 관심사(`Current Focus`)와 궤적 레일별 객관적 진행 위치(`Current Stage`)를 독립된 개념으로 엄격히 분리함.
 - 마크다운 목록 문법(순서형 번호 목록 vs 비순서형 글머리 기호)을 지도의 순차 흐름 및 대등 관계를 결정하는 유일한 권위로 사용함.
 - 영역 상세의 `남은 문제`는 실제 증거로 입증된 경우에만 작성하며, 미확인 가상 문제나 '없음' 플레이스홀더를 작성하지 않음.
