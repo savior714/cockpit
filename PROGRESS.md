@@ -119,7 +119,7 @@ Current Focus 유무에 따른 조건부 렌더링, `buildFocusHandoffContext`�
 실제 외부 프로젝트 저장소 환경에서 `github:savior714/cockpit#main` 또는 npm 배포본을 설치하고, 외부 역량 에이전트가 제안된 운영 루프(Operator Workflow)에 따라 실제 PROGRESS.md를 점검·시각화하는 실환경 수용성 검증.
 
 #### 현재 수준
-로컬 빌드 및 격리된 접두사 설치 스모크에 더해, EMR의 관찰된 revision `3c81c0eb0b67c118554824969397ac6937917408`에서 한 번의 실제 외부 프로젝트 fidelity acceptance가 완료되었다. 불신 baseline은 기존 문서를 마지막 비교 전까지 읽지 않고 재구성했으며, HIRA sentinel의 좁은 production evidence 변화는 trusted baseline REFRESH와 독립 AFTER oracle이 수렴했다. 이는 한 외부 저장소에 대한 충실도 증명이며, GitHub/npm 설치와 실제 에이전트 운영 루프 또는 다른 저장소로의 이식성을 증명하지 않는다.
+로컬 빌드 및 격리된 접두사 설치 스모크에 더해, EMR의 초기 관찰 revision `3c81c0eb0b67c118554824969397ac6937917408`에서 한 번의 실제 외부 프로젝트 fidelity acceptance가 완료되었다. 이후 원격이 `1e400deade67006546f39a5ac84e27f926af393c`로 이동하여 release verifier의 backend test universe만 bounded한 변경을 직접 영향 범위에서 재검증했으며, exact Stage 1A proof는 여전히 `NOT PROVEN`이고 제품 semantic model은 변하지 않았다. 불신 baseline은 기존 문서를 마지막 비교 전까지 읽지 않고 재구성했으며, HIRA sentinel의 좁은 production evidence 변화는 trusted baseline REFRESH와 독립 AFTER oracle이 수렴했다. 이는 한 외부 저장소에 대한 충실도 증명이며, GitHub/npm 설치와 실제 에이전트 운영 루프 또는 다른 저장소로의 이식성을 증명하지 않는다.
 
 #### 근거
 - `README.md` (설치 가이드 및 공식 운영 계약)
@@ -139,7 +139,7 @@ Handoff와 authoring contract가 신뢰 가능한 baseline에 대한 REFRESH와 
 - `tests/parser.test.mjs` (양쪽 Handoff contract transport regression)
 
 ## 현재 상황
-Cockpit은 마크다운 파서, 네이티브 맵 렌더러, 영역 검사기, Handoff 컨텍스트 전송, 루프백 서버 및 `cockpit check` 구조 검사기 등 핵심 런타임을 구현하고 단위 및 패키지 격리 스모크 테스트를 통과했습니다. `REAL-PROJECT-RECONSTRUCT-REFRESH-01`에서 fresh published Cockpit을 사용해 EMR의 현재 revision `3c81c0eb0b67c118554824969397ac6937917408`을 testbed로 관찰했습니다. Lane A는 기존 EMR `PROGRESS.md`가 공유 working tree의 uncommitted draft이고 일부 provider/release 표현이 현재 proof보다 강하다는 점을 분리하면서도 핵심 project model의 충실도를 확인했습니다. Lane B는 지정된 `40f99322→45832f9`가 consumer 없는 Service07 adapter 추가라 project-level delta가 아님을 확인한 뒤, `6c681323→edbd82843`의 HIRA 단일 sentinel 증거 전이를 bounded material delta로 선택했고 REFRESH와 독립 oracle이 수렴했습니다. 이 acceptance 결과는 한 real project에서의 fidelity를 닫지만, EMR Stage 1A 전체 release나 NHIS/DUR/NIMS/EDI/payment의 live capability를 증명하지 않습니다. 외부 실제 프로젝트 수용성에서는 대상 프로젝트를 evidence로만 취급하고, 필요한 경우 하나의 사전 승인된 자극을 관찰한 뒤 Cockpit의 semantic delta만 추출하고 중단하는 운영 경계를 갖습니다.
+Cockpit은 마크다운 파서, 네이티브 맵 렌더러, 영역 검사기, Handoff 컨텍스트 전송, 루프백 서버 및 `cockpit check` 구조 검사기 등 핵심 런타임을 구현하고 단위 및 패키지 격리 스모크 테스트를 통과했습니다. `REAL-PROJECT-RECONSTRUCT-REFRESH-01`에서 fresh published Cockpit을 사용해 EMR의 초기 revision `3c81c0eb0b67c118554824969397ac6937917408`을 testbed로 관찰했고, 이후 fresh clean snapshot에서 현재 원격 revision `1e400deade67006546f39a5ac84e27f926af393c`의 release verifier 범위 변경을 재검증했습니다. 이 후속 변경 뒤에도 exact Stage 1A proof는 `NOT PROVEN`이며 이번 fidelity acceptance의 제품 semantic model은 변하지 않았습니다. Lane A는 기존 EMR `PROGRESS.md`가 공유 working tree의 uncommitted draft이고 일부 provider/release 표현이 현재 proof보다 강하다는 점을 분리하면서도 핵심 project model의 충실도를 확인했습니다. Lane B는 지정된 `40f99322→45832f9`가 consumer 없는 Service07 adapter 추가라 project-level delta가 아님을 확인한 뒤, `6c681323→edbd82843`의 HIRA 단일 sentinel 증거 전이를 bounded material delta로 선택했고 REFRESH와 독립 oracle이 수렴했습니다. 이 acceptance 결과는 한 real project에서의 fidelity를 닫지만, EMR Stage 1A 전체 release나 NHIS/DUR/NIMS/EDI/payment의 live capability를 증명하지 않습니다. 외부 실제 프로젝트 수용성에서는 대상 프로젝트를 evidence로만 취급하고, 필요한 경우 하나의 사전 승인된 자극을 관찰한 뒤 Cockpit의 semantic delta만 추출하고 중단하는 운영 경계를 갖습니다.
 
 ## 다음 전환
 Cockpit의 GitHub/npm 설치와 여러 외부 저장소에서의 실제 에이전트 운영 루프를 검증하여, 이번 EMR 한 사례에서 확인한 RECONSTRUCT/REFRESH fidelity와 evidence boundary가 다른 프로젝트에서도 유지되는지 확인합니다.
