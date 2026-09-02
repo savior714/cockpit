@@ -18,6 +18,8 @@ import {
   findAreaDetail,
   getAreaCompleteness,
   renderNativeMap,
+  checkProgressStructure,
+  formatStructuralCheckReport,
 } from "../src/parser.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -678,4 +680,281 @@ test("Independent multi-rail mental-model axis invariants: single Current Stage 
   assert.equal(singleParsed.rails[0].railType, "neutral");
   assert.equal(singleParsed.currentStageTitle, undefined);
 });
+
+test("Structural check: 7 map items / 2 details => FAIL and exact missing titles", () => {
+  const partialDoc = `
+# 복합 시스템 프로젝트
+
+## 프로젝트 지도
+
+### 1차 운영 레일
+#### 핵심 제어 그룹
+- **센서 계측 인터페이스** — 실시간 센서 데이터 수집
+- **원격 제어 릴레이** — 액추에이터 원격 제어 인터페이스
+
+### 2차 도입 궤적
+#### 확보된 기반
+- **환경 챔버 검증** — 통제 환경 내구성 확인
+
+#### 현재 단계
+- **현장 실증 가동** — 실제 현장 가동 및 패킷 손실률 확인
+
+#### 향후 계획
+- **운영 안전 경계** — 비상 정지 및 페일세이프 회로 구성
+- **직접 회귀와 계약 정합화** — 회귀 테스트 스위트 확립
+- **검증된 RELEASE와 첫 운영 회차** — 정식 릴리스 및 1차 운영
+
+## 영역 상세
+
+### 센서 계측 인터페이스
+#### 의미
+센서 데이터 수집.
+#### 현재 수준
+완료.
+#### 남은 문제
+- 없음
+#### 근거
+- 코드 확인
+
+### 현장 실증 가동
+#### 의미
+현장 무중단 가동.
+#### 현재 수준
+진행 중.
+#### 남은 문제
+- 실증 중
+#### 근거
+- 런타임 로그
+`;
+
+  const result = checkProgressStructure(partialDoc);
+  assert.equal(result.ok, false);
+  assert.equal(result.totalMapItems, 7);
+  assert.equal(result.matchedDetails, 2);
+  assert.equal(result.missingDetails, 5);
+  assert.deepEqual(result.missingTitles, [
+    "원격 제어 릴레이",
+    "환경 챔버 검증",
+    "운영 안전 경계",
+    "직접 회귀와 계약 정합화",
+    "검증된 RELEASE와 첫 운영 회차",
+  ]);
+  assert.equal(result.orphanDetails, 0);
+  assert.equal(result.currentStageCount, 1);
+
+  const report = formatStructuralCheckReport(result);
+  assert.ok(report.includes("PROGRESS structural check: FAIL"));
+  assert.ok(report.includes("Map items:       7"));
+  assert.ok(report.includes("Area details:    2"));
+  assert.ok(report.includes("Missing details: 5"));
+  assert.ok(report.includes("- 운영 안전 경계"));
+  assert.ok(report.includes("- 직접 회귀와 계약 정합화"));
+  assert.ok(report.includes("- 검증된 RELEASE와 첫 운영 회차"));
+});
+
+test("Structural check: Complete document => PASS across all synthetic fixtures", () => {
+  const fixtures = [
+    "operational-system.md",
+    "software-architecture.md",
+    "research-project.md",
+  ];
+
+  for (const fixtureName of fixtures) {
+    const fixturePath = path.join(__dirname, "fixtures", fixtureName);
+    const content = fs.readFileSync(fixturePath, "utf-8");
+
+    const result = checkProgressStructure(content);
+    assert.equal(result.ok, true, `${fixtureName} should PASS structural check`);
+    assert.ok(result.totalMapItems > 0);
+    assert.equal(result.matchedDetails, result.totalMapItems);
+    assert.equal(result.missingDetails, 0);
+    assert.equal(result.orphanDetails, 0);
+    assert.equal(result.duplicateDetails.length, 0);
+    assert.equal(result.currentStageCount, 1);
+    assert.equal(result.errors.length, 0);
+
+    const report = formatStructuralCheckReport(result);
+    assert.ok(report.includes("PROGRESS structural check: PASS"));
+    assert.ok(report.includes(`Map items:       ${result.totalMapItems}`));
+    assert.ok(report.includes(`Area details:    ${result.matchedDetails}`));
+  }
+});
+
+test("Structural check: Title drift => missing + orphan detection", () => {
+  const driftDoc = `
+# 시스템
+
+## 프로젝트 지도
+### 코어 레일
+#### 기반
+- **운영 안전 경계** — 비상 정지 회로 구성
+
+## 영역 상세
+### 운영 안전 경계 및 검증
+#### 의미
+비상 정지 및 검증.
+#### 현재 수준
+수립 완료.
+#### 남은 문제
+- 없음
+#### 근거
+- 테스트 통과
+`;
+
+  const result = checkProgressStructure(driftDoc);
+  assert.equal(result.ok, false);
+  assert.equal(result.totalMapItems, 1);
+  assert.equal(result.matchedDetails, 0);
+  assert.equal(result.missingDetails, 1);
+  assert.deepEqual(result.missingTitles, ["운영 안전 경계"]);
+  assert.equal(result.orphanDetails, 1);
+  assert.deepEqual(result.orphanTitles, ["운영 안전 경계 및 검증"]);
+
+  const report = formatStructuralCheckReport(result);
+  assert.ok(report.includes("PROGRESS structural check: FAIL"));
+  assert.ok(report.includes("Missing:"));
+  assert.ok(report.includes("- 운영 안전 경계"));
+  assert.ok(report.includes("Orphan details (no matching map item):"));
+  assert.ok(report.includes("- 운영 안전 경계 및 검증"));
+});
+
+test("Structural check: Duplicate Current Stage across multiple rails => FAIL", () => {
+  const multiCurrentDoc = `
+# 다중 현재 단계 오류 문서
+
+## 프로젝트 지도
+### 1차 레일
+#### 현재 단계
+- **항목 A** — 1차 레일의 현재 항목
+
+### 2차 레일
+#### 현재 단계
+- **항목 B** — 2차 레일의 현재 항목
+
+## 영역 상세
+### 항목 A
+#### 의미
+의미 A
+#### 현재 수준
+수준 A
+#### 남은 문제
+- 없음
+#### 근거
+- 근거 A
+
+### 항목 B
+#### 의미
+의미 B
+#### 현재 수준
+수준 B
+#### 남은 문제
+- 없음
+#### 근거
+- 근거 B
+`;
+
+  const result = checkProgressStructure(multiCurrentDoc);
+  assert.equal(result.ok, false);
+  assert.equal(result.currentStageCount, 2);
+  assert.ok(
+    result.errors.some((e) =>
+      e.includes("Multiple '현재 단계' (Current Stage) groups found (2)")
+    )
+  );
+
+  const report = formatStructuralCheckReport(result);
+  assert.ok(report.includes("PROGRESS structural check: FAIL"));
+  assert.ok(report.includes("Current stage:   2"));
+});
+
+test("Structural check: Duplicate Area Detail title in ## 영역 상세 => FAIL", () => {
+  const duplicateDetailDoc = `
+# 중복 상세 문서
+
+## 프로젝트 지도
+### 코어 레일
+#### 그룹
+- **환자 등록** — 환자 정보 입력
+
+## 영역 상세
+### 환자 등록
+#### 의미
+1차 정의
+#### 현재 수준
+수준 1
+#### 남은 문제
+- 없음
+#### 근거
+- 근거 1
+
+### 환자 등록
+#### 의미
+2차 중복 정의
+#### 현재 수준
+수준 2
+#### 남은 문제
+- 없음
+#### 근거
+- 근거 2
+`;
+
+  const result = checkProgressStructure(duplicateDetailDoc);
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.duplicateDetails, ["환자 등록"]);
+  assert.ok(
+    result.errors.some((e) =>
+      e.includes("Duplicate Area Detail title(s) found: 환자 등록")
+    )
+  );
+
+  const report = formatStructuralCheckReport(result);
+  assert.ok(report.includes("PROGRESS structural check: FAIL"));
+  assert.ok(report.includes("Duplicate Area Detail titles:"));
+  assert.ok(report.includes("- 환자 등록"));
+});
+
+test("Structural check: Missing required top-level surfaces => FAIL", () => {
+  // Missing Area Details
+  const noDetailsDoc = `
+# 지도만 있는 문서
+
+## 프로젝트 지도
+### 코어 레일
+#### 그룹
+- **항목 1** — 설명 1
+`;
+  const resNoDetails = checkProgressStructure(noDetailsDoc);
+  assert.equal(resNoDetails.ok, false);
+  assert.equal(resNoDetails.hasAreaDetails, false);
+  assert.ok(
+    resNoDetails.errors.some((e) =>
+      e.includes("Missing required '## 영역 상세'")
+    )
+  );
+
+  // Missing Project Map
+  const noMapDoc = `
+# 상세만 있는 문서
+
+## 영역 상세
+### 항목 1
+#### 의미
+의미
+#### 현재 수준
+수준
+#### 남은 문제
+- 없음
+#### 근거
+- 근거
+`;
+  const resNoMap = checkProgressStructure(noMapDoc);
+  assert.equal(resNoMap.ok, false);
+  assert.equal(resNoMap.hasProjectMap, false);
+  assert.ok(
+    resNoMap.errors.some((e) =>
+      e.includes("Missing required '## 프로젝트 지도'")
+    )
+  );
+});
+
 

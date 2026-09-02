@@ -11,13 +11,39 @@ import { exec } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import process from "node:process";
+import {
+  checkProgressStructure,
+  formatStructuralCheckReport,
+} from "../src/parser.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = path.resolve(__dirname, "..");
 const DIST_ROOT = path.join(PKG_ROOT, "dist");
 const DEFAULT_PORT = 4321;
 
+function parseCheckArgs(argv) {
+  let file = null;
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--help" || a === "-h") {
+      return { help: true, file: null };
+    } else if (a.startsWith("-")) {
+      throw new Error(`unknown check option: ${a}`);
+    } else if (!file) {
+      file = path.resolve(a);
+    } else {
+      throw new Error(`unexpected extra argument: ${a}`);
+    }
+  }
+  return { help: false, file };
+}
+
 function parseArgs(argv) {
+  if (argv.length > 0 && argv[0] === "check") {
+    const checkArgs = parseCheckArgs(argv.slice(1));
+    return { command: "check", ...checkArgs };
+  }
+
   let file = null;
   let port = DEFAULT_PORT;
   let noOpen = false;
@@ -31,7 +57,7 @@ function parseArgs(argv) {
     } else if (a === "--no-open") {
       noOpen = true;
     } else if (a === "--help" || a === "-h") {
-      return { help: true, file, port, noOpen };
+      return { command: "serve", help: true, file, port, noOpen };
     } else if (a.startsWith("--port=")) {
       port = Number.parseInt(a.slice(7), 10);
       if (!Number.isInteger(port) || port < 0 || port > 65535) {
@@ -45,7 +71,7 @@ function parseArgs(argv) {
       throw new Error(`unexpected extra argument: ${a}`);
     }
   }
-  return { help: false, file, port, noOpen };
+  return { command: "serve", help: false, file, port, noOpen };
 }
 
 const MIME = {
@@ -182,12 +208,67 @@ async function main() {
     process.exit(2);
   }
 
-  if (args.help) {
-    console.log(`Usage: cockpit [path/to/PROGRESS.md] [--port <n>] [--no-open]
+  if (args.command === "check") {
+    if (args.help) {
+      console.log(`Usage: cockpit check [path/to/PROGRESS.md]
 
-Serves the Cockpit viewer on http://127.0.0.1:<port> (default ${DEFAULT_PORT}),
-reading the target Markdown file (defaults to ./PROGRESS.md in the current directory)
-at runtime and live-reloading the page when it changes. Read-only.
+Deterministically verifies that PROGRESS.md is structurally complete:
+  - Required map and area detail sections exist
+  - Every map item has exactly one matching Area Detail (H3)
+  - No orphan Area Details (title drift)
+  - No duplicate Area Detail titles
+  - At most one canonical Current Stage owner
+
+Exits with code 0 on PASS, 1 on structural FAIL.`);
+      process.exit(0);
+    }
+
+    let progressFile = args.file;
+    if (!progressFile) {
+      const defaultPath = path.resolve(process.cwd(), "PROGRESS.md");
+      const exists = await stat(defaultPath)
+        .then((st) => st.isFile())
+        .catch(() => false);
+      if (!exists) {
+        console.error(`cockpit: PROGRESS.md not found in the current directory.
+
+Usage:
+  cockpit check
+  cockpit check /path/to/PROGRESS.md`);
+        process.exit(1);
+      }
+      progressFile = defaultPath;
+    } else {
+      const initial = await stat(progressFile).catch(() => null);
+      if (!initial || !initial.isFile()) {
+        console.error(`cockpit: not a readable file: ${progressFile}`);
+        process.exit(1);
+      }
+    }
+
+    let content;
+    try {
+      content = await readFile(progressFile, "utf-8");
+    } catch (err) {
+      console.error(`cockpit: cannot read ${progressFile} — ${err.message}`);
+      process.exit(1);
+    }
+
+    const result = checkProgressStructure(content);
+    console.log(formatStructuralCheckReport(result));
+    process.exit(result.ok ? 0 : 1);
+  }
+
+  if (args.help) {
+    console.log(`Usage: cockpit [command | path/to/PROGRESS.md] [--port <n>] [--no-open]
+
+Commands:
+  check [path]       Check structural completeness of PROGRESS.md and exit (0 on PASS, 1 on FAIL)
+
+Viewer:
+  cockpit [path]     Serves the Cockpit viewer on http://127.0.0.1:<port> (default ${DEFAULT_PORT}),
+                     reading the target Markdown file (defaults to ./PROGRESS.md in the current directory)
+                     at runtime and live-reloading the page when it changes. Read-only.
 
 The default browser opens automatically once the server is ready.
 Pass --no-open to suppress this.`);
@@ -204,7 +285,10 @@ Pass --no-open to suppress this.`);
 To start Cockpit:
   1. Create PROGRESS.md in your project root, or
   2. Pass a file path explicitly:
-     cockpit /path/to/PROGRESS.md`);
+     cockpit /path/to/PROGRESS.md
+
+To verify structural completeness:
+  cockpit check /path/to/PROGRESS.md`);
       process.exit(1);
     }
     progressFile = defaultPath;
