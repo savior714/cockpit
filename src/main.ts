@@ -229,6 +229,70 @@ function parseListItems(
   return items;
 }
 
+function classifyRail(rail: MapRail): "workflow" | "trajectory" | "generic" {
+  const norm = normalizeKey(rail.title);
+  if (
+    norm.includes("외래") ||
+    norm.includes("진료") ||
+    norm.includes("workflow") ||
+    norm.includes("파이프라인") ||
+    norm.includes("pipeline") ||
+    norm.includes("순환") ||
+    norm.includes("업무") ||
+    norm.includes("흐름") ||
+    norm.includes("process")
+  ) {
+    return "workflow";
+  }
+  if (
+    norm.includes("의원") ||
+    norm.includes("도입") ||
+    norm.includes("trajectory") ||
+    norm.includes("여정") ||
+    norm.includes("로드맵") ||
+    norm.includes("roadmap") ||
+    norm.includes("마일스톤") ||
+    norm.includes("milestone") ||
+    norm.includes("성장") ||
+    norm.includes("경로")
+  ) {
+    return "trajectory";
+  }
+
+  // Check group titles within rail
+  const groupKeys = rail.groups.map((g) => normalizeKey(g.title));
+  const hasCurrent = groupKeys.some(
+    (k) =>
+      k.includes("현재단계") ||
+      k.includes("currentstage") ||
+      k === "현재" ||
+      k === "now" ||
+      (k.includes("현재") && !k.includes("기반"))
+  );
+  const hasFoundation = groupKeys.some(
+    (k) => k.includes("기반") || k.includes("foundation") || k.includes("완료") || k.includes("done")
+  );
+  const hasFuture = groupKeys.some(
+    (k) =>
+      k.includes("앞으로") ||
+      k.includes("향후") ||
+      k.includes("future") ||
+      k.includes("로드맵") ||
+      k.includes("경로") ||
+      k.includes("다음")
+  );
+
+  if (hasCurrent || (hasFoundation && hasFuture)) {
+    return "trajectory";
+  }
+
+  if (rail.groups.length >= 2) {
+    return "workflow";
+  }
+
+  return "generic";
+}
+
 /** Parse `## 프로젝트 지도` tokens into structured rails & groups. */
 function parseProjectMap(tokens: Token[]): ParsedMap {
   if (!tokens || tokens.length === 0) {
@@ -249,9 +313,13 @@ function parseProjectMap(tokens: Token[]): ParsedMap {
 
   const flushGroup = () => {
     if (currentRail && currentGroup) {
+      const normGroup = normalizeKey(currentGroup.title);
       const isCurrentStage =
-        normalizeKey(currentGroup.title).includes("현재단계") ||
-        normalizeKey(currentGroup.title).includes("currentstage");
+        normGroup.includes("현재단계") ||
+        normGroup.includes("currentstage") ||
+        normGroup === "현재" ||
+        normGroup === "now" ||
+        (normGroup.includes("현재") && !normGroup.includes("기반"));
       currentGroup.items = parseListItems(
         groupTokens,
         currentRail.title,
@@ -272,6 +340,7 @@ function parseProjectMap(tokens: Token[]): ParsedMap {
   const flushRail = () => {
     flushGroup();
     if (currentRail && currentRail.groups.length > 0) {
+      currentRail.railType = classifyRail(currentRail);
       rails.push(currentRail);
       currentRail = null;
     }
@@ -282,17 +351,9 @@ function parseProjectMap(tokens: Token[]): ParsedMap {
     if (t.type === "heading_open" && t.tag === "h3") {
       flushRail();
       const railTitle = tokens[i + 1]?.content.trim() ?? "지도 레일";
-      const norm = normalizeKey(railTitle);
-      let railType: "workflow" | "trajectory" | "generic" = "generic";
-      if (norm.includes("외래") || norm.includes("진료") || norm.includes("workflow")) {
-        railType = "workflow";
-      } else if (norm.includes("의원") || norm.includes("도입") || norm.includes("trajectory")) {
-        railType = "trajectory";
-      }
-
       currentRail = {
         title: railTitle,
-        railType,
+        railType: "generic",
         groups: [],
       };
       i += 2;
@@ -416,9 +477,9 @@ function renderNativeMap(parsedMap: ParsedMap): string {
       <div class="rail-header">
         <span class="rail-badge">${
           isWorkflow
-            ? "환자 진료 업무 영역"
+            ? "업무 흐름"
             : isTrajectory
-              ? "프로젝트 도입 여정"
+              ? "진척 여정"
               : "프로젝트 축"
         }</span>
         <h3 class="rail-title">${escapeHtml(rail.title)}</h3>
@@ -467,9 +528,25 @@ function renderNativeMap(parsedMap: ParsedMap): string {
       html += `<div class="trajectory-groups-container">`;
       for (const group of rail.groups) {
         const norm = normalizeKey(group.title);
-        const isFoundation = norm.includes("확보된기반") || norm.includes("foundation");
-        const isCurrent = norm.includes("현재단계") || norm.includes("currentstage");
-        const isFuture = norm.includes("앞으로의도입경로") || norm.includes("future");
+        const isFoundation =
+          norm.includes("확보된기반") ||
+          norm.includes("기반") ||
+          norm.includes("foundation") ||
+          norm.includes("완료") ||
+          norm.includes("done");
+        const isCurrent =
+          norm.includes("현재단계") ||
+          norm.includes("currentstage") ||
+          norm.includes("현재") ||
+          norm.includes("now");
+        const isFuture =
+          norm.includes("앞으로의도입경로") ||
+          norm.includes("앞으로") ||
+          norm.includes("향후") ||
+          norm.includes("future") ||
+          norm.includes("로드맵") ||
+          norm.includes("경로") ||
+          norm.includes("다음");
 
         if (isFoundation) {
           html += `

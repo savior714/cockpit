@@ -376,12 +376,16 @@ body {
   font-weight: 700;
   color: var(--ink);
   letter-spacing: -0.01em;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .card-desc {
   font-size: 0.8rem;
   color: var(--muted);
   line-height: 1.4;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 /* Rail B: Project Trajectory */
@@ -400,6 +404,7 @@ body {
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   padding: 16px;
+  min-width: 0;
 }
 
 .trajectory-group .group-header {
@@ -584,6 +589,9 @@ body {
   min-width: 0;
   position: sticky;
   top: 20px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .inspector-panel {
@@ -679,9 +687,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 52vh;
-  overflow-y: auto;
-  padding-right: 4px;
 }
 
 .inspector-sub-card {
@@ -885,8 +890,27 @@ body {
   fill: var(--stage-bg) !important;
 }
 
+/* Generic Rail Groups */
+.generic-groups-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+
+.generic-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  min-width: 0;
+}
+
 /* Responsive / Mobile Breakdown */
-@media (max-width: 1200px) {
+@media (max-width: 768px) {
   .cockpit {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
@@ -901,6 +925,8 @@ body {
 
   .side {
     position: static;
+    max-height: none;
+    overflow-y: visible;
   }
 
   .trajectory-groups-container {
