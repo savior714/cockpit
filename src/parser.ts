@@ -787,10 +787,7 @@ export function renderNativeMap(
                 aria-label="${escapeHtml(item.title)} 영역 검사"
               >
                 <div class="card-inner">
-                  <div class="card-header-line">
-                    <span class="card-dot-ready" aria-hidden="true"></span>
-                    <span class="card-title">${escapeHtml(item.title)}</span>
-                  </div>
+                  <span class="card-title">${escapeHtml(item.title)}</span>
                   ${
                     item.description
                       ? `<span class="card-desc">${escapeHtml(item.description)}</span>`
@@ -808,6 +805,7 @@ export function renderNativeMap(
                 <span class="stage-tag">NOW · 현재 단계</span>
                 <h4 class="group-name visually-hidden">${escapeHtml(group.title)}</h4>
               </div>
+              <div class="group-items-grid">
           `;
           for (const item of group.items) {
             const isSelected = selectedAreaId === item.id;
@@ -818,11 +816,8 @@ export function renderNativeMap(
                 data-item-id="${escapeHtml(item.id)}"
                 aria-label="현재 단계: ${escapeHtml(item.title)} 영역 검사"
               >
-                <div class="stage-card-content">
-                  <div class="stage-title-wrap">
-                    <span class="stage-frontier-dot" aria-hidden="true"></span>
-                    <span class="card-title">${escapeHtml(item.title)}</span>
-                  </div>
+                <div class="card-inner">
+                  <span class="card-title">${escapeHtml(item.title)}</span>
                   ${
                     item.description
                       ? `<span class="card-desc">${escapeHtml(item.description)}</span>`
@@ -832,7 +827,7 @@ export function renderNativeMap(
               </button>
             `;
           }
-          html += `</div>`;
+          html += `</div></div>`;
         } else if (isFuture) {
           html += `
             <div class="trajectory-group group-future">

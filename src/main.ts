@@ -378,7 +378,27 @@ async function renderDoc(source: string) {
   const nothing = !title && sections.size === 0;
   empty.hidden = !nothing;
 
-  // Restore or reset Inspector view
+  // Support URL hash deep-linking or restore Inspector view
+  if (!selectedAreaId && window.location.hash) {
+    const rawHash = decodeURIComponent(window.location.hash.slice(1)).trim();
+    if (rawHash) {
+      const match = parsedMap.rails
+        ? parsedMap.rails
+            .flatMap((r) => r.groups)
+            .flatMap((g) => g.items)
+            .find(
+              (it) =>
+                it.id === rawHash ||
+                normalizeKey(it.title) === normalizeKey(rawHash) ||
+                it.title === rawHash
+            )
+        : null;
+      if (match) {
+        selectedAreaId = match.id;
+      }
+    }
+  }
+
   if (selectedAreaId) {
     const item = findMapItemById(selectedAreaId);
     updateInspectorView(item);
