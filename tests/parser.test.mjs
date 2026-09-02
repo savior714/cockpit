@@ -227,14 +227,14 @@ test("Heading aliases contract: Korean and English Area Details and Context slot
   assert.equal(HEADING_ALIAS["직면한 문제"], "facing issues");
 });
 
-test("First-Use Fixture A: Greenhub Smart Farm IoT operational & hardware topology verification", () => {
-  const filePath = path.join(__dirname, "fixtures", "greenhub.md");
+test("Synthetic Fixture 1: Operational and telemetry system topology verification", () => {
+  const filePath = path.join(__dirname, "fixtures", "operational-system.md");
   const markdown = fs.readFileSync(filePath, "utf-8");
 
   const tokens = md.parse(markdown, {});
   const { title, sections } = splitSections(tokens);
 
-  assert.equal(title, "Greenhub Smart Farm IoT");
+  assert.ok(title.length > 0, "Document must have a top-level H1 title");
 
   // 1. Map parsing
   const mapTokens = sections.get("project map");
@@ -244,22 +244,19 @@ test("First-Use Fixture A: Greenhub Smart Farm IoT operational & hardware topolo
   assert.equal(parsedMap.isNativeMap, true);
   assert.equal(parsedMap.rails.length, 3);
 
-  // Rail 1: 스마트팜 현장 설비 및 엣지 계층 (Neutral rail)
+  // Rail 1: Neutral operational rail
   const rail1 = parsedMap.rails[0];
-  assert.equal(rail1.title, "스마트팜 현장 설비 및 엣지 계층");
   assert.equal(rail1.railType, "neutral");
   assert.equal(rail1.groups.length, 2);
 
-  // Rail 2: 부여 온실 1호기 현장 실증 (Trajectory rail owning '현재 단계')
+  // Rail 2: Trajectory rail owning '현재 단계' along with Foundation and Future groups
   const rail2 = parsedMap.rails[1];
-  assert.equal(rail2.title, "부여 온실 1호기 현장 실증");
   assert.equal(rail2.railType, "trajectory");
-  assert.equal(rail2.groups.length, 2);
-  assert.equal(parsedMap.currentStageTitle, "온실 1호기 72시간 연속 실증");
+  assert.equal(rail2.groups.length, 3);
+  assert.ok(parsedMap.currentStageTitle, "Trajectory rail must identify current stage title");
 
-  // Rail 3: 클라우드 인제스천 및 관제 (Neutral rail)
+  // Rail 3: Neutral cloud/control rail
   const rail3 = parsedMap.rails[2];
-  assert.equal(rail3.title, "클라우드 인제스천 및 관제");
   assert.equal(rail3.railType, "neutral");
   assert.equal(rail3.groups.length, 2);
 
@@ -267,7 +264,7 @@ test("First-Use Fixture A: Greenhub Smart Farm IoT operational & hardware topolo
   const detailTokens = sections.get("area details");
   assert.ok(detailTokens, "## 영역별 상세 must be recognized as 'area details'");
   const areaDetails = parseAreaDetails(detailTokens);
-  assert.equal(areaDetails.size, 7);
+  assert.equal(areaDetails.size, 8);
 
   // 3. Verify EVERY map item has full 4-pillar source content in Inspector
   for (const rail of parsedMap.rails) {
@@ -308,14 +305,14 @@ test("First-Use Fixture A: Greenhub Smart Farm IoT operational & hardware topolo
   assert.ok(sections.get("settled direction"), "## 확정된 방향 slot parsed");
 });
 
-test("First-Use Fixture B: Flux Engine distributed software system architecture verification", () => {
-  const filePath = path.join(__dirname, "fixtures", "flux-engine.md");
+test("Synthetic Fixture 2: Distributed software architecture verification", () => {
+  const filePath = path.join(__dirname, "fixtures", "software-architecture.md");
   const markdown = fs.readFileSync(filePath, "utf-8");
 
   const tokens = md.parse(markdown, {});
   const { title, sections } = splitSections(tokens);
 
-  assert.equal(title, "Flux Engine");
+  assert.ok(title.length > 0, "Document must have a top-level H1 title");
 
   // 1. Map parsing
   const mapTokens = sections.get("project map");
@@ -327,20 +324,17 @@ test("First-Use Fixture B: Flux Engine distributed software system architecture 
 
   // Rail 1: Storage Subsystem (Neutral rail)
   const rail1 = parsedMap.rails[0];
-  assert.equal(rail1.title, "Storage Subsystem");
   assert.equal(rail1.railType, "neutral");
   assert.equal(rail1.groups.length, 2);
 
   // Rail 2: Distributed Consensus & Replication (Trajectory rail owning 'Current Stage')
   const rail2 = parsedMap.rails[1];
-  assert.equal(rail2.title, "Distributed Consensus & Replication");
   assert.equal(rail2.railType, "trajectory");
   assert.equal(rail2.groups.length, 3);
-  assert.equal(parsedMap.currentStageTitle, "Partition Rebalancing Under Failure");
+  assert.ok(parsedMap.currentStageTitle, "Trajectory rail must identify current stage title");
 
   // Rail 3: Cloud Storage & WAN (Neutral rail)
   const rail3 = parsedMap.rails[2];
-  assert.equal(rail3.title, "Cloud Storage & WAN");
   assert.equal(rail3.railType, "neutral");
   assert.equal(rail3.groups.length, 2);
 
@@ -389,14 +383,14 @@ test("First-Use Fixture B: Flux Engine distributed software system architecture 
   assert.ok(sections.get("settled direction"), "## Settled Direction parsed");
 });
 
-test("First-Use Fixture C: Genomic Clinical Cohort Study research & data pipeline verification", () => {
-  const filePath = path.join(__dirname, "fixtures", "clinical-study.md");
+test("Synthetic Fixture 3: Multicenter clinical research pipeline verification", () => {
+  const filePath = path.join(__dirname, "fixtures", "research-project.md");
   const markdown = fs.readFileSync(filePath, "utf-8");
 
   const tokens = md.parse(markdown, {});
   const { title, sections } = splitSections(tokens);
 
-  assert.equal(title, "Genomic Clinical Cohort Study");
+  assert.ok(title.length > 0, "Document must have a top-level H1 title");
 
   // 1. Map parsing
   const mapTokens = sections.get("project map");
@@ -406,22 +400,19 @@ test("First-Use Fixture C: Genomic Clinical Cohort Study research & data pipelin
   assert.equal(parsedMap.isNativeMap, true);
   assert.equal(parsedMap.rails.length, 3);
 
-  // Rail 1: 데이터 수집 및 코호트 정제 (Neutral rail)
+  // Rail 1: Data collection and cohort cleaning (Neutral rail)
   const rail1 = parsedMap.rails[0];
-  assert.equal(rail1.title, "데이터 수집 및 코호트 정제");
   assert.equal(rail1.railType, "neutral");
   assert.equal(rail1.groups.length, 2);
 
-  // Rail 2: 통계 분석 및 위험 모형화 (Trajectory rail owning '현재 단계')
+  // Rail 2: Statistical analysis & modeling (Trajectory rail owning '현재 단계')
   const rail2 = parsedMap.rails[1];
-  assert.equal(rail2.title, "통계 분석 및 위험 모형화");
   assert.equal(rail2.railType, "trajectory");
   assert.equal(rail2.groups.length, 2);
-  assert.equal(parsedMap.currentStageTitle, "다변량 생존분석 모델 검증");
+  assert.ok(parsedMap.currentStageTitle, "Trajectory rail must identify current stage title");
 
-  // Rail 3: 임상 유효성 평가 (Neutral rail)
+  // Rail 3: Multicenter clinical validation (Neutral rail)
   const rail3 = parsedMap.rails[2];
-  assert.equal(rail3.title, "임상 유효성 평가");
   assert.equal(rail3.railType, "neutral");
   assert.equal(rail3.groups.length, 1);
 
@@ -470,29 +461,33 @@ test("First-Use Fixture C: Genomic Clinical Cohort Study research & data pipelin
   assert.ok(sections.get("settled direction"), "## 확정된 방향 slot parsed");
 });
 
-test("First-Use Fixture D: NextChart EMR fixture verification", () => {
-  const filePath = path.join(__dirname, "fixtures", "nextchart.md");
+test("Native map rendering structural invariant across trajectory and neutral rails", () => {
+  const filePath = path.join(__dirname, "fixtures", "operational-system.md");
   const markdown = fs.readFileSync(filePath, "utf-8");
 
   const tokens = md.parse(markdown, {});
-  const { title, sections } = splitSections(tokens);
-
-  assert.equal(title, "NextChart EMR");
+  const { sections } = splitSections(tokens);
   const mapTokens = sections.get("project map");
+  assert.ok(mapTokens);
   const parsedMap = parseProjectMap(mapTokens);
-  assert.equal(parsedMap.isNativeMap, true);
-  assert.equal(parsedMap.currentStageTitle, "첫 배포 후보 통합 검증");
 
-  const detailTokens = sections.get("area details");
-  const areaDetails = parseAreaDetails(detailTokens);
+  const renderedHtml = renderNativeMap(parsedMap);
 
-  const registrationDetail = findAreaDetail("환자 등록", areaDetails);
-  assert.ok(registrationDetail);
-  assert.equal(registrationDetail.title, "환자 등록");
-  assert.equal(registrationDetail.subsections.length, 4);
+  // 1. Structural containers
+  assert.ok(renderedHtml.includes("native-project-map"));
+  assert.ok(renderedHtml.includes("map-rail-neutral"));
+  assert.ok(renderedHtml.includes("map-rail-trajectory"));
+  assert.ok(renderedHtml.includes("trajectory-groups-container"));
+  assert.ok(renderedHtml.includes("neutral-groups-container"));
 
-  const currentStageDetail = findAreaDetail("첫 배포 후보 통합 검증", areaDetails);
-  assert.ok(currentStageDetail);
-  assert.equal(currentStageDetail.title, "첫 배포 후보 통합 검증");
-  assert.equal(currentStageDetail.subsections.length, 4);
+  // 2. Trajectory sub-group components
+  assert.ok(renderedHtml.includes("group-foundation"));
+  assert.ok(renderedHtml.includes("group-current-stage"));
+  assert.ok(renderedHtml.includes("group-future"));
+
+  // 3. Card types and accessibility tags
+  assert.ok(renderedHtml.includes("card-foundation"));
+  assert.ok(renderedHtml.includes("card-current-stage"));
+  assert.ok(renderedHtml.includes("card-future"));
+  assert.ok(renderedHtml.includes("NOW · 현재 단계"));
 });

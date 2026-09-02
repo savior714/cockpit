@@ -1,4 +1,4 @@
-# Flux Engine
+# Distributed Event Streaming Engine
 
 ## Project Map
 
