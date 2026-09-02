@@ -39,15 +39,47 @@ my-project/
 
 ### 실행하기
 
-프로젝트 루트 디렉터리에서 `cockpit` 명령어만 입력하면 됩니다:
+Cockpit의 실행 방식은 사용자가 직접 명령어를 입력하는 경우와 외부 역량 에이전트에게 실행을 요청하는 경우에 따라 명확히 구분됩니다:
+
+#### 1. 직접 CLI 실행 (사람이 직접 실행)
+
+터미널에서 `cockpit` 명령어를 직접 실행합니다:
 
 ```bash
 cd my-project
 cockpit
 ```
 
-- 기본 브라우저가 자동으로 열리며 대시보드(`http://127.0.0.1:4321`)가 표시됩니다.
-- Cockpit은 `127.0.0.1` 루프백 전용으로 바인딩되며 읽기 전용(Read-only)으로 안전하게 동작합니다.
+- **동작 방식**: Cockpit은 현재 존재하는 `PROGRESS.md`를 있는 그대로 읽어 브라우저(`http://127.0.0.1:4321`)에 표시하는 초경량 읽기 전용(Read-only) 뷰어입니다.
+- **바이너리 경계**: Cockpit 바이너리 자체는 저장소를 분석하거나, Git 이력을 검사하거나, `PROGRESS.md`를 수정하거나, AI를 호출하지 않습니다.
+
+#### 2. 외부 역량 에이전트에게 Cockpit 실행/열기 요청 시 (공식 운영 계약)
+
+사용자가 Claude Code, ChatGPT, Gemini 등의 외부 역량 에이전트에게 자연어로:
+- *"이 repo에서 Cockpit 실행해줘"*
+- *"Cockpit 열어줘"*
+- *"이 프로젝트 Cockpit 띄워줘"*
+
+라고 요청했을 때, 에이전트가 따라야 하는 공식 권장 운영 워크플로우(Operator Workflow)는 다음과 같습니다:
+
+```text
+1. 기존 PROGRESS.md 읽기
+        ↓
+2. 현재 repo / runtime / SSOT의 최신 실제 증거(fresh evidence)와 대조
+        ↓
+3. 멘탈 모델 델타 테스트 (Mental Model Delta Test) 수행
+   - "현재 PROGRESS.md를 그대로 보여주면 사용자가 프로젝트의 현재 capability,
+      Current Stage, Current Focus, material gaps, proof, Next Transition을 오해하는가?"
+        ↓
+   ├── YES (실질적 차이 존재) → 영향받은 표면만 보수적으로 갱신 (Targeted Refresh)
+   └── NO (실질적 차이 없음) → PROGRESS.md 수정하지 않음 (Untouched)
+        ↓
+4. cockpit check 실행하여 구조적 완전성(PASS) 확인
+        ↓
+5. cockpit 실행 (뷰어 론칭)
+```
+
+> **핵심 원칙**: 최신성 대조(Freshness Check)는 항상 수행하되, 파일 수정(File Mutation)은 실질적인 멘탈 모델 변화(Material Semantic Delta)가 있을 때만 수행합니다.
 
 ### 다른 경로의 파일 지정하기
 
@@ -76,7 +108,7 @@ cockpit check /path/to/PROGRESS.md
 - `cockpit check [path/to/PROGRESS.md]` — 구조적 완전성 검사 후 즉시 종료 (0: PASS, 1: FAIL)
 - `--port`, `-p` — 포트 번호 지정 (기본값: `4321`)
 - `--no-open` — 브라우저 자동 실행 비활성화
-- `--help`, `-h` — 도움말 출력
+- `--help`, `-h` — 도움말 및 운영자 가이드 출력
 
 ---
 
@@ -301,6 +333,36 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
 ```
 
 에이전트가 `PROGRESS.md`를 저장하면, 열려 있는 Cockpit 화면에 즉시 변경사항이 반영됩니다.
+
+### 멘탈 모델 델타 테스트 및 운영자 가이드라인 (Mental Model Delta Test & Operator Guidelines)
+
+외부 역량 에이전트가 `PROGRESS.md`의 최신성을 대조하거나 갱신할 때는 다음 핵심 원칙을 따릅니다:
+
+#### 1. 멘탈 모델 델타 테스트 (Mental Model Delta Test)
+외부 역량 에이전트는 다음 핵심 질문을 통해 `PROGRESS.md` 수정 여부를 판단합니다:
+> **“현재 PROGRESS.md를 그대로 보여주면, 사용자가 프로젝트의 capability, 위치(Current Stage), 관심점(Current Focus), material gaps, proof 또는 다음 경로(Next Transition)를 실질적으로 잘못 이해하게 되는가?”**
+
+- **NO (실질적 오해 없음)** → `PROGRESS.md`를 일체 수정하지 않습니다 (Unchanged).
+- **YES (실질적 왜곡 발생)** → 영향을 받는 시맨틱 표면만 선별적으로 보수적 갱신합니다 (Targeted Refresh).
+
+*이 테스트는 외부 역량 에이전트의 지능적 판단 규칙이며, 기계적 점수화(score)나 파서 차원의 기계적 검증으로 대체하지 않습니다.*
+
+#### 2. 프로젝트 재진입 시 최신성 확인 (Re-entry Freshness)
+오랜만에 프로젝트를 다시 여는 경우에도 동일한 계약을 적용합니다:
+- **“시간의 경과는 재확인(recheck)의 이유이지, 파일 수정(mutate)의 이유가 아니다 (Time is a reason to recheck, not a reason to mutate).”**
+- 시간이 흘렀다는 이유만으로 문서를 수정하지 않습니다.
+- Git 프로젝트라면 외부 에이전트는 필요 시 `PROGRESS.md`의 마지막 유용한 기준선 이후의 실질적 변경 이력(Change Trace)을 비례적으로 확인할 수 있습니다 (기계적으로 전체 Git 이력을 재생하거나 고정 커밋 수를 강제하지 않음).
+
+#### 3. 유계 태스크 종료(Bounded Task Closure) 및 발행과의 관계
+- 태스크 종료나 커밋/발행 자체가 자동 파일 수정 트리거가 아닙니다.
+- Bounded Task Closure는 *“이 작업으로 프로젝트 멘탈 모델이 실질적으로 달라졌는가?”*를 점검하는 **진입 심사 체크포인트(Admission Checkpoint)**입니다.
+- 실질적인 시맨틱 델타가 발생했다면 해당 작업 흐름 안에서 영향받은 `PROGRESS.md`를 갱신하는 것이 기본 운영 방식이며, 델타가 없다면 문서를 건드리지 않습니다.
+- 일회성 Execution Wave 생성 자체 역시 갱신 트리거가 아닙니다.
+
+#### 4. Current Focus 보존 특별 규칙
+- Current Focus(`## 현재 집중`)는 저장소의 단순 활동량(최근 커밋 수, 특정 서브시스템의 코드 변경량, 현재 실행 중인 executor task 등)으로 자동 추론하거나 임의로 이동하지 않습니다.
+- 기존 Current Focus는 사용자의 명시적인 방향 전환 증거가 없는 한 그대로 보존합니다.
+- 사용자가 명시적으로 focus를 변경했다면 이는 시맨틱 델타이므로 `PROGRESS.md` 갱신 대상입니다.
 
 ### Current Focus 기반 Problem Framer 연계 워크플로우
 

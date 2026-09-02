@@ -271,6 +271,12 @@ Viewer:
                      reading the target Markdown file (defaults to ./PROGRESS.md in the current directory)
                      at runtime and live-reloading the page when it changes. Read-only.
 
+Operator note:
+  Cockpit itself is read-only and displays PROGRESS.md as-is.
+  When a capable agent is asked to open Cockpit for a project, the recommended
+  workflow is to reconcile PROGRESS.md with current project evidence first,
+  update only material semantic deltas, run 'cockpit check', then launch the viewer.
+
 The default browser opens automatically once the server is ready.
 Pass --no-open to suppress this.`);
     process.exit(0);

@@ -51,10 +51,16 @@ test("Distribution artifact smoke: pack, install into isolated prefix, and verif
 
   const binPath = path.join(tmpDir, "bin", "cockpit");
 
-  // 3. Test: cockpit --help
+  // 3. Test: cockpit --help & cockpit check --help
   const helpOutput = execSync(`"${binPath}" --help`, { encoding: "utf-8" });
   assert.match(helpOutput, /Usage: cockpit/);
   assert.match(helpOutput, /check \[path\]/);
+  assert.match(helpOutput, /Operator note:/);
+  assert.match(helpOutput, /reconcile PROGRESS\.md with current project evidence first/);
+
+  const checkHelpOutput = execSync(`"${binPath}" check --help`, { encoding: "utf-8" });
+  assert.match(checkHelpOutput, /Usage: cockpit check \[path\/to\/PROGRESS\.md\]/);
+  assert.match(checkHelpOutput, /Deterministically verifies that PROGRESS\.md is structurally complete/);
 
   // 4. Test: cockpit check <valid fixture> -> exit 0 / PASS
   const validFixture = path.join(REPO_ROOT, "tests", "fixtures", "operational-system.md");
