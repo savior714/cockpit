@@ -22,6 +22,10 @@ import {
   isCurrentStageHeading,
   isFoundationHeading,
   isFutureHeading,
+  extractSectionRawText,
+  formatProjectMapText,
+  formatAreaDetailsText,
+  buildFocusHandoffContext,
 } from "./parser";
 
 mermaid.initialize({
@@ -47,6 +51,28 @@ function findMapItemById(id: string): MapItem | null {
     }
   }
   return null;
+}
+
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      return true;
+    }
+  } catch (err) {
+    console.error("Clipboard copy failed", err);
+    return false;
+  }
 }
 
 /** Update the Area Inspector panel with the selected item's details */
@@ -153,27 +179,14 @@ function updateInspectorView(item: MapItem | null) {
     textToCopy += `현재 repo/SSOT/evidence와 대조해서 이 영역에 실제 취약점이 있는지 검토한다.\n`;
     textToCopy += `실제 문제가 확인되고 사용자 결정이 필요하지 않다면 가장 작은 bounded target까지 좁힌다.`;
 
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(textToCopy);
-      } else {
-        const ta = document.createElement("textarea");
-        ta.value = textToCopy;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-      }
+    const ok = await copyToClipboard(textToCopy);
+    if (ok) {
       copyToast.hidden = false;
       copyBtn.classList.add("btn-copied");
       setTimeout(() => {
         copyToast.hidden = true;
         copyBtn.classList.remove("btn-copied");
       }, 3000);
-    } catch (err) {
-      console.error("Clipboard copy failed", err);
     }
   };
 }
@@ -254,10 +267,51 @@ async function renderDoc(source: string) {
   // Setup Overview Panels
   const focusTokens = byHeading("current focus");
   const slotFocus = document.getElementById("slot-focus");
+  const focusCopyBtn = document.getElementById("focus-copy-btn");
+  const focusCopyToast = document.getElementById("focus-copy-toast");
+  if (focusCopyToast) {
+    focusCopyToast.hidden = true;
+  }
+
   if (slotFocus) {
     if (focusTokens && focusTokens.length > 0) {
       setSection("slot-focus", focusTokens);
       slotFocus.hidden = false;
+
+      if (focusCopyBtn) {
+        focusCopyBtn.onclick = async () => {
+          const focusText = extractSectionRawText(focusTokens);
+          const situationText = extractSectionRawText(byHeading("current situation"));
+          const nextTransitionText = extractSectionRawText(byHeading("next transition"));
+          const facingIssuesText = extractSectionRawText(byHeading("facing issues"));
+          const projectFrameText = extractSectionRawText(byHeading("project frame"));
+          const settledDirectionText = extractSectionRawText(byHeading("settled direction"));
+          const projectMapText = formatProjectMapText(parsedMap);
+          const areaDetailsText = formatAreaDetailsText(currentAreaDetails);
+
+          const handoffText = buildFocusHandoffContext({
+            projectTitle: activeProjectTitle,
+            focusText,
+            situationText,
+            nextTransitionText,
+            facingIssuesText,
+            projectFrameText,
+            settledDirectionText,
+            projectMapText,
+            areaDetailsText,
+          });
+
+          const ok = await copyToClipboard(handoffText);
+          if (ok && focusCopyToast) {
+            focusCopyToast.hidden = false;
+            focusCopyBtn.classList.add("btn-copied");
+            setTimeout(() => {
+              focusCopyToast.hidden = true;
+              focusCopyBtn.classList.remove("btn-copied");
+            }, 3000);
+          }
+        };
+      }
     } else {
       slotFocus.hidden = true;
     }

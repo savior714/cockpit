@@ -271,11 +271,7 @@ export function parseAreaDetails(tokens) {
     const flushSubsection = () => {
         if (currentArea && currentSubsection) {
             const html = withMermaidPlaceholders(renderTokens(currentSubsection.tokens));
-            const rawText = currentSubsection.tokens
-                .filter((t) => t.type === "inline")
-                .map((t) => t.content)
-                .join("\n")
-                .trim();
+            const rawText = extractSectionRawText(currentSubsection.tokens);
             currentArea.subsections.push({
                 subheading: currentSubsection.subheading,
                 html,
@@ -383,11 +379,7 @@ export function checkProgressStructure(markdownOrTokens) {
         const flushSubsection = () => {
             if (currentArea && currentSubsection) {
                 const html = withMermaidPlaceholders(renderTokens(currentSubsection.tokens));
-                const rawText = currentSubsection.tokens
-                    .filter((t) => t.type === "inline")
-                    .map((t) => t.content)
-                    .join("\n")
-                    .trim();
+                const rawText = extractSectionRawText(currentSubsection.tokens);
                 currentArea.subsections.push({
                     subheading: currentSubsection.subheading,
                     html,
@@ -832,4 +824,135 @@ export function renderNativeMap(parsedMap, selectedAreaId = null, areaDetails) {
     }
     html += `</div>`;
     return html;
+}
+/** Extract clean plain text representation preserving lists and paragraphs from token stream */
+export function extractSectionRawText(tokens) {
+    if (!tokens || tokens.length === 0)
+        return "";
+    const lines = [];
+    let inBulletList = false;
+    let inOrderedList = false;
+    let orderIndex = 1;
+    for (let i = 0; i < tokens.length; i++) {
+        const t = tokens[i];
+        if (t.type === "bullet_list_open") {
+            inBulletList = true;
+        }
+        else if (t.type === "bullet_list_close") {
+            inBulletList = false;
+        }
+        else if (t.type === "ordered_list_open") {
+            inOrderedList = true;
+            orderIndex = 1;
+        }
+        else if (t.type === "ordered_list_close") {
+            inOrderedList = false;
+        }
+        else if (t.type === "list_item_open") {
+            if (t.info) {
+                orderIndex = parseInt(t.info, 10) || orderIndex;
+            }
+        }
+        else if (t.type === "inline" && t.content.trim()) {
+            const content = t.content.trim();
+            if (inOrderedList) {
+                lines.push(`${orderIndex}. ${content}`);
+                orderIndex++;
+            }
+            else if (inBulletList) {
+                lines.push(`- ${content}`);
+            }
+            else {
+                lines.push(content);
+            }
+        }
+    }
+    return lines.join("\n").trim();
+}
+/** Format human-readable text representation of Project Map */
+export function formatProjectMapText(parsedMap) {
+    if (!parsedMap.rails || parsedMap.rails.length === 0) {
+        if (parsedMap.rawTokens) {
+            return extractSectionRawText(parsedMap.rawTokens);
+        }
+        return "";
+    }
+    const lines = [];
+    for (const rail of parsedMap.rails) {
+        lines.push(`### ${rail.title}`);
+        for (const group of rail.groups) {
+            lines.push(`#### ${group.title}`);
+            if (group.isOrdered) {
+                group.items.forEach((item, idx) => {
+                    lines.push(`${idx + 1}. **${item.title}**${item.description ? ` — ${item.description}` : ""}`);
+                });
+            }
+            else {
+                for (const item of group.items) {
+                    lines.push(`- **${item.title}**${item.description ? ` — ${item.description}` : ""}`);
+                }
+            }
+            lines.push("");
+        }
+    }
+    return lines.join("\n").trim();
+}
+/** Format human-readable text representation of all Area Details */
+export function formatAreaDetailsText(areaDetails) {
+    if (!areaDetails || areaDetails.size === 0)
+        return "";
+    const lines = [];
+    for (const detail of areaDetails.values()) {
+        lines.push(`### ${detail.title}`);
+        for (const sub of detail.subsections) {
+            lines.push(`#### ${sub.subheading}`);
+            lines.push(sub.rawText);
+        }
+        lines.push("");
+    }
+    return lines.join("\n").trim();
+}
+/** Build deterministic plain-text context for external Problem Framer handoff */
+export function buildFocusHandoffContext(params) {
+    const sections = [];
+    sections.push(`[PROJECT]\n${params.projectTitle || "Cockpit"}`);
+    sections.push(`[CURRENT FOCUS]\n${params.focusText.trim()}`);
+    if (params.situationText && params.situationText.trim()) {
+        sections.push(`[CURRENT SITUATION]\n${params.situationText.trim()}`);
+    }
+    if (params.nextTransitionText && params.nextTransitionText.trim()) {
+        sections.push(`[NEXT TRANSITION]\n${params.nextTransitionText.trim()}`);
+    }
+    if (params.facingIssuesText && params.facingIssuesText.trim()) {
+        sections.push(`[FACING ISSUES]\n${params.facingIssuesText.trim()}`);
+    }
+    if (params.projectFrameText && params.projectFrameText.trim()) {
+        sections.push(`[PROJECT FRAME]\n${params.projectFrameText.trim()}`);
+    }
+    if (params.settledDirectionText && params.settledDirectionText.trim()) {
+        sections.push(`[SETTLED DIRECTION]\n${params.settledDirectionText.trim()}`);
+    }
+    if (params.projectMapText && params.projectMapText.trim()) {
+        sections.push(`[PROJECT MAP]\n${params.projectMapText.trim()}`);
+    }
+    if (params.areaDetailsText && params.areaDetailsText.trim()) {
+        sections.push(`[AREA CONTEXT]\n${params.areaDetailsText.trim()}`);
+    }
+    const instruction = [
+        "---",
+        "[PROBLEM FRAMER HANDOFF INSTRUCTION]",
+        "1. 현재 repo/runtime/SSOT의 fresh evidence와 위 context를 대조하라.",
+        "2. Current Focus를 Next Transition까지 전진시키기 위해 현재 시점에서 의미와 성공조건을 확정할 수 있는 bounded work를 찾는다.",
+        "3. 서로 독립적이고 shared mutation/state dependency가 없는 작업들은 하나의 transient Execution Wave로 묶을 수 있다.",
+        "4. 각 NOW-admissible task는 별도의 executor-neutral local agent handoff로 작성한다.",
+        "5. 다음 중 하나라면 미리 실행 prompt를 확정하지 않는다:",
+        "   - 선행 task 결과에 따라 필요 여부가 달라짐",
+        "   - 선행 task 결과에 따라 semantic target이 달라짐",
+        "   - 동일 semantic owner / mutation surface의 충돌 위험이 큼",
+        "   - consequential한 사용자 결정이 먼저 필요함",
+        "6. Execution Wave는 일회성 framing 결과다. Cockpit/PROGRESS.md에 task backlog나 실행 상태로 저장하지 않는다.",
+        "7. 단순히 많은 task를 만들기 위해 task를 분해하지 않는다. 현재 evidence로 안전하게 확정 가능한 최대 범위에서 멈춘다.",
+    ].join("\n");
+    sections.push(instruction);
+    return sections.join("\n\n");
 }

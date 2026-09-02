@@ -20,6 +20,10 @@ import {
   renderNativeMap,
   checkProgressStructure,
   formatStructuralCheckReport,
+  extractSectionRawText,
+  formatProjectMapText,
+  formatAreaDetailsText,
+  buildFocusHandoffContext,
 } from "../dist/parser.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1394,6 +1398,204 @@ test("Fixture verification: visual-test-nofocus.md (No Current Focus + single tr
   assert.equal(result.currentStageCount, 1);
   assert.equal(result.currentFocusCount, 0);
 });
+
+test("Raw text extraction preserving lists and paragraphs", () => {
+  const markdown = `
+Paragraph line 1.
+Paragraph line 2.
+
+- Bullet item A
+- Bullet item B
+
+1. Numbered item 1
+2. Numbered item 2
+`;
+  const tokens = md.parse(markdown, {});
+  const extracted = extractSectionRawText(tokens);
+
+  assert.ok(extracted.includes("Paragraph line 1.\nParagraph line 2."));
+  assert.ok(extracted.includes("- Bullet item A"));
+  assert.ok(extracted.includes("- Bullet item B"));
+  assert.ok(extracted.includes("1. Numbered item 1"));
+  assert.ok(extracted.includes("2. Numbered item 2"));
+  assert.equal(extractSectionRawText([]), "");
+  assert.equal(extractSectionRawText(undefined), "");
+});
+
+test("Project Map text formatting across rails and group types", () => {
+  const mapDoc = `
+## 프로젝트 지도
+
+### 메인 레일
+#### 순차 그룹
+1. **단계 1** — 첫 단계 설명
+2. **단계 2** — 둘째 단계 설명
+
+### 보조 레일
+#### 대등 그룹
+- **항목 A** — 설명 A
+- **항목 B**
+`;
+  const tokens = md.parse(mapDoc, {});
+  const parsedMap = parseProjectMap(splitSections(tokens).sections.get("project map"));
+  const text = formatProjectMapText(parsedMap);
+
+  assert.ok(text.includes("### 메인 레일"));
+  assert.ok(text.includes("#### 순차 그룹"));
+  assert.ok(text.includes("1. **단계 1** — 첫 단계 설명"));
+  assert.ok(text.includes("2. **단계 2** — 둘째 단계 설명"));
+  assert.ok(text.includes("### 보조 레일"));
+  assert.ok(text.includes("#### 대등 그룹"));
+  assert.ok(text.includes("- **항목 A** — 설명 A"));
+  assert.ok(text.includes("- **항목 B**"));
+});
+
+test("Area details text formatting preserves all pillar subsections", () => {
+  const detailDoc = `
+## 영역 상세
+
+### 영역 1
+#### 의미
+영역 1의 의미.
+#### 현재 수준
+가동 중.
+#### 남은 문제
+- 문제 1
+#### 근거
+- 코드 파일
+
+### 영역 2
+#### 의미
+영역 2의 의미.
+`;
+  const tokens = md.parse(detailDoc, {});
+  const areaDetails = parseAreaDetails(splitSections(tokens).sections.get("area details"));
+  const text = formatAreaDetailsText(areaDetails);
+
+  assert.ok(text.includes("### 영역 1"));
+  assert.ok(text.includes("#### 의미\n영역 1의 의미."));
+  assert.ok(text.includes("#### 현재 수준\n가동 중."));
+  assert.ok(text.includes("#### 남은 문제\n- 문제 1"));
+  assert.ok(text.includes("#### 근거\n- 코드 파일"));
+  assert.ok(text.includes("### 영역 2"));
+});
+
+test("Focus handoff context assembly: complete context and Problem Framer instructions", () => {
+  const context = buildFocusHandoffContext({
+    projectTitle: "스마트 진료 시스템",
+    focusText: "외래 진료 흐름 안정화 및 전송 지연 단축",
+    situationText: "HL7 수집 엔진 안정화 완료, 진료 소견 작성 화면 검증 진행 중",
+    nextTransitionText: "비동기 서명 처리 완료 및 검사 오더 연동 규격 확정",
+    facingIssuesText: "- 비표준 HL7 세그먼트 예외 처리",
+    projectFrameText: "차세대 스마트 병원 외래 워크플로우 통합",
+    settledDirectionText: "- 마이크로서비스 연동 아키텍처 확정 (2026-08-01)",
+    projectMapText: "### 1차 레일\n- **환자 접수** — 접수 처리",
+    areaDetailsText: "### 환자 접수\n#### 의미\n접수 관문",
+  });
+
+  // Verify all essential sections exist
+  assert.ok(context.includes("[PROJECT]\n스마트 진료 시스템"));
+  assert.ok(context.includes("[CURRENT FOCUS]\n외래 진료 흐름 안정화 및 전송 지연 단축"));
+  assert.ok(context.includes("[CURRENT SITUATION]\nHL7 수집 엔진 안정화 완료, 진료 소견 작성 화면 검증 진행 중"));
+  assert.ok(context.includes("[NEXT TRANSITION]\n비동기 서명 처리 완료 및 검사 오더 연동 규격 확정"));
+  assert.ok(context.includes("[FACING ISSUES]\n- 비표준 HL7 세그먼트 예외 처리"));
+  assert.ok(context.includes("[PROJECT FRAME]\n차세대 스마트 병원 외래 워크플로우 통합"));
+  assert.ok(context.includes("[SETTLED DIRECTION]\n- 마이크로서비스 연동 아키텍처 확정 (2026-08-01)"));
+  assert.ok(context.includes("[PROJECT MAP]\n### 1차 레일\n- **환자 접수** — 접수 처리"));
+  assert.ok(context.includes("[AREA CONTEXT]\n### 환자 접수\n#### 의미\n접수 관문"));
+
+  // Verify Problem Framer instructions
+  assert.ok(context.includes("[PROBLEM FRAMER HANDOFF INSTRUCTION]"));
+  assert.ok(context.includes("현재 repo/runtime/SSOT의 fresh evidence와 위 context를 대조하라."));
+  assert.ok(context.includes("Current Focus를 Next Transition까지 전진시키기 위해"));
+  assert.ok(context.includes("transient Execution Wave로 묶을 수 있다."));
+  assert.ok(context.includes("각 NOW-admissible task는 별도의 executor-neutral local agent handoff로 작성한다."));
+  assert.ok(context.includes("선행 task 결과에 따라"));
+  assert.ok(context.includes("Execution Wave는 일회성 framing 결과다. Cockpit/PROGRESS.md에 task backlog나 실행 상태로 저장하지 않는다."));
+  assert.ok(context.includes("현재 evidence로 안전하게 확정 가능한 최대 범위에서 멈춘다."));
+
+  // Verify Cockpit does NOT generate tasks or backlog items by itself
+  assert.ok(!context.includes("Task A:"));
+  assert.ok(!context.includes("Task 1:"));
+  assert.ok(!context.includes("## Execution Wave"));
+});
+
+test("Focus handoff context assembly: minimal optional fields omitted cleanly", () => {
+  const minimalContext = buildFocusHandoffContext({
+    projectTitle: "Minimal Project",
+    focusText: "Core Feature Hardening",
+    situationText: "Starting core implementation",
+    nextTransitionText: "Initial prototype complete",
+  });
+
+  assert.ok(minimalContext.includes("[PROJECT]\nMinimal Project"));
+  assert.ok(minimalContext.includes("[CURRENT FOCUS]\nCore Feature Hardening"));
+  assert.ok(minimalContext.includes("[CURRENT SITUATION]\nStarting core implementation"));
+  assert.ok(minimalContext.includes("[NEXT TRANSITION]\nInitial prototype complete"));
+  assert.ok(!minimalContext.includes("[FACING ISSUES]"));
+  assert.ok(!minimalContext.includes("[PROJECT FRAME]"));
+  assert.ok(!minimalContext.includes("[SETTLED DIRECTION]"));
+  assert.ok(!minimalContext.includes("[PROJECT MAP]"));
+  assert.ok(!minimalContext.includes("[AREA CONTEXT]"));
+  assert.ok(minimalContext.includes("[PROBLEM FRAMER HANDOFF INSTRUCTION]"));
+});
+
+test("Fixture end-to-end focus handoff context on visual-test-focus.md", () => {
+  const filePath = path.join(__dirname, "fixtures", "visual-test-focus.md");
+  const content = fs.readFileSync(filePath, "utf-8");
+
+  const tokens = md.parse(content, {});
+  const { title, sections } = splitSections(tokens);
+  const focusTokens = sections.get("current focus");
+  assert.ok(focusTokens);
+
+  const parsedMap = parseProjectMap(sections.get("project map"));
+  const areaDetails = parseAreaDetails(sections.get("area details"));
+
+  const handoff = buildFocusHandoffContext({
+    projectTitle: title,
+    focusText: extractSectionRawText(focusTokens),
+    situationText: extractSectionRawText(sections.get("current situation")),
+    nextTransitionText: extractSectionRawText(sections.get("next transition")),
+    facingIssuesText: extractSectionRawText(sections.get("facing issues")),
+    projectFrameText: extractSectionRawText(sections.get("project frame")),
+    settledDirectionText: extractSectionRawText(sections.get("settled direction")),
+    projectMapText: formatProjectMapText(parsedMap),
+    areaDetailsText: formatAreaDetailsText(areaDetails),
+  });
+
+  assert.ok(handoff.includes("[PROJECT]\n스마트 병원 임상 및 데이터 통합 시스템"));
+  assert.ok(handoff.includes("외래 진료 전체 흐름의 실제 완결성 확보 및 전송 지연 시간 단축."));
+  assert.ok(handoff.includes("진료 소견 작성"));
+  assert.ok(handoff.includes("표준 용어 정규화"));
+  assert.ok(handoff.includes("비표준 HL7 세그먼트 파싱 예외 처리 필요."));
+  assert.ok(handoff.includes("[PROBLEM FRAMER HANDOFF INSTRUCTION]"));
+});
+
+test("DOM and CSS containment: focus copy action and toast elements exist inside #slot-focus", () => {
+  const htmlPath = path.join(__dirname, "..", "index.html");
+  const html = fs.readFileSync(htmlPath, "utf-8");
+
+  const slotFocusIdx = html.indexOf('id="slot-focus"');
+  const focusCopyBtnIdx = html.indexOf('id="focus-copy-btn"');
+  const focusCopyToastIdx = html.indexOf('id="focus-copy-toast"');
+  const slotNowIdx = html.indexOf('id="slot-now"');
+
+  assert.ok(slotFocusIdx !== -1, "index.html must have #slot-focus");
+  assert.ok(focusCopyBtnIdx !== -1, "index.html must have #focus-copy-btn");
+  assert.ok(focusCopyToastIdx !== -1, "index.html must have #focus-copy-toast");
+
+  // focus-copy-btn and focus-copy-toast must be strictly inside #slot-focus before #slot-now
+  assert.ok(slotFocusIdx < focusCopyBtnIdx && focusCopyBtnIdx < slotNowIdx, "#focus-copy-btn must be inside #slot-focus");
+  assert.ok(slotFocusIdx < focusCopyToastIdx && focusCopyToastIdx < slotNowIdx, "#focus-copy-toast must be inside #slot-focus");
+
+  const cssPath = path.join(__dirname, "..", "src", "style.css");
+  const css = fs.readFileSync(cssPath, "utf-8");
+
+  assert.ok(css.includes(".focus-actions"), "CSS must style .focus-actions");
+  assert.ok(css.includes(".btn-focus-copy"), "CSS must style .btn-focus-copy");
+});
+
 
 
 
