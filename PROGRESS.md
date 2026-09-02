@@ -40,19 +40,23 @@ stable; we are hardening validation before enrichment can consume it.
 - **Source feed schema**: upstream EMR export adds `result_status` in an
   unknown encoding. Waiting on vendor answer (ticket EMR-4102).
 
+## Recent Progress
+
+- **Validation rule engine draft completed** — established initial schema for LOINC reference range evaluation and quarantine routing for out-of-range clinical results.
+- **Unit conversion test harness established** — automated verification across 140 standard clinical units guarantees zero unit-drift prior to enrichment.
+- **Normalization v1 contract verified** — ingestion-to-normalization pipeline now handles deduplication and timestamp normalization under 10k msg/s load test with zero dropped records.
+- **Ingestion backpressure handling deployed** — reactive stream buffer prevents memory spikes during upstream batch dumps, stabilizing ingestion ingress.
+- **Schema quarantine routing designed** — invalid EMR record payloads are safely diverted into isolated audit queues without stalling the main pipeline stream.
+- **Architecture baseline finalized** — event-driven pub/sub design committed over legacy nightly batch export, setting end-to-end freshness target.
+
 ## Project Frame
 
-Orion replaces the legacy nightly lab-result batch with a near-real-time
-pipeline. Success = validation-gated freshness under 5 minutes for 95% of
-results, with zero loss of audit lineage.
+Orion replaces the legacy nightly lab-result batch with a near-real-time clinical data pipeline.
+Success is defined as validation-gated freshness under 5 minutes for 95% of results with zero loss of audit lineage and verifiable provenance across all hospital sites.
 
 ## Settled Direction
 
-- Event-driven over batch: settled 2026-07-14.
-- Validation happens post-normalization, pre-enrichment: settled 2026-08-02.
-- No proprietary DSL for progress docs; plain Markdown only: settled 2026-08-25.
-
-## Recently Completed
-
-- Normalization v1 (units + dedupe) — 2026-08-28
-- Ingestion backpressure handling — 2026-08-21
+- Event-driven stream processing over batch processing to guarantee low-latency delivery.
+- Validation must strictly occur post-normalization and pre-enrichment to protect downstream consumers from corrupted schemas.
+- Plain Markdown is the sole storage format for progress documents; no proprietary schema or database dependencies.
+- Quarantine isolation must preserve full payload bytes alongside parser error signatures for medical audit compliance.

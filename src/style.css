@@ -834,22 +834,80 @@ body {
   text-align: center;
 }
 
-/* Bottom Context Region */
+/* Bottom Context Region (Recent Progress > Stable Framing Context) */
 .context-region {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
 }
 
 .panel-context {
-  font-size: 0.86rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  min-width: 0;
+}
+
+/* Primary Lower Surface: Recent Progress */
+.panel-recent {
+  border-radius: var(--radius-md);
   padding: 14px 16px;
 }
 
-.panel-context h2 {
+.panel-recent h2 {
   font-family: var(--font-mono);
   font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line-subtle);
+  padding-bottom: 5px;
+  margin-bottom: 8px;
+}
+
+.panel-recent .panel-body {
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.panel-recent .panel-body ul,
+.panel-recent .panel-body ol {
+  margin: 0.3em 0;
+  padding-left: 1.3em;
+}
+
+.panel-recent .panel-body li {
+  margin-bottom: 0.35em;
+  color: var(--ink-secondary);
+}
+
+.panel-recent .panel-body li strong {
+  color: var(--ink);
+}
+
+.panel-recent .panel-body li:last-child {
+  margin-bottom: 0;
+}
+
+/* Secondary Compact Surface: Stable Context Grid (Product Goal & Settled Direction) */
+.stable-context-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  min-width: 0;
+}
+
+.panel-stable {
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+}
+
+.panel-stable h2 {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -859,20 +917,35 @@ body {
   margin-bottom: 6px;
 }
 
-#slot-frame {
-  min-width: 0;
+.panel-stable .panel-body {
+  font-size: 0.81rem;
+  line-height: 1.45;
+  color: var(--ink-secondary);
 }
 
-#slot-settled {
-  min-width: 0;
+.panel-stable .panel-body p {
+  margin: 0 0 4px;
 }
 
-#slot-recent {
-  grid-column: 1 / -1;
+.panel-stable .panel-body p:last-child {
+  margin-bottom: 0;
+}
+
+.panel-stable .panel-body ul,
+.panel-stable .panel-body ol {
+  margin: 0.2em 0;
+  padding-left: 1.2em;
+}
+
+.panel-stable .panel-body li {
+  margin-bottom: 0.2em;
+}
+
+.panel-stable .panel-body li:last-child {
+  margin-bottom: 0;
 }
 
 #slot-extra {
-  grid-column: 1 / -1;
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
@@ -1055,13 +1128,8 @@ body {
     overflow-y: visible;
   }
 
-  .context-region {
+  .stable-context-grid {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  #slot-recent,
-  #slot-extra {
-    grid-column: 1;
   }
 
   .trajectory-groups-container {

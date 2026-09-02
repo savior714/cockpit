@@ -625,6 +625,37 @@ test("DOM and CSS containment invariant: primary-workspace isolates sticky aside
   assert.ok(css.includes(".completeness-badge"), "CSS must style .completeness-badge");
 });
 
+test("DOM and CSS containment invariant: context-region prioritizes Recent Progress over compact stable context grid", () => {
+  const htmlPath = path.join(__dirname, "..", "index.html");
+  const html = fs.readFileSync(htmlPath, "utf-8");
+
+  const contextRegionIdx = html.indexOf('id="context-region"');
+  const slotRecentIdx = html.indexOf('id="slot-recent"');
+  const stableGridIdx = html.indexOf('class="stable-context-grid"');
+  const slotFrameIdx = html.indexOf('id="slot-frame"');
+  const slotSettledIdx = html.indexOf('id="slot-settled"');
+
+  assert.ok(contextRegionIdx !== -1, "index.html must have #context-region");
+  assert.ok(slotRecentIdx !== -1, "index.html must have #slot-recent");
+  assert.ok(stableGridIdx !== -1, "index.html must have .stable-context-grid");
+  assert.ok(slotFrameIdx !== -1, "index.html must have #slot-frame");
+  assert.ok(slotSettledIdx !== -1, "index.html must have #slot-settled");
+
+  // slot-recent must come before stable-context-grid, slot-frame, and slot-settled
+  assert.ok(contextRegionIdx < slotRecentIdx, "#slot-recent must be inside #context-region");
+  assert.ok(slotRecentIdx < stableGridIdx, "#slot-recent must precede .stable-context-grid");
+  assert.ok(stableGridIdx < slotFrameIdx, "#slot-frame must be inside .stable-context-grid");
+  assert.ok(stableGridIdx < slotSettledIdx, "#slot-settled must be inside .stable-context-grid");
+
+  // CSS rules assertion for recent panel and stable context grid
+  const cssPath = path.join(__dirname, "..", "src", "style.css");
+  const css = fs.readFileSync(cssPath, "utf-8");
+
+  assert.ok(css.includes(".panel-recent"), "CSS must style .panel-recent");
+  assert.ok(css.includes(".stable-context-grid"), "CSS must style .stable-context-grid");
+  assert.ok(css.includes(".panel-stable"), "CSS must style .panel-stable");
+});
+
 test("Independent multi-rail mental-model axis invariants: single Current Stage ownership and neutral rail coexistence", () => {
   // Case A: Multi-rail map with 1 neutral operational rail and 1 trajectory rollout rail
   const multiRailDoc = `

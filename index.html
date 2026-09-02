@@ -80,20 +80,22 @@
       </div>
 
       <div id="context-region" class="context-region">
-        <section id="slot-frame" class="panel panel-context" aria-label="제품 목표">
-          <h2>제품 목표</h2>
-          <div class="panel-body"></div>
-        </section>
-
-        <section id="slot-settled" class="panel panel-context" aria-label="확정된 방향">
-          <h2>확정된 방향</h2>
-          <div class="panel-body"></div>
-        </section>
-
-        <section id="slot-recent" class="panel panel-context" aria-label="최근 진척" hidden>
+        <section id="slot-recent" class="panel panel-context panel-recent" aria-label="최근 진척" hidden>
           <h2>최근 진척</h2>
           <div class="panel-body"></div>
         </section>
+
+        <div class="stable-context-grid">
+          <section id="slot-frame" class="panel panel-context panel-stable" aria-label="제품 목표">
+            <h2>제품 목표</h2>
+            <div class="panel-body"></div>
+          </section>
+
+          <section id="slot-settled" class="panel panel-context panel-stable" aria-label="확정된 방향">
+            <h2>확정된 방향</h2>
+            <div class="panel-body"></div>
+          </section>
+        </div>
 
         <section id="slot-extra" class="panel-context-stack" hidden aria-label="추가 맥락">
         </section>
