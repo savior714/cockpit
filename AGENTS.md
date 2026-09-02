@@ -30,6 +30,7 @@ Read only the owners directly relevant to the current task. Concrete commands ar
 - The agent may decide ordinary technical implementation choices from repository evidence.
 - Consequential product behavior, scope, acceptance meaning, or hard-to-reverse architecture remains a user decision unless already settled.
 - Close one bounded failure domain / coherent state transition at a time; do not absorb newly discovered independent problems into the current task.
+- When Cockpit is being accepted against an external repository, target-project findings are testbed evidence rather than Cockpit work; do not remediate them unless the user explicitly switches the goal back to target-project development. The detailed boundary is in `README.md` §4.
 
 ## 4. Execution
 

@@ -429,6 +429,74 @@ PROGRESS.md 보수적 갱신
 - **PROGRESS.md 갱신 시점**: Execution Wave가 생성되었다는 이유만으로 `PROGRESS.md`를 갱신하지 않습니다. Bounded tasks가 실제로 완료되어 프로젝트의 객관적 상태나 사용자 관심사(Current Focus)가 실질적으로 달라졌을 때만 해당 멘탈 모델 표면을 갱신합니다.
 - **판단 소유권**: claim의 closure/falsification/re-admission은 외부 capable agent가 수행하며, Cockpit binary는 이 판단을 자동화하지 않고 읽기 전용 deterministic presentation/context transport만 제공합니다.
 
+#### Cockpit 제품 수용성 검증일 때의 별도 경계 (Real-Project Acceptance Boundary)
+
+앞의 표준 루프는 사용자가 자신의 프로젝트를 발전시키는 **정상 사용자 워크플로우**이며 그대로 유효합니다. Cockpit 자체를 다른 실제 저장소로 수용 테스트할 때만 다음 별도 경계를 적용합니다:
+
+> **TESTBED IS EVIDENCE, NOT THE WORK QUEUE.**
+
+외부 실제 저장소(testbed)의 결함은 Cockpit이 프로젝트의 현재 상태를 올바르게 표현·전달·재조정했는지 판단하기 위한 관찰 증거입니다. 그 결함은 자동으로 Cockpit의 작업 큐가 되지 않으며, acceptance 중에 대상 프로젝트의 개발을 계속할 권한을 부여하지도 않습니다.
+
+수용 테스트의 목적은 다음 질문에 답하는 것입니다:
+
+> Cockpit이 대상 프로젝트의 mental model을 정확히 표현하고, 운반하고, reconciliation 이후에도 올바르게 갱신했는가?
+
+신선한 조사에서 대상 프로젝트를 위한 Execution Wave가 생성되더라도, 그 Wave는 수용 테스트 산출물로서 정확성·실행 가능성을 검사할 수 있을 뿐 자동 실행하지 않습니다. 대상 프로젝트의 한 작업을 post-task reconciliation 자극으로 일부러 실행해야 하는 경우에만, 정확히 하나의 사전 승인된 bounded mutation을 test stimulus로 사용하고, Cockpit의 closure/reconciliation 결과를 관찰한 즉시 중단합니다. 그 자극으로 새롭고 무관한 대상 프로젝트 결함이 드러나도 다음 대상 프로젝트 remediation으로 재귀하지 않습니다. 새 대상 작업은 별도의 acceptance hypothesis 또는 사용자의 명시적인 대상 프로젝트 개발 재개 지시가 필요합니다.
+
+Mutation-bearing acceptance의 최소 흐름은 다음과 같습니다. 읽기 전용 수용 테스트라면 자극을 생략할 수 있지만, 자극을 사용할 때는 하나만 사용합니다:
+
+```text
+ONE INTENTIONAL TESTBED STIMULUS
+        ↓
+OBSERVE target state and Cockpit representation/reconciliation
+        ↓
+EXTRACT COCKPIT DELTA
+        ↓
+STOP
+```
+
+#### 수용 관찰의 임시 분류
+
+아래 분류는 acceptance 실행 중 판단을 돕는 일시적 라벨일 뿐이며, Cockpit·`PROGRESS.md`·registry·schema·database에 저장하지 않습니다.
+
+| 분류 | 판정 | 조치 |
+|---|---|---|
+| **COCKPIT DEFECT** | Cockpit 또는 외부 운영 계약이 프로젝트 상태를 잘못 표현·전달·갱신함 | 영향받은 Cockpit 표면의 bounded repair로 승격 |
+| **TESTBED DEFECT** | 신선한 증거가 대상 프로젝트 결함을 입증하고 Cockpit은 이를 올바르게 표현·framing함 | acceptance 관찰로 기록하고 대상 프로젝트 remediation은 중단 |
+| **MIXED** | 대상 프로젝트 결함은 실제지만 Cockpit도 일부를 잘못 표현·분류함 | Cockpit semantic/transport 결함만 수정하고 대상 프로젝트 수정은 흡수하지 않음 |
+| **ENVIRONMENT FRICTION** | 어느 제품 결함이나 대상 프로젝트 결함도 입증하지 못한 acceptance 환경·도구 문제 | 기존 friction 규칙에 따라 `WATCH`/`DROP`/`PROMOTE`하고 프로젝트 상태와 혼동하지 않음 |
+
+예를 들어 실제 release gate가 실패하고 그에 대한 downstream task가 기술적으로 유효하더라도, Cockpit이 실패를 정확히 표현했다면 결론은 `TESTBED DEFECT`입니다. `COCKPIT DEFECT`는 stale claim 유지, 현재 결함과 미도달 proof의 혼합, 잘못된 Current Stage 이동, 자기완결적이지 않은 handoff처럼 Cockpit의 표현·운영 계약이 틀린 경우에만 성립합니다.
+
+#### 휴대 가능한 실제 프로젝트 수용 시나리오
+
+1. Cockpit을 다른 실제 repository에 연결하고, 최신 실제 증거로 대상 프로젝트의 현재 상태를 확인합니다.
+2. 대상 프로젝트의 실제 실패가 발견되고, downstream Problem Framer가 기술적으로 유효한 task를 생성합니다.
+3. Cockpit이 그 실패와 문맥을 정확히 운반·framing했다면, transport/framing은 `PASS`로 평가할 수 있지만 결함은 testbed evidence로 남깁니다. 해당 task를 실행하지 않습니다.
+4. post-task reconciliation을 검증해야 한다면 그 정확한 task 하나만 사전 승인된 stimulus로 실행하고, closure, Current Stage, Remaining Problems, Recent Progress, Next Transition 및 live reload를 관찰합니다.
+5. stimulus 이후 두 번째의 무관한 대상 프로젝트 결함이 드러나면, 새 상태를 Cockpit이 올바르게 표현했는지만 평가하고 recursive remediation은 중단합니다. 그 관찰이 Cockpit 결함을 보일 때만 Cockpit bounded target으로 추출합니다.
+
+이 acceptance 경계는 일반 Area/Focus handoff에 전역적인 `do not execute`를 추가하지 않습니다. 정상 사용자 워크플로우에서는 `Cockpit → Problem Framer → 실행 가능한 Execution Wave`가 계속 유효하며, 이 별도 중단 규칙은 Cockpit 제품을 외부 repository로 검증할 때만 적용됩니다.
+
+#### 수용 실행 후 Cockpit 마찰 추출
+
+각 실제 프로젝트 acceptance가 끝나면 다음 질문을 통해 대상 프로젝트의 결함과 Cockpit의 제품·계약 마찰을 분리합니다:
+
+1. Cockpit이 false current fact를 보여주었는가?
+2. mental model에 필요한 material fact를 누락했는가?
+3. defect, proof gap, future requirement를 잘못 분류했는가?
+4. stale open claim을 보존했는가?
+5. Current Stage를 올바르게 이동·보존했는가?
+6. 사용자 소유의 Current Focus를 보존했는가?
+7. handoff에 충분한 문맥이 들어 있었는가?
+8. handoff가 downstream framer를 stale claim 신뢰 또는 task 제조로 고정했는가?
+9. `NO_ACTION`이 여전히 가능한 상태였는가?
+10. test stimulus 이후 closure reconciliation이 post-task world를 올바르게 설명했는가?
+11. viewer가 semantic delta를 올바르게 반영했는가?
+12. Cockpit의 install/transport/runtime 마찰이 사용을 실질적으로 방해했는가?
+
+이 질문 중 Cockpit/product-contract 결함을 뜻하는 관찰만 다음 Cockpit bounded target이 될 수 있습니다. 대상 프로젝트 결함을 Cockpit backlog로 변환하지 않으며, 이 경계를 위해 acceptance engine, state machine, testbed registry, mutation controller, execution queue, special database 또는 automatic stopping mechanism을 추가하지 않습니다.
+
 ---
 
 ## 5. PROGRESS.md 핵심 시맨틱
@@ -501,6 +569,7 @@ STABLE CONTEXT (영속적 맥락 프레임)
   - 보존 전에는 각 항목을 적극적으로 falsify한다. `UNKNOWN != PROBLEM`, `ABSENCE OF PROOF != PROOF OF DEFECT`이며, 정확한 acceptance contract가 proof를 요구하고 그 부재가 material current blocker인 경우에만 proof 부재를 문제로 다룬다.
   - 의미상 `남은 문제`에 자연스럽게 들어가는 것은 **A. CURRENT DEFECT**(기존 필수 invariant가 위반됨)다. **B. PROOF GAP**은 capability가 있을 수 있으나 required exact proof가 없는 상태로 `현재 수준`/`근거`/acceptance frontier에 비례해 표현하고, **C. FUTURE ENHANCEMENT**는 defect로 만들지 않으며, **D. USER-OWNED PRODUCT DECISION**은 agent가 임의로 결정하지 않는다.
   - 이 구분은 재입장 추론 중의 transient 판단일 뿐 schema나 registry로 저장하지 않는다. 현재 claim은 `STILL_OPEN`/`CLOSED`/`PROOF_GAP`/`NOT_ADMITTED` 중 정확히 하나로 임시 분류한다.
+- **현재 실패 지점과 미도달 proof의 분리**: Stage가 `A → B → C → D` 순서로 proof를 요구하고 현재 `B`에서 실패했다면, `현재 결함`은 실제로 실패한 `B`만을 가리킨다. 아직 실행하지 않은 `C`/`D`가 나중에 실패할 수 있다는 이유만으로 `남은 문제`에 미리 적지 않는다. `C`/`D`는 Current Stage와 현재 수준·근거에서 stage가 아직 incomplete임을 나타내는 objective acceptance frontier로 표현하고, 정확한 contract가 지금 그 proof를 요구하여 현재 acceptance를 막는 경우에만 `PROOF GAP`으로 표현한다. `C` 또는 `D`가 실제로 실패한 뒤에야 해당 실패를 current problem으로 재입장시킬 수 있다.
 - **`직면한 문제`·`다음 전환`의 선행조건·material한 `현재 수준` limitation**: 모두 동일한 high-decay negative claim으로 취급하여 fresh evidence로 재입장시킨다. 현재 defect가 아니라면 문제/실행 task로 유지하지 않는다.
 - **`다시 열리는 조건` (선택 사항)**: 기존에 안정화되었던 영역을 다시 검토하거나 재작업해야 하는 향후 조건/근거
 
