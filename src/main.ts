@@ -26,6 +26,8 @@ import {
   formatProjectMapText,
   formatAreaDetailsText,
   buildFocusHandoffContext,
+  buildAreaHandoffContext,
+  type AreaHandoffParams,
 } from "./parser";
 
 mermaid.initialize({
@@ -36,6 +38,7 @@ mermaid.initialize({
 });
 
 let activeProjectTitle = "Cockpit";
+let currentSections = new Map<string, Token[]>();
 let currentAreaDetails = new Map<string, AreaDetail>();
 let currentParsedMap: ParsedMap | null = null;
 let selectedAreaId: string | null = null;
@@ -162,24 +165,29 @@ function updateInspectorView(item: MapItem | null) {
   copyToast.hidden = true;
 
   copyBtn.onclick = async () => {
-    let textToCopy = `[프로젝트] ${activeProjectTitle}\n`;
-    textToCopy += `[선택 영역] ${item.title} (${item.railTitle} · ${item.groupTitle})\n`;
+    const focusTokens = currentSections.get("current focus");
+    const situationTokens = currentSections.get("current situation");
+    const nextTokens = currentSections.get("next transition");
+    const facingTokens = currentSections.get("facing issues");
+    const frameTokens = currentSections.get("project frame");
+    const settledTokens = currentSections.get("settled direction");
 
-    if (item.description) {
-      textToCopy += `[개요] ${item.description}\n`;
-    }
+    const handoffText = buildAreaHandoffContext({
+      projectTitle: activeProjectTitle,
+      areaTitle: item.title,
+      railTitle: item.railTitle,
+      groupTitle: item.groupTitle,
+      areaDescription: item.description,
+      areaDetail: detail,
+      focusText: focusTokens ? extractSectionRawText(focusTokens) : undefined,
+      situationText: situationTokens ? extractSectionRawText(situationTokens) : undefined,
+      nextTransitionText: nextTokens ? extractSectionRawText(nextTokens) : undefined,
+      facingIssuesText: facingTokens ? extractSectionRawText(facingTokens) : undefined,
+      projectFrameText: frameTokens ? extractSectionRawText(frameTokens) : undefined,
+      settledDirectionText: settledTokens ? extractSectionRawText(settledTokens) : undefined,
+    });
 
-    if (detail && detail.subsections.length > 0) {
-      for (const sub of detail.subsections) {
-        textToCopy += `\n[${sub.subheading}]\n${sub.rawText}\n`;
-      }
-    }
-
-    textToCopy += `\n---\n`;
-    textToCopy += `현재 repo/SSOT/evidence와 대조해서 이 영역에 실제 취약점이 있는지 검토한다.\n`;
-    textToCopy += `실제 문제가 확인되고 사용자 결정이 필요하지 않다면 가장 작은 bounded target까지 좁힌다.`;
-
-    const ok = await copyToClipboard(textToCopy);
+    const ok = await copyToClipboard(handoffText);
     if (ok) {
       copyToast.hidden = false;
       copyBtn.classList.add("btn-copied");
@@ -203,6 +211,7 @@ function setSection(panelId: string, tokens: Token[] | undefined) {
 async function renderDoc(source: string) {
   const tokens = md.parse(source, {});
   const { title, sections } = splitSections(tokens);
+  currentSections = sections;
   activeProjectTitle = title || "Cockpit";
 
   const byHeading = (name: string) => sections.get(name);

@@ -24,6 +24,10 @@ import {
   formatProjectMapText,
   formatAreaDetailsText,
   buildFocusHandoffContext,
+  buildAreaHandoffContext,
+  formatFocusHandoffInstruction,
+  formatAreaHandoffInstruction,
+  formatExecutionWaveContractLines,
 } from "../dist/parser.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1509,13 +1513,18 @@ test("Focus handoff context assembly: complete context and Problem Framer instru
 
   // Verify Problem Framer instructions
   assert.ok(context.includes("[PROBLEM FRAMER HANDOFF INSTRUCTION]"));
-  assert.ok(context.includes("현재 repo/runtime/SSOT의 fresh evidence와 위 context를 대조하라."));
+  assert.ok(context.includes("현재 repo/runtime/SSOT의 fresh evidence와 대조하여 실제 문제를 검증하라."));
   assert.ok(context.includes("Current Focus를 Next Transition까지 전진시키기 위해"));
-  assert.ok(context.includes("transient Execution Wave로 묶을 수 있다."));
-  assert.ok(context.includes("각 NOW-admissible task는 별도의 executor-neutral local agent handoff로 작성한다."));
-  assert.ok(context.includes("선행 task 결과에 따라"));
-  assert.ok(context.includes("Execution Wave는 일회성 framing 결과다. Cockpit/PROGRESS.md에 task backlog나 실행 상태로 저장하지 않는다."));
-  assert.ok(context.includes("현재 evidence로 안전하게 확정 가능한 최대 범위에서 멈춘다."));
+  assert.ok(context.includes("NO_ACTION / NO_CHANGE 결론을 낸다."));
+  assert.ok(context.includes("A. NOW / INDEPENDENT:"));
+  assert.ok(context.includes("NOW task가 여러 개라면 같은 응답에서 각각 별도의 독립 executor-neutral local-agent prompt를 모두 제공한다."));
+  assert.ok(context.includes("B. SERIAL NOW:"));
+  assert.ok(context.includes("동일 semantic owner / mutation surface / shared state로 인해 병렬 실행 시 충돌 위험이 높은 작업."));
+  assert.ok(context.includes("WAIT로 미루지 않는다."));
+  assert.ok(context.includes("같은 응답에서 실행 순서를 명확히 하고 각 단계의 executor-neutral local-agent prompt를 모두 제공한다."));
+  assert.ok(context.includes("C. WAIT FOR EVIDENCE:"));
+  assert.ok(context.includes("Execution Wave는 일회성 transient framing 결과다. Cockpit/PROGRESS.md에 task registry, backlog, queue, task status, agent assignment, dependency persistence를 저장하거나 추가하지 않는다."));
+  assert.ok(context.includes("executor-neutral prompt로 작성한다."));
 
   // Verify Cockpit does NOT generate tasks or backlog items by itself
   assert.ok(!context.includes("Task A:"));
@@ -1541,6 +1550,110 @@ test("Focus handoff context assembly: minimal optional fields omitted cleanly", 
   assert.ok(!minimalContext.includes("[PROJECT MAP]"));
   assert.ok(!minimalContext.includes("[AREA CONTEXT]"));
   assert.ok(minimalContext.includes("[PROBLEM FRAMER HANDOFF INSTRUCTION]"));
+});
+
+test("Area review handoff context assembly: complete context and Problem Framer instructions", () => {
+  const areaDetail = {
+    title: "센서 계측 인터페이스",
+    normalizedKey: "센서계측인터페이스",
+    subsections: [
+      {
+        subheading: "의미",
+        html: "<p>실시간 센서 데이터 수집 관문.</p>",
+        rawText: "실시간 센서 데이터 수집 관문.",
+      },
+      {
+        subheading: "현재 수준",
+        html: "<p>RS-485 및 Modbus 프로토콜 1차 연동 완료.</p>",
+        rawText: "RS-485 및 Modbus 프로토콜 1차 연동 완료.",
+      },
+      {
+        subheading: "남은 문제",
+        html: "<ul><li>통신 순단 시 재연결 버퍼 오버플로우 방지</li></ul>",
+        rawText: "- 통신 순단 시 재연결 버퍼 오버플로우 방지",
+      },
+      {
+        subheading: "근거",
+        html: "<p><code>src/sensor/modbus.c</code></p>",
+        rawText: "- `src/sensor/modbus.c`",
+      },
+    ],
+  };
+
+  const context = buildAreaHandoffContext({
+    projectTitle: "원격 모니터링 시스템",
+    areaTitle: "센서 계측 인터페이스",
+    railTitle: "1차 수집 레일",
+    groupTitle: "핵심 인터페이스",
+    areaDescription: "현장 센서 계측 및 패킷 파싱",
+    areaDetail,
+    focusText: "센서 패킷 유실 방지 및 버퍼 안정화",
+    situationText: "Modbus 드라이버 통합 완료, 재연결 부하 테스트 중",
+    nextTransitionText: "안전 버퍼 구현 및 24시간 스트레스 테스트 통과",
+    facingIssuesText: "- 버퍼 고갈 시 링버퍼 오버라이트 정책 확정 필요",
+    projectFrameText: "산업용 고신뢰성 원격 모니터링 및 제어 플랫폼",
+    settledDirectionText: "- C99 기반 저지연 통신 모듈 유지",
+  });
+
+  // Verify all sections exist
+  assert.ok(context.includes("[PROJECT]\n원격 모니터링 시스템"));
+  assert.ok(context.includes("[SELECTED AREA]\n센서 계측 인터페이스 (1차 수집 레일 · 핵심 인터페이스)"));
+  assert.ok(context.includes("[AREA SUMMARY]\n현장 센서 계측 및 패킷 파싱"));
+  assert.ok(context.includes("[AREA DETAILS]"));
+  assert.ok(context.includes("#### 의미\n실시간 센서 데이터 수집 관문."));
+  assert.ok(context.includes("#### 현재 수준\nRS-485 및 Modbus 프로토콜 1차 연동 완료."));
+  assert.ok(context.includes("#### 남은 문제\n- 통신 순단 시 재연결 버퍼 오버플로우 방지"));
+  assert.ok(context.includes("#### 근거\n- `src/sensor/modbus.c`"));
+
+  // Verify stable project context inclusion
+  assert.ok(context.includes("[CURRENT FOCUS]\n센서 패킷 유실 방지 및 버퍼 안정화"));
+  assert.ok(context.includes("[CURRENT SITUATION]\nModbus 드라이버 통합 완료, 재연결 부하 테스트 중"));
+  assert.ok(context.includes("[NEXT TRANSITION]\n안전 버퍼 구현 및 24시간 스트레스 테스트 통과"));
+  assert.ok(context.includes("[FACING ISSUES]\n- 버퍼 고갈 시 링버퍼 오버라이트 정책 확정 필요"));
+  assert.ok(context.includes("[PROJECT FRAME]\n산업용 고신뢰성 원격 모니터링 및 제어 플랫폼"));
+  assert.ok(context.includes("[SETTLED DIRECTION]\n- C99 기반 저지연 통신 모듈 유지"));
+
+  // Verify Area Review Problem Framer instructions
+  assert.ok(context.includes("[PROBLEM FRAMER HANDOFF INSTRUCTION]"));
+  assert.ok(context.includes("현재 repo/runtime/SSOT의 fresh evidence와 대조하여 선택된 영역의 실제 상태/취약점/미해결 문제를 검증하라."));
+  assert.ok(context.includes("선택된 Area의 실제 상태/취약점/미해결 문제를 fresh evidence로 깊게 검토하는 것이 objective다."));
+  assert.ok(context.includes("root cause나 proof가 인접 Area를 실제로 통과한다면 필요한 범위까지 조사할 수 있으나, 임의로 프로젝트 전체 review로 확장하지 않는다."));
+  assert.ok(context.includes("검토 결과 해당 영역에 실제 문제가 없거나 추가 조치가 불필요하다면 무리하게 task/Wave를 제조하지 말고 NO_ACTION / NO_CHANGE 결론을 낸다."));
+
+  // Verify shared Execution Wave contract
+  assert.ok(context.includes("A. NOW / INDEPENDENT:"));
+  assert.ok(context.includes("NOW task가 여러 개라면 같은 응답에서 각각 별도의 독립 executor-neutral local-agent prompt를 모두 제공한다."));
+  assert.ok(context.includes("B. SERIAL NOW:"));
+  assert.ok(context.includes("동일 semantic owner / mutation surface / shared state로 인해 병렬 실행 시 충돌 위험이 높은 작업."));
+  assert.ok(context.includes("WAIT로 미루지 않는다."));
+  assert.ok(context.includes("같은 응답에서 실행 순서를 명확히 하고 각 단계의 executor-neutral local-agent prompt를 모두 제공한다."));
+  assert.ok(context.includes("C. WAIT FOR EVIDENCE:"));
+  assert.ok(context.includes("Execution Wave는 일회성 transient framing 결과다. Cockpit/PROGRESS.md에 task registry, backlog, queue, task status, agent assignment, dependency persistence를 저장하거나 추가하지 않는다."));
+  assert.ok(context.includes("executor-neutral prompt로 작성한다."));
+
+  // Verify executor neutrality & no prompt leakage
+  assert.ok(!context.includes("ChatGPT memory"));
+  assert.ok(!context.includes("Custom Instructions"));
+  assert.ok(!context.includes("Task A:"));
+});
+
+test("Area review handoff context assembly: minimal context without optional details/focus", () => {
+  const minimalAreaContext = buildAreaHandoffContext({
+    projectTitle: "Minimal Area Project",
+    areaTitle: "코어 모듈",
+  });
+
+  assert.ok(minimalAreaContext.includes("[PROJECT]\nMinimal Area Project"));
+  assert.ok(minimalAreaContext.includes("[SELECTED AREA]\n코어 모듈"));
+  assert.ok(!minimalAreaContext.includes("[AREA SUMMARY]"));
+  assert.ok(!minimalAreaContext.includes("[AREA DETAILS]"));
+  assert.ok(!minimalAreaContext.includes("[CURRENT FOCUS]"));
+  assert.ok(!minimalAreaContext.includes("[CURRENT SITUATION]"));
+  assert.ok(!minimalAreaContext.includes("[NEXT TRANSITION]"));
+  assert.ok(!minimalAreaContext.includes("[FACING ISSUES]"));
+  assert.ok(!minimalAreaContext.includes("[PROJECT FRAME]"));
+  assert.ok(!minimalAreaContext.includes("[SETTLED DIRECTION]"));
+  assert.ok(minimalAreaContext.includes("[PROBLEM FRAMER HANDOFF INSTRUCTION]"));
 });
 
 test("Fixture end-to-end focus handoff context on visual-test-focus.md", () => {

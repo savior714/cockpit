@@ -365,9 +365,9 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
 - 기존 Current Focus는 사용자의 명시적인 방향 전환 증거가 없는 한 그대로 보존합니다.
 - 사용자가 명시적으로 focus를 변경했다면 이는 시맨틱 델타이므로 `PROGRESS.md` 갱신 대상입니다.
 
-### Current Focus 기반 Problem Framer 연계 워크플로우
+### Problem Framer & Universal Execution Wave 연계 워크플로우
 
-Cockpit은 태스크를 직접 분해하거나 실행을 관리하지 않습니다. Cockpit은 읽기 전용 대시보드이자 프로젝트 문맥을 외부 역량 에이전트에 원클릭으로 전달하는 컨텍스트 전송(Transport) 도구입니다.
+Cockpit은 태스크를 직접 분해하거나 실행을 관리하지 않습니다. Cockpit은 읽기 전용 대시보드이자 프로젝트 문맥을 외부 역량 에이전트에 원클릭으로 전달하는 결정론적 컨텍스트 전송(Deterministic Transport) 도구입니다.
 
 표준적인 운영 루프는 다음과 같습니다:
 
@@ -375,12 +375,15 @@ Cockpit은 태스크를 직접 분해하거나 실행을 관리하지 않습니�
 PROGRESS.md
   ↓ (시각화)
 Cockpit
-  ↓ (현재 집중 컨텍스트 복사 버튼 클릭)
-클립보드 컨텍스트
+  ↓ (현재 집중 컨텍스트 복사 또는 이 영역 검토하기 클릭)
+클립보드 컨텍스트 (자기 완결적 Handoff)
   ↓ (전달)
-외부 Problem Framer (Web GPT, Claude, Gemini 등)
-  ↓ (최신 repo/runtime 증거와 대조하여 확정 가능한 bounded tasks 탐색)
+외부 Problem Framer (Web GPT, Claude, Gemini 등 Capable Agent)
+  ↓ (최신 repo/runtime fresh evidence와 대조하여 실제 문제 검증)
 일회성 Execution Wave (Transient Execution Wave)
+  ├─ NOW / INDEPENDENT: 동일 응답 내 병렬 실행 가능한 개별 executor-neutral prompts
+  ├─ SERIAL NOW: 동일 응답 내 순차 실행 순서가 명시된 개별 executor-neutral prompts
+  └─ WAIT FOR EVIDENCE: 선행 결과/증거/사용자 결정 대기
   ↓ (개별 실행기 중립적 프롬프트 전달)
 독립적인 로컬 코딩 에이전트들 (Claude Code, Gemini CLI 등)
   ↓ (작업 완료 및 터미널 보고)
@@ -391,7 +394,9 @@ PROGRESS.md 보수적 갱신
 
 **핵심 원칙:**
 - **Execution Wave 비영속화**: Execution Wave, 태스크 목록, 상태 머신, 에이전트 배정 등은 Cockpit이나 `PROGRESS.md`의 persistent state가 아닙니다. Cockpit에 태스크 관리자/백로그 엔진을 추가하지 않으며, `PROGRESS.md`에 `## Execution Wave` 같은 임시 실행 상태를 기록하지 않습니다.
-- **Problem Framer의 역할**: 복사된 프로젝트 문맥을 전달받은 외부 Problem Framer가 최신 코드/런타임/도메인 실제 증거와 대조하여, Current Focus를 Next Transition까지 전진시키기 위해 현재 시점에서 안전하게 확정 가능한 독립 bounded tasks를 찾습니다.
+- **Problem Framer의 역할과 계약**: 복사된 프로젝트 문맥을 전달받은 외부 Problem Framer가 최신 코드/런타임/도메인 실제 증거와 대조하여 문제를 검증합니다.
+  - 문제가 없으면 무리하게 작업을 제조하지 않고 `NO_ACTION`으로 종료합니다.
+  - 문제가 있으면 지금 확정 가능한 최대 범위에서 `NOW` (병렬 독립 작업), `SERIAL NOW` (동일 표면/상태 공유로 순차 실행이 필요한 작업), `WAIT FOR EVIDENCE` (결과 대기)로 분류하고, 실행 가능한 모든 작업에 대해 executor-neutral 로컬 에이전트 프롬프트를 같은 응답에서 산출합니다.
 - **PROGRESS.md 갱신 시점**: Execution Wave가 생성되었다는 이유만으로 `PROGRESS.md`를 갱신하지 않습니다. Bounded tasks가 실제로 완료되어 프로젝트의 객관적 상태나 사용자 관심사(Current Focus)가 실질적으로 달라졌을 때만 해당 멘탈 모델 표면을 갱신합니다.
 
 ---
@@ -407,8 +412,9 @@ Cockpit v0.3은 프로젝트의 실질적인 진척과 상태를 정확하게 �
 
 ### 컨텍스트 Handoff 액션
 
-- **`현재 집중 컨텍스트 복사`**: `## 현재 집중`이 존재할 때 우측 기본 개요의 현재 집중 카드 하단에 표시되는 버튼입니다. 프로젝트 이름, 현재 집중, 현재 상황, 다음 전환, 직면한 문제, 프로젝트 지도, 영역 상세 전체 맥락과 Problem Framer 가이드라인을 원클릭으로 클립보드에 복사합니다. (Focus가 없는 문서에서는 버튼이 표시되지 않습니다.)
-- **`이 영역 검토하기`**: 지도에서 영역 카드를 클릭하면 나타나는 우측 검사기(Inspector)의 버튼으로, 특정 단일 영역을 깊게 검토할 수 있도록 해당 영역의 세부 맥락과 검토 프롬프트를 원클릭으로 클립보드에 복사합니다.
+- **`현재 집중 컨텍스트 복사`**: `## 현재 집중`이 존재할 때 우측 기본 개요의 현재 집중 카드 하단에 표시되는 버튼입니다. 프로젝트 이름, 현재 집중, 현재 상황, 다음 전환, 직면한 문제, 프로젝트 지도, 영역 상세 전체 맥락과 Problem Framer 가이드라인을 원클릭으로 클립보드에 복사합니다. 외부 Problem Framer가 Current Focus를 Next Transition까지 전진시키기 위한 Execution Wave를 수립하도록 돕습니다. (Focus가 없는 문서에서는 버튼이 표시되지 않습니다.)
+- **`이 영역 검토하기`**: 지도에서 영역 카드를 클릭하면 나타나는 우측 검사기(Inspector)의 버튼입니다. 선택된 영역의 세부 정보와 핵심 프로젝트 컨텍스트(Current Focus, Current Situation, Next Transition 등), 그리고 fresh evidence 기반 심층 검토 및 Execution Wave(NOW/SERIAL NOW/WAIT FOR EVIDENCE) 산출 가이드라인을 자기 완결적(self-contained)으로 클립보드에 복사합니다.
+- **결정론적 전송 경계**: 두 버튼 모두 AI를 직접 실행하거나 태스크를 생성하지 않으며, 외부 capable agent에 표준화된 컨텍스트와 프레이밍 계약을 전달하는 클립보드 전송 역할만 수행합니다.
 
 ### 영역 상세 시맨틱
 

@@ -912,7 +912,57 @@ export function formatAreaDetailsText(areaDetails) {
     }
     return lines.join("\n").trim();
 }
-/** Build deterministic plain-text context for external Problem Framer handoff */
+/** Shared canonical Execution Wave contract lines across all Problem Framer handoffs */
+export function formatExecutionWaveContractLines() {
+    return [
+        "A. NOW / INDEPENDENT:",
+        "   - 서로 독립적이고 shared mutation/state dependency가 없는 작업.",
+        "   - 지금 성공조건을 확정할 수 있으며 동일 Execution Wave에 포함 가능.",
+        "   - 병렬 실행 가능 여부를 명확히 표시한다.",
+        "   - NOW task가 여러 개라면 같은 응답에서 각각 별도의 독립 executor-neutral local-agent prompt를 모두 제공한다.",
+        "B. SERIAL NOW:",
+        "   - bounded target과 성공조건은 지금 확정 가능하지만, 동일 semantic owner / mutation surface / shared state로 인해 병렬 실행 시 충돌 위험이 높은 작업.",
+        "   - WAIT로 미루지 않는다.",
+        "   - 같은 응답에서 실행 순서를 명확히 하고 각 단계의 executor-neutral local-agent prompt를 모두 제공한다.",
+        "C. WAIT FOR EVIDENCE:",
+        "   - 선행 task 결과에 따라 필요 여부나 semantic target/success criterion이 달라지는 경우",
+        "   - consequential한 사용자 결정이 먼저 필요한 경우",
+        "   - 현재 evidence만으로 bounded target을 정당하게 확정할 수 없는 경우",
+        "   - 이 경우에만 실행 prompt 생성을 보류하고 무엇을 기다리는지 명시한다.",
+    ];
+}
+/** Format instruction block for Current Focus Problem Framer handoff */
+export function formatFocusHandoffInstruction() {
+    const lines = [
+        "---",
+        "[PROBLEM FRAMER HANDOFF INSTRUCTION]",
+        "1. [Fresh Evidence 대조] 외부 capable agent는 위 전달받은 context를 최종 truth로 신뢰하지 말고, 반드시 현재 repo/runtime/SSOT의 fresh evidence와 대조하여 실제 문제를 검증하라.",
+        "2. [Framing Objective] Current Focus를 Next Transition까지 전진시키기 위해 현재 시점에서 의미와 성공조건을 확정할 수 있는 bounded work를 찾는다. 현재 Focus와 무관한 작업을 단순히 task 수를 늘리기 위해 끌어오지 않는다.",
+        "3. [No Problem → No Task] 현재 Focus scope에서 실제 문제가 없거나 추가 작업이 불필요하다면 무리하게 task를 제조하지 말고 NO_ACTION / NO_CHANGE 결론을 낸다.",
+        "4. [Execution Wave 분류 & Local-Agent Prompts]:",
+        ...formatExecutionWaveContractLines().map((l) => "   " + l),
+        "5. [No Persistence] Execution Wave는 일회성 transient framing 결과다. Cockpit/PROGRESS.md에 task registry, backlog, queue, task status, agent assignment, dependency persistence를 저장하거나 추가하지 않는다.",
+        "6. [Executor Neutrality] 모든 prompt는 특정 도구/에이전트 이름이나 사용자 개인 설정/메모리에 종속되지 않는 executor-neutral prompt로 작성한다.",
+    ];
+    return lines.join("\n");
+}
+/** Format instruction block for Area Review Problem Framer handoff */
+export function formatAreaHandoffInstruction() {
+    const lines = [
+        "---",
+        "[PROBLEM FRAMER HANDOFF INSTRUCTION]",
+        "1. [Fresh Evidence 대조] 외부 capable agent는 위 전달받은 context를 최종 truth로 신뢰하지 말고, 반드시 현재 repo/runtime/SSOT의 fresh evidence와 대조하여 선택된 영역의 실제 상태/취약점/미해결 문제를 검증하라.",
+        "2. [Framing Objective] 선택된 Area의 실제 상태/취약점/미해결 문제를 fresh evidence로 깊게 검토하는 것이 objective다. root cause나 proof가 인접 Area를 실제로 통과한다면 필요한 범위까지 조사할 수 있으나, 임의로 프로젝트 전체 review로 확장하지 않는다.",
+        "3. [No Problem → No Task] 검토 결과 해당 영역에 실제 문제가 없거나 추가 조치가 불필요하다면 무리하게 task/Wave를 제조하지 말고 NO_ACTION / NO_CHANGE 결론을 낸다.",
+        "4. [Execution Wave 분류 & Local-Agent Prompts]:",
+        "   - 문제가 확인되면 해당 문제를 해결하는 데 지금 확정 가능한 최대 범위까지만 Execution Wave를 구성한다.",
+        ...formatExecutionWaveContractLines().map((l) => "   " + l),
+        "5. [No Persistence] Execution Wave는 일회성 transient framing 결과다. Cockpit/PROGRESS.md에 task registry, backlog, queue, task status, agent assignment, dependency persistence를 저장하거나 추가하지 않는다.",
+        "6. [Executor Neutrality] 모든 prompt는 특정 도구/에이전트 이름이나 사용자 개인 설정/메모리에 종속되지 않는 executor-neutral prompt로 작성한다.",
+    ];
+    return lines.join("\n");
+}
+/** Build deterministic plain-text context for external Problem Framer handoff (Current Focus) */
 export function buildFocusHandoffContext(params) {
     const sections = [];
     sections.push(`[PROJECT]\n${params.projectTitle || "Cockpit"}`);
@@ -938,21 +988,47 @@ export function buildFocusHandoffContext(params) {
     if (params.areaDetailsText && params.areaDetailsText.trim()) {
         sections.push(`[AREA CONTEXT]\n${params.areaDetailsText.trim()}`);
     }
-    const instruction = [
-        "---",
-        "[PROBLEM FRAMER HANDOFF INSTRUCTION]",
-        "1. 현재 repo/runtime/SSOT의 fresh evidence와 위 context를 대조하라.",
-        "2. Current Focus를 Next Transition까지 전진시키기 위해 현재 시점에서 의미와 성공조건을 확정할 수 있는 bounded work를 찾는다.",
-        "3. 서로 독립적이고 shared mutation/state dependency가 없는 작업들은 하나의 transient Execution Wave로 묶을 수 있다.",
-        "4. 각 NOW-admissible task는 별도의 executor-neutral local agent handoff로 작성한다.",
-        "5. 다음 중 하나라면 미리 실행 prompt를 확정하지 않는다:",
-        "   - 선행 task 결과에 따라 필요 여부가 달라짐",
-        "   - 선행 task 결과에 따라 semantic target이 달라짐",
-        "   - 동일 semantic owner / mutation surface의 충돌 위험이 큼",
-        "   - consequential한 사용자 결정이 먼저 필요함",
-        "6. Execution Wave는 일회성 framing 결과다. Cockpit/PROGRESS.md에 task backlog나 실행 상태로 저장하지 않는다.",
-        "7. 단순히 많은 task를 만들기 위해 task를 분해하지 않는다. 현재 evidence로 안전하게 확정 가능한 최대 범위에서 멈춘다.",
-    ].join("\n");
-    sections.push(instruction);
+    sections.push(formatFocusHandoffInstruction());
+    return sections.join("\n\n");
+}
+/** Build deterministic plain-text context for external Problem Framer handoff (Selected Area Review) */
+export function buildAreaHandoffContext(params) {
+    const sections = [];
+    sections.push(`[PROJECT]\n${params.projectTitle || "Cockpit"}`);
+    const tagParts = [params.railTitle, params.groupTitle].filter(Boolean);
+    const areaHeader = tagParts.length > 0
+        ? `${params.areaTitle} (${tagParts.join(" · ")})`
+        : params.areaTitle;
+    sections.push(`[SELECTED AREA]\n${areaHeader}`);
+    if (params.areaDescription && params.areaDescription.trim()) {
+        sections.push(`[AREA SUMMARY]\n${params.areaDescription.trim()}`);
+    }
+    if (params.areaDetail && params.areaDetail.subsections.length > 0) {
+        const detailLines = [];
+        for (const sub of params.areaDetail.subsections) {
+            detailLines.push(`#### ${sub.subheading}`);
+            detailLines.push(sub.rawText.trim());
+        }
+        sections.push(`[AREA DETAILS]\n${detailLines.join("\n")}`);
+    }
+    if (params.focusText && params.focusText.trim()) {
+        sections.push(`[CURRENT FOCUS]\n${params.focusText.trim()}`);
+    }
+    if (params.situationText && params.situationText.trim()) {
+        sections.push(`[CURRENT SITUATION]\n${params.situationText.trim()}`);
+    }
+    if (params.nextTransitionText && params.nextTransitionText.trim()) {
+        sections.push(`[NEXT TRANSITION]\n${params.nextTransitionText.trim()}`);
+    }
+    if (params.facingIssuesText && params.facingIssuesText.trim()) {
+        sections.push(`[FACING ISSUES]\n${params.facingIssuesText.trim()}`);
+    }
+    if (params.projectFrameText && params.projectFrameText.trim()) {
+        sections.push(`[PROJECT FRAME]\n${params.projectFrameText.trim()}`);
+    }
+    if (params.settledDirectionText && params.settledDirectionText.trim()) {
+        sections.push(`[SETTLED DIRECTION]\n${params.settledDirectionText.trim()}`);
+    }
+    sections.push(formatAreaHandoffInstruction());
     return sections.join("\n\n");
 }
