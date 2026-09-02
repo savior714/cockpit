@@ -18,7 +18,7 @@ Cockpit은 프로젝트의 `PROGRESS.md` 파일을 읽어 브라우저에서 실
 GitHub 저장소(`main` 브랜치)에서 직접 전역 설치합니다:
 
 ```bash
-npm install -g "github:savior714/cockpit#main"
+npm install -g --install-links "github:savior714/cockpit#main"
 ```
 
 *(최신 버전으로 업데이트할 때도 동일한 명령어를 다시 실행하면 됩니다.)*
