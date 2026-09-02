@@ -16,7 +16,6 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "prepare": "node -e 'process.exit(0)'",
     "prepack": "npm run build",
     "preview": "vite preview",
     "cockpit": "node scripts/serve.mjs"
