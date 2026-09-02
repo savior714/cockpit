@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cockpit</title>
+    <script type="module" src="/src/main.ts"></script>
+  </head>
+  <body>
+    <main id="cockpit" class="cockpit">
+      <header class="title-bar">
+        <h1 id="project-title" class="project-title"></h1>
+        <span id="you-are-here-chip" class="here-chip" hidden></span>
+      </header>
+
+      <section id="slot-map" class="panel panel-map" aria-label="Project Map">
+        <h2>Project Map</h2>
+        <div class="panel-body map-body"></div>
+      </section>
+
+      <aside class="side">
+        <section id="slot-now" class="panel panel-side" aria-label="Now">
+          <h2>Now</h2>
+          <div class="panel-body"></div>
+        </section>
+        <section id="slot-next" class="panel panel-side" aria-label="Next">
+          <h2>Next</h2>
+          <div class="panel-body"></div>
+        </section>
+        <section id="slot-blocked" class="panel panel-side" aria-label="Blocked">
+          <h2>Blocked</h2>
+          <div class="panel-body"></div>
+        </section>
+      </aside>
+
+      <section id="slot-frame" class="panel panel-context" aria-label="Project Frame">
+        <h2>Project Frame</h2>
+        <div class="panel-body"></div>
+      </section>
+
+      <section id="slot-settled" class="panel panel-context" aria-label="Settled Direction">
+        <h2>Settled Direction</h2>
+        <div class="panel-body"></div>
+      </section>
+
+      <section id="slot-extra" class="panel-context-stack" hidden aria-label="More context">
+      </section>
+
+      <p id="empty-state" class="empty-state" hidden></p>
+    </main>
+  </body>
+</html>

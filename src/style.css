@@ -1,0 +1,251 @@
+:root {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --ink: #1c2330;
+  --muted: #6b7484;
+  --line: #e3e7ee;
+  --accent: #d92d20;
+  --accent-soft: #fef0f0;
+  --now: #b54708;
+  --blocked: #d92d20;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161b;
+    --panel: #1d2027;
+    --ink: #e8eaef;
+    --muted: #9aa3b2;
+    --line: #2c313a;
+    --accent: #f97066;
+    --accent-soft: #3a1d1b;
+    --now: #fdb022;
+    --blocked: #f97066;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.55;
+}
+
+.cockpit {
+  display: grid;
+  gap: 14px;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 18px clamp(12px, 3vw, 28px) 40px;
+  grid-template-columns: minmax(0, 1fr) clamp(260px, 24vw, 380px);
+  grid-template-areas:
+    "title title"
+    "map side"
+    "frame settled";
+  align-items: start;
+}
+
+.title-bar {
+  grid-area: title;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.project-title {
+  margin: 0;
+  font-size: clamp(1.3rem, 2.4vw, 1.9rem);
+  letter-spacing: -0.01em;
+}
+
+.here-chip {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 18px;
+  min-width: 0;
+}
+
+.panel h2 {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.panel-map {
+  grid-area: map;
+  min-height: 60vh;
+}
+
+.panel-map h2 {
+  font-size: 0.95rem;
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.map-body {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.map-body .mermaid,
+.panel-body .mermaid {
+  min-width: fit-content;
+}
+
+.map-body .mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.panel-body .mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.map-body .mermaid {
+  display: flex;
+  justify-content: center;
+}
+
+.side {
+  grid-area: side;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.panel-side h2 {
+  color: var(--ink);
+  text-transform: uppercase;
+}
+
+#slot-now h2 {
+  color: var(--now);
+}
+
+#slot-blocked h2 {
+  color: var(--blocked);
+}
+
+.panel-context {
+  font-size: 0.92rem;
+}
+
+#slot-frame {
+  grid-area: frame;
+}
+
+#slot-settled {
+  grid-area: settled;
+}
+
+#slot-extra {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  min-width: 0;
+}
+
+.panel-body :last-child {
+  margin-bottom: 0;
+}
+
+.panel-body ul,
+.panel-body ol {
+  margin: 0.4em 0;
+  padding-left: 1.3em;
+}
+
+.panel-body li + li {
+  margin-top: 0.25em;
+}
+
+.muted {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* YOU ARE HERE — presentation of an explicit marker in the author's Mermaid source. */
+.you-are-here > rect,
+.you-are-here > polygon,
+.you-are-here > circle,
+.you-are-here > path.node-bkg {
+  stroke: var(--accent) !important;
+  stroke-width: 3.5px !important;
+  fill: var(--accent-soft) !important;
+}
+
+.you-are-here {
+  animation: here-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes here-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 rgba(217, 45, 32, 0));
+  }
+  50% {
+    filter: drop-shadow(0 0 6px rgba(217, 45, 32, 0.55));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .you-are-here {
+    animation: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .cockpit {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "title"
+      "map"
+      "side";
+  }
+
+  .panel-map {
+    min-height: 40vh;
+  }
+
+  #slot-frame,
+  #slot-settled {
+    grid-area: auto;
+  }
+
+  .side {
+    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  }
+}
