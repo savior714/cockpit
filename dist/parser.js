@@ -201,14 +201,14 @@ export function parseProjectMap(tokens) {
     let currentRail = null;
     let currentGroup = null;
     let groupTokens = [];
-    let currentStageTitle = undefined;
+    let hasCurrentStage = false;
     const flushGroup = () => {
         if (currentRail && currentGroup) {
             const isCurrentStage = isCurrentStageHeading(currentGroup.title);
             currentGroup.items = parseListItems(groupTokens, currentRail.title, currentGroup.title, isCurrentStage);
             currentGroup.isOrdered = groupTokens.some((t) => t.type === "ordered_list_open");
-            if (isCurrentStage && currentGroup.items.length > 0 && !currentStageTitle) {
-                currentStageTitle = currentGroup.items[0].title;
+            if (isCurrentStage && currentGroup.items.length > 0) {
+                hasCurrentStage = true;
             }
             currentRail.groups.push(currentGroup);
             currentGroup = null;
@@ -257,7 +257,7 @@ export function parseProjectMap(tokens) {
     return {
         isNativeMap: true,
         rails,
-        currentStageTitle,
+        hasCurrentStage,
         rawTokens: tokens,
     };
 }

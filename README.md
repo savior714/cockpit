@@ -92,7 +92,7 @@ cockpit ./docs/PROGRESS.md --port 5000 --no-open
 
 ### 구조적 완전성 사전 검사 (Structural Preflight Check)
 
-`PROGRESS.md`가 지도 항목과 영역 상세 간 1:1 일치, 단일 Current Stage 소유권, 필수 섹션 존재 등 구조적으로 완전한지 결정론적으로 검증합니다:
+`PROGRESS.md`가 지도 항목과 영역 상세 간 1:1 일치, 궤적 레일당 최대 1개의 Current Stage 그룹(내부 복수 frontier 항목 허용), 필수 섹션 존재 등 구조적으로 완전한지 결정론적으로 검증합니다:
 
 ```bash
 cockpit check
@@ -100,7 +100,7 @@ cockpit check /path/to/PROGRESS.md
 ```
 
 - **PASS (종료 코드 0)**: 지도의 모든 항목이 영역 상세와 1:1 대응되며 구조적 결함 없음
-- **FAIL (종료 코드 1)**: 누락된 영역 상세, 고아(Orphan) 상세(타이틀 불일치), 중복 상세, 다중 Current Stage 오류 목록 출력
+- **FAIL (종료 코드 1)**: 누락된 영역 상세, 고아(Orphan) 상세(타이틀 불일치), 중복 상세, 동일 레일 내 다중 Current Stage 그룹 오류 목록 출력
 
 #### CLI 옵션
 
@@ -148,7 +148,7 @@ repo / runtime / 관련 SSOT (최신 실제 증거)
      * 방금 닫히거나 전진된 중요한 표면은 무엇인가
      * 반복적으로 작업이 필요했던 영역은 무엇인가
      * 어떤 증명(proof)이 변경되었는가
-     * 특정 진행 경로(Trajectory)가 객관적으로 어디까지 와 있는가 (Current Stage)
+     * 특정 진행 경로(Trajectory)가 객관적으로 어디까지 와 있는가 (Current Stage: 해당 궤적 레일의 객관적 현재 frontier 항목 집합)
    - 권장 증거 패턴:
      (1) 최근 커밋 제목, 일자, 변경된 표면 검토
      (2) 실질적으로 중요한 전환 식별
@@ -202,7 +202,7 @@ repo / runtime / 관련 SSOT (최신 실제 증거)
    - `## 현재 집중`: 사용자가 현재 중요하게 보고 있는 product/problem focus (선택 사항: 신뢰할 수 있는 사용자 의도나 확정된 방향 증거가 확립된 경우에만 작성하며, 단순 commit/activity density로 자동 추론하지 않는다).
    - `## 현재 상황`: 최근 변경 이력에서 도출된 의미, 객관적으로 최근 무엇이 materially 변했는지, 이미 증명된 것 vs 단순히 존재하는 것, 가장 중요한 불확실성/갭을 평이한 언어로 종합 서술한다 (고정 줄 수 제한 없음, Git 로그의 기계적 반복이나 임의의 관심사 승격 금지).
    - `## 다음 전환`: Current Focus가 존재한다면 그 focus가 의미 있게 한 단계 전진하는 가장 가까운 전환을 설명한다 (Current Focus가 없다면 프로젝트 차원의 가장 가까운 의미 있는 다음 전환 서술).
-8. 구조 기계 검사 및 자동 수정 (STRUCTURAL PREFLIGHT CHECK & REPAIR): 작성 후 즉시 `cockpit check`를 실행하여 누락, 타이틀 불일치(Orphan), 중복, 동일 레일 내 다중 Current Stage 여부를 기계적으로 검증하고, 실패 시 즉시 수정하여 구조적 PASS를 확인한다.
+8. 구조 기계 검사 및 자동 수정 (STRUCTURAL PREFLIGHT CHECK & REPAIR): 작성 후 즉시 `cockpit check`를 실행하여 누락, 타이틀 불일치(Orphan), 중복, 동일 레일 내 다중 Current Stage 그룹 여부를 기계적으로 검증하고, 실패 시 즉시 수정하여 구조적 PASS를 확인한다.
 9. 자가 감사 및 6개 항목 독자 테스트 (READER TEST & AUDIT): 외부인 관점에서 아래 '독자 테스트(Reader Test)'를 수행하여 시맨틱 유용성을 확인한 후 최종 완료를 선언한다.
 
 다음 마크다운 구조와 작성 원칙을 지켜줘:
@@ -222,8 +222,9 @@ repo / runtime / 관련 SSOT (최신 실제 증거)
 1. **[1단계 영역 이름]** — 1단계 역할/가치 한 줄 요약 (번호 목록: 방향성 커넥터 및 순서 렌더링)
 2. **[2단계 영역 이름]** — 2단계 역할/가치 한 줄 요약
 
-#### [해당 궤적 레일의 객관적 현재 위치인 경우: 현재 단계]
-1. **[영역 이름]** — 해당 궤적 레일의 객관적 진행 경로상 현재 위치에 해당하는 영역
+#### [해당 궤적 레일의 객관적 현재 frontier인 경우: 현재 단계]
+- **[현재 frontier 영역 A]** — 해당 궤적 레일의 객관적 진행 경로상 현재 frontier에 도달한 영역 (1개 이상 작성 가능)
+- **[현재 frontier 영역 B]** — (필요 시) 동시에 현재 frontier에 도달해 있는 다른 영역
 
 ### [프로젝트 고유의 2차 분류 레일 (독립적인 멘탈 모델 축이 존재하는 경우에만 추가)]
 #### [논리적 그룹]
@@ -283,7 +284,7 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
 
 5. Current Focus와 Current Stage의 분리 (Separation of Current Focus & Current Stage):
    - **Current Focus (`## 현재 집중` / `## Current Focus`)**: 사용자가 현재 중요하게 보고 있는 product/problem focus. 사용자 의도 / 명시적으로 settled된 방향에 의해 정해진다. commit 개수, 최근 파일 변경 수, 최근 작업량, 현재 executor task, 테스트 활동, Git activity density만으로 추론하거나 이동하지 않는다. 신뢰할 수 있는 사용자 방향 evidence가 없다면 생략하며 억지로 추론하지 않는다.
-   - **Current Stage (`#### 현재 단계` / `#### Current Stage`)**: 특정 궤적 레일(Trajectory Rail) 내부의 **객관적인 진행 경로상 현재 위치**만을 의미한다. 사용자의 관심/우선순위(Current Focus)가 아니다. 독립적인 궤적 레일이 여러 개라면 각 레일이 자체 `#### 현재 단계`를 가질 수 있다 (단, 1개 궤적 레일 안에서는 최대 1개). 중립 레일은 Current Stage를 갖지 않는다.
+   - **Current Stage (`#### 현재 단계` / `#### Current Stage`)**: 특정 궤적 레일(Trajectory Rail) 내부의 **객관적인 현재 frontier 컨테이너(Objective Current Frontier Container)**다. 하나의 스칼라 값이 아니며, 사용자의 관심/우선순위(Current Focus)와 독립적이다. 프로젝트에는 독립적인 여러 궤적 레일이 존재할 수 있고, 각 궤적 레일은 자체 Current Stage 그룹을 최대 1개 가질 수 있다. 그 그룹 내부에는 **현재 frontier에 실제로 동시에 도달해 있는 맵 항목이 1개 이상 존재할 수 있다.** (단, 여러 current 항목은 일시적 task/WIP/backlog 목록이 아니며, 순차 의존성이 있는 단계는 future에 남긴다. 서로 다른 질문의 항목을 current 수를 맞추기 위해 인위적으로 병합/분해하지 않는다. Execution Wave와 Current Stage 항목 사이에 1:1 대응을 만들지 않는다. 중립 레일은 Current Stage를 갖지 않는다.)
    - **Active Task 비영속화**: `Current Focus != Current Stage != 현재 executor task`이며, 일시적인 실행 task를 위한 별도 task DB, backlog, lifecycle, task ID를 Cockpit에 추가하지 않는다.
 
 6. 정보 계층 분리와 의미 우선 언어 (Information Hierarchy & Meaning-First):
@@ -304,7 +305,7 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
 9. 2단계 완료 검증 계약 (Two-Tier Completion Contract):
    - **구조적 준비 완료 (STRUCTURAL READY)**:
      * `cockpit check` 기계 검사를 실행하여 종료 코드 0(PASS)을 확인한다.
-     * 필수 조건: 모든 지도 항목의 영역 상세 1:1 일치(0개 누락), 고아 상세 0개(타이틀 드리프트 없음), 중복 상세 0개, 궤적 레일당 최대 1개의 Current Stage, Current Focus 섹션 최대 1개.
+     * 필수 조건: 모든 지도 항목의 영역 상세 1:1 일치(0개 누락), 고아 상세 0개(타이틀 드리프트 없음), 중복 상세 0개, 궤적 레일당 최대 1개의 Current Stage 그룹(그룹 내 복수 frontier 항목 허용), Current Focus 섹션 최대 1개.
    - **시맨틱 유용성 완료 (SEMANTICALLY USEFUL)**:
      * 6개 항목 독자 테스트 (Reader Test):
        (1) WHAT: 이 프로젝트가 실제로 무엇을 하는가?
@@ -324,7 +325,7 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
 "이 프로젝트의 기존 PROGRESS.md를 먼저 읽고,
 다음 3가지 축을 명확히 구분하여 보수적으로 갱신해줘:
   A. PROJECT STATE: repo/runtime/SSOT evidence에서 객관적으로 무엇이 확립되었는가
-  B. CURRENT STAGE: 특정 진행 경로(Trajectory Rail)가 객관적으로 어디까지 왔는가 (레일당 최대 1개)
+  B. CURRENT STAGE: 특정 진행 경로(Trajectory Rail)가 객관적으로 어디까지 왔는가 (레일당 최대 1개 그룹, 그룹 내 1개 이상의 객관적 현재 frontier 항목)
   C. CURRENT FOCUS: 사용자가 현재 어떤 product/problem을 중요하게 보고 있는가 (명시적 사용자 방향 증거가 없다면 기존 Focus를 보존하고, 단순 Git 커밋/활동량만으로 Focus를 임의 추론하거나 이동하지 마)
 독자 관점의 의미(의미, 현재 수준, 남은 문제)와 명시적 관계 문법을 명확히 유지하고,
 미해결된 실질적 문제들과 다단계 향후 여정을 누락 없이 보존하며,
@@ -340,7 +341,7 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
 
 #### 1. 멘탈 모델 델타 테스트 (Mental Model Delta Test)
 외부 역량 에이전트는 다음 핵심 질문을 통해 `PROGRESS.md` 수정 여부를 판단합니다:
-> **“현재 PROGRESS.md를 그대로 보여주면, 사용자가 프로젝트의 capability, 위치(Current Stage), 관심점(Current Focus), material gaps, proof 또는 다음 경로(Next Transition)를 실질적으로 잘못 이해하게 되는가?”**
+> **“현재 PROGRESS.md를 그대로 보여주면, 사용자가 프로젝트의 capability, 위치(Current Stage frontier), 관심점(Current Focus), material gaps, proof 또는 다음 경로(Next Transition)를 실질적으로 잘못 이해하게 되는가?”**
 
 - **NO (실질적 오해 없음)** → `PROGRESS.md`를 일체 수정하지 않습니다 (Unchanged).
 - **YES (실질적 왜곡 발생)** → 영향을 받는 시맨틱 표면만 선별적으로 보수적 갱신합니다 (Targeted Refresh).

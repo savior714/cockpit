@@ -394,7 +394,7 @@ async function renderDoc(source: string) {
   }
 
   // Fallback: If Mermaid YOU ARE HERE marker exists in a legacy map
-  if (!parsedMap.currentStageTitle) {
+  if (!parsedMap.hasCurrentStage) {
     for (const el of nodes) {
       const src = el.getAttribute("data-src") ?? "";
       if (!el.closest("#slot-map")) continue;

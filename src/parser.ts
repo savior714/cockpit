@@ -81,7 +81,7 @@ export interface MapRail {
 export interface ParsedMap {
   isNativeMap: boolean;
   rails: MapRail[];
-  currentStageTitle?: string;
+  hasCurrentStage?: boolean;
   rawTokens?: Token[];
 }
 
@@ -279,7 +279,7 @@ export function parseProjectMap(tokens: Token[]): ParsedMap {
   let currentRail: MapRail | null = null;
   let currentGroup: MapGroup | null = null;
   let groupTokens: Token[] = [];
-  let currentStageTitle: string | undefined = undefined;
+  let hasCurrentStage = false;
 
   const flushGroup = () => {
     if (currentRail && currentGroup) {
@@ -292,8 +292,8 @@ export function parseProjectMap(tokens: Token[]): ParsedMap {
       );
       currentGroup.isOrdered = groupTokens.some((t) => t.type === "ordered_list_open");
 
-      if (isCurrentStage && currentGroup.items.length > 0 && !currentStageTitle) {
-        currentStageTitle = currentGroup.items[0].title;
+      if (isCurrentStage && currentGroup.items.length > 0) {
+        hasCurrentStage = true;
       }
 
       currentRail.groups.push(currentGroup);
@@ -348,7 +348,7 @@ export function parseProjectMap(tokens: Token[]): ParsedMap {
   return {
     isNativeMap: true,
     rails,
-    currentStageTitle,
+    hasCurrentStage,
     rawTokens: tokens,
   };
 }

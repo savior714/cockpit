@@ -264,7 +264,7 @@ test("Synthetic Fixture 1: Operational and telemetry system topology verificatio
   const rail2 = parsedMap.rails[1];
   assert.equal(rail2.railType, "trajectory");
   assert.equal(rail2.groups.length, 3);
-  assert.ok(parsedMap.currentStageTitle, "Trajectory rail must identify current stage title");
+  assert.equal(parsedMap.hasCurrentStage, true, "Trajectory rail must set hasCurrentStage to true");
 
   // Rail 3: Neutral cloud/control rail
   const rail3 = parsedMap.rails[2];
@@ -342,7 +342,7 @@ test("Synthetic Fixture 2: Distributed software architecture verification", () =
   const rail2 = parsedMap.rails[1];
   assert.equal(rail2.railType, "trajectory");
   assert.equal(rail2.groups.length, 3);
-  assert.ok(parsedMap.currentStageTitle, "Trajectory rail must identify current stage title");
+  assert.equal(parsedMap.hasCurrentStage, true, "Trajectory rail must set hasCurrentStage to true");
 
   // Rail 3: Cloud Storage & WAN (Neutral rail)
   const rail3 = parsedMap.rails[2];
@@ -420,7 +420,7 @@ test("Synthetic Fixture 3: Multicenter clinical research pipeline verification",
   const rail2 = parsedMap.rails[1];
   assert.equal(rail2.railType, "trajectory");
   assert.equal(rail2.groups.length, 2);
-  assert.ok(parsedMap.currentStageTitle, "Trajectory rail must identify current stage title");
+  assert.equal(parsedMap.hasCurrentStage, true, "Trajectory rail must set hasCurrentStage to true");
 
   // Rail 3: Multicenter clinical validation (Neutral rail)
   const rail3 = parsedMap.rails[2];
@@ -661,7 +661,10 @@ test("Independent multi-rail mental-model axis invariants: single Current Stage 
   assert.equal(parsedMap.rails[1].title, "도입 및 검증 여정");
   assert.equal(parsedMap.rails[1].railType, "trajectory");
   assert.equal(parsedMap.rails[1].groups.length, 3);
-  assert.equal(parsedMap.currentStageTitle, "원내 실증");
+  assert.equal(parsedMap.hasCurrentStage, true);
+  const currentGroup = parsedMap.rails[1].groups.find((g) => isCurrentStageHeading(g.title));
+  assert.equal(currentGroup?.items[0]?.title, "원내 실증");
+  assert.equal(currentGroup?.items[0]?.isCurrentStage, true);
 
   const renderedHtml = renderNativeMap(parsedMap);
   assert.ok(renderedHtml.includes("map-rail-neutral"));
@@ -686,7 +689,7 @@ test("Independent multi-rail mental-model axis invariants: single Current Stage 
   const singleParsed = parseProjectMap(singleSections.get("project map"));
   assert.equal(singleParsed.rails.length, 1);
   assert.equal(singleParsed.rails[0].railType, "neutral");
-  assert.equal(singleParsed.currentStageTitle, undefined);
+  assert.equal(singleParsed.hasCurrentStage, false);
 });
 
 test("Structural check: 7 map items / 2 details => FAIL and exact missing titles", () => {
@@ -1595,6 +1598,155 @@ test("DOM and CSS containment: focus copy action and toast elements exist inside
   assert.ok(css.includes(".focus-actions"), "CSS must style .focus-actions");
   assert.ok(css.includes(".btn-focus-copy"), "CSS must style .btn-focus-copy");
 });
+
+test("Current Stage Canonical Semantics: Multi-frontier items under single Current Stage group => PASS and render each as current", () => {
+  const doc = `
+# 분산 시스템 롤아웃
+
+## 프로젝트 지도
+
+### 롤아웃 궤적 레일
+#### 확보된 기반
+- **기초 인프라** — 코어 클러스터 배포
+
+#### 현재 단계
+- **노드 자동 복구** — 장애 노드 자동 탐지 및 자가 치유
+- **트래픽 미러링** — 실제 사용자 트래픽 10% 미러링 검증
+
+#### 향후 여정
+1. **전체 트래픽 전환** — 100% 라이브 트래픽 라우팅
+
+## 영역 상세
+
+### 기초 인프라
+#### 의미
+코어 클러스터 인프라.
+#### 현재 수준
+완료.
+#### 남은 문제
+- 없음
+#### 근거
+- \`infra/k8s\`
+
+### 노드 자동 복구
+#### 의미
+노드 비정상 상태 시 자동 복구.
+#### 현재 수준
+개발 및 검증 완료.
+#### 남은 문제
+- 엣지 케이스 타임아웃 튜닝
+#### 근거
+- \`recovery.test.mjs\`
+
+### 트래픽 미러링
+#### 의미
+라이브 트래픽 안전 검증.
+#### 현재 수준
+10% 미러링 정상 수신 중.
+#### 남은 문제
+- 메트릭 집계 지연
+#### 근거
+- \`mirror.go\`
+
+### 전체 트래픽 전환
+#### 의미
+전체 트래픽 서빙.
+#### 현재 수준
+준비 중.
+#### 남은 문제
+- 승인 필요
+#### 근거
+- \`docs/rollout.md\`
+`;
+
+  // 1. Structural check must PASS
+  const result = checkProgressStructure(doc);
+  assert.equal(result.ok, true, `Multi-frontier current stage must PASS structural check: ${result.errors.join("; ")}`);
+  assert.equal(result.totalMapItems, 4);
+  assert.equal(result.matchedDetails, 4);
+  assert.equal(result.currentStageCount, 1, "Single Current Stage group in the rail");
+
+  // 2. Map parsing
+  const tokens = md.parse(doc, {});
+  const { sections } = splitSections(tokens);
+  const parsedMap = parseProjectMap(sections.get("project map"));
+  assert.equal(parsedMap.rails.length, 1);
+  assert.equal(parsedMap.hasCurrentStage, true);
+
+  const currentGroup = parsedMap.rails[0].groups.find((g) => isCurrentStageHeading(g.title));
+  assert.ok(currentGroup, "Current Stage group must exist");
+  assert.equal(currentGroup.items.length, 2, "Must have 2 current frontier items");
+  assert.equal(currentGroup.items[0].title, "노드 자동 복구");
+  assert.equal(currentGroup.items[0].isCurrentStage, true);
+  assert.equal(currentGroup.items[1].title, "트래픽 미러링");
+  assert.equal(currentGroup.items[1].isCurrentStage, true);
+
+  // 3. Native Map Rendering: both items rendered as .card-current-stage
+  const html = renderNativeMap(parsedMap);
+  assert.ok(html.includes('aria-label="현재 단계: 노드 자동 복구 영역 검사"'));
+  assert.ok(html.includes('aria-label="현재 단계: 트래픽 미러링 영역 검사"'));
+  assert.ok(html.includes("노드 자동 복구"));
+  assert.ok(html.includes("트래픽 미러링"));
+
+  const currentCardMatches = html.match(/class="map-card card-current-stage/g);
+  assert.equal(currentCardMatches?.length, 2, "Both current frontier items must render as current stage cards");
+});
+
+test("Current Stage Canonical Semantics: Multi-rail independent Current Stages + neutral rail coexistence", () => {
+  const multiRailDoc = `
+# 멀티 레일 복합 시스템
+
+## 프로젝트 지도
+
+### 데이터 수집 궤적
+#### 확보된 기반
+- **배치 수집** — 야간 배치 ETL
+#### 현재 단계
+- **실시간 스트림** — Kafka 기반 실시간 수집
+
+### 서빙 및 추론 궤적
+#### 확보된 기반
+- **정적 모델 배포** — v1 모델 서빙
+#### 현재 단계
+- **온라인 A/B 테스트** — 다중 모델 트래픽 분기
+- **실시간 피드백 루프** — 예측 결과 감사
+#### 향후 계획
+1. **완전 자율 갱신** — 온라인 학습 파이프라인
+
+### 시스템 인프라
+#### 클러스터 관리
+- **노드 프로비저닝** — 자동 스케일아웃
+`;
+
+  const tokens = md.parse(multiRailDoc, {});
+  const { sections } = splitSections(tokens);
+  const parsedMap = parseProjectMap(sections.get("project map"));
+
+  assert.equal(parsedMap.rails.length, 3);
+  assert.equal(parsedMap.rails[0].title, "데이터 수집 궤적");
+  assert.equal(parsedMap.rails[0].railType, "trajectory");
+  assert.equal(parsedMap.rails[1].title, "서빙 및 추론 궤적");
+  assert.equal(parsedMap.rails[1].railType, "trajectory");
+  assert.equal(parsedMap.rails[2].title, "시스템 인프라");
+  assert.equal(parsedMap.rails[2].railType, "neutral");
+
+  // Rail 1 has 1 current item, Rail 2 has 2 current items
+  const r1Current = parsedMap.rails[0].groups.find((g) => isCurrentStageHeading(g.title));
+  assert.equal(r1Current?.items.length, 1);
+  assert.equal(r1Current?.items[0].title, "실시간 스트림");
+
+  const r2Current = parsedMap.rails[1].groups.find((g) => isCurrentStageHeading(g.title));
+  assert.equal(r2Current?.items.length, 2);
+  assert.equal(r2Current?.items[0].title, "온라인 A/B 테스트");
+  assert.equal(r2Current?.items[1].title, "실시간 피드백 루프");
+
+  // Neutral rail has no current group
+  const r3Current = parsedMap.rails[2].groups.find((g) => isCurrentStageHeading(g.title));
+  assert.equal(r3Current, undefined);
+
+  assert.equal(parsedMap.hasCurrentStage, true);
+});
+
 
 
 
