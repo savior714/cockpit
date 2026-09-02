@@ -644,6 +644,46 @@ test("DOM and CSS containment invariant: context-region prioritizes Recent Progr
   assert.ok(css.includes(".panel-stable"), "CSS must style .panel-stable");
 });
 
+test("Recent Progress is a newest-first semantic rolling window with visible recency hierarchy", () => {
+  const progressPath = path.join(__dirname, "..", "PROGRESS.md");
+  const source = fs.readFileSync(progressPath, "utf-8");
+  const { sections } = splitSections(md.parse(source, {}));
+  const recentTokens = sections.get("recently completed");
+
+  assert.ok(recentTokens, "root PROGRESS.md must expose a Recent Progress section");
+  const recentItems = recentTokens
+    .filter((token) => token.type === "inline")
+    .map((token) => token.content.trim());
+
+  assert.ok(recentItems.length >= 5 && recentItems.length <= 8, "Recent Progress must stay a bounded rolling window");
+  assert.match(recentItems[0], /^\*\*Recent Progress를 rolling semantic window/);
+  assert.match(recentItems[1], /^\*\*실 프로젝트 수용성 검증/);
+  for (const item of recentItems) {
+    assert.match(item, /^\*\*.+\*\* → .+/, "each item must expose material change → consequence");
+  }
+
+  const htmlPath = path.join(__dirname, "..", "index.html");
+  const html = fs.readFileSync(htmlPath, "utf-8");
+  const cssPath = path.join(__dirname, "..", "src", "style.css");
+  const css = fs.readFileSync(cssPath, "utf-8");
+
+  assert.match(html, /현재 PROGRESS\.md · 최신 시맨틱 전환/);
+  const foregroundRule = css.indexOf("li:nth-child(-n + 2)");
+  const backgroundRule = css.indexOf("li:nth-child(n + 3)");
+  assert.ok(foregroundRule !== -1, "the newest two Recent Progress items need a foreground rule");
+  assert.ok(backgroundRule !== -1, "older Recent Progress items need a receding rule");
+  assert.ok(foregroundRule < backgroundRule, "foreground styling must precede older-item styling");
+  assert.match(css.slice(foregroundRule, backgroundRule), /font-size: 0\.94rem/);
+  assert.match(css.slice(backgroundRule), /font-size: 0\.82rem/);
+});
+
+test("Viewer refresh remains a PROGRESS.md re-render, not a Git refresh", () => {
+  const mainSource = fs.readFileSync(path.join(__dirname, "..", "src", "main.ts"), "utf-8");
+  assert.match(mainSource, /fetch\("\/progress\.md", \{ cache: "no-store" \}\)/);
+  assert.match(mainSource, /new EventSource\("\/events"\)/);
+  assert.doesNotMatch(mainSource, /\b(?:git|simple-git|isomorphic-git)\b/i);
+});
+
 test("Independent multi-rail mental-model axis invariants: single Current Stage ownership and neutral rail coexistence", () => {
   // Case A: Multi-rail map with 1 neutral operational rail and 1 trajectory rollout rail
   const multiRailDoc = `
@@ -2026,7 +2066,6 @@ test("Area Detail Evidence Admission: Area with Meaning + Current Level + Eviden
   assert.ok(handoffArea2.includes("#### 남은 문제\n- 파티션 리밸런싱"));
   assert.ok(handoffArea2.includes("#### 다시 열리는 조건\n- 카프카 클러스터"));
 });
-
 
 
 

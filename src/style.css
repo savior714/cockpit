@@ -871,6 +871,10 @@ body {
 }
 
 .panel-recent h2 {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
   font-family: var(--font-mono);
   font-size: 0.74rem;
   font-weight: 700;
@@ -880,6 +884,15 @@ body {
   border-bottom: 1px solid var(--line-subtle);
   padding-bottom: 6px;
   margin-bottom: 10px;
+}
+
+.panel-recent .panel-kicker {
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .panel-recent .panel-body {
@@ -898,6 +911,39 @@ body {
   margin-bottom: 0.4em;
   color: var(--ink-secondary);
   line-height: 1.55;
+}
+
+/* Recent Progress is a rolling transition window: foreground the newest two,
+   then let older transitions recede without changing the existing list grammar. */
+.panel-recent .panel-body > ul > li:nth-child(-n + 2),
+.panel-recent .panel-body > ol > li:nth-child(-n + 2) {
+  color: var(--ink);
+  font-size: 0.94rem;
+  line-height: 1.6;
+}
+
+.panel-recent .panel-body > ul > li:first-child,
+.panel-recent .panel-body > ol > li:first-child {
+  border-left: 2px solid var(--accent);
+  padding-left: 0.45em;
+}
+
+.panel-recent .panel-body > ul > li:nth-child(-n + 2)::marker,
+.panel-recent .panel-body > ol > li:nth-child(-n + 2)::marker {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.panel-recent .panel-body > ul > li:nth-child(n + 3),
+.panel-recent .panel-body > ol > li:nth-child(n + 3) {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.panel-recent .panel-body > ul > li:nth-child(n + 3)::marker,
+.panel-recent .panel-body > ol > li:nth-child(n + 3)::marker {
+  color: var(--line-strong);
 }
 
 .panel-recent .panel-body li strong {

@@ -52,6 +52,7 @@ cockpit
 
 - **동작 방식**: Cockpit은 현재 존재하는 `PROGRESS.md`를 있는 그대로 읽어 브라우저(`http://127.0.0.1:4321`)에 표시하는 초경량 읽기 전용(Read-only) 뷰어입니다.
 - **바이너리 경계**: Cockpit 바이너리 자체는 저장소를 분석하거나, Git 이력을 검사하거나, `PROGRESS.md`를 수정하거나, AI를 호출하지 않습니다.
+- **새로고침 의미**: 브라우저 새로고침과 파일 변경 시 live reload는 지정된 현재 `PROGRESS.md`를 다시 읽어 렌더링할 뿐이며, Git을 조회하거나 최신 commit을 가져오는 `Git refresh`가 아닙니다. 문서에 새 전환을 넣는 일은 외부 capable agent의 fresh evidence reconciliation 책임입니다.
 
 #### 2. 외부 역량 에이전트에게 Cockpit 실행/열기 요청 시 (공식 운영 계약)
 
@@ -84,7 +85,7 @@ cockpit
 6. cockpit 실행 (뷰어 론칭)
 ```
 
-> **핵심 원칙**: 최신성 대조(Freshness Check)는 항상 수행하되, 파일 수정(File Mutation)은 실질적인 멘탈 모델 변화(Material Semantic Delta)가 있을 때만 수행합니다.
+> **핵심 원칙**: 최신성 대조(Freshness Check)는 항상 수행하되, 파일 수정(File Mutation)은 실질적인 멘탈 모델 변화(Material Semantic Delta)가 있을 때만 수행합니다. 새 material transition을 넣을 때는 Recent Progress가 최신순 rolling semantic window로 남아 있는지도 함께 확인합니다.
 
 ### 다른 경로의 파일 지정하기
 
@@ -262,8 +263,8 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
 - 현재 진행을 가로막고 있거나 집중적인 해결이 필요한 프로젝트 차원의 실질적 장애 요인 (신선한 증거가 있는 경우에만 작성하며, 프로젝트 수준의 직면 문제가 없으면 생략 가능).
 
 ## 최근 진척
-- **[주요 시맨틱 전환 1]** — 실질적 변경 내용 및 프로젝트 상태/역량/방향에 미친 영향 (`실질적 변경 → 영향`, 최신순 권장, 약 5~8개 항목)
-- **[주요 시맨틱 전환 2]** — ...
+- **[주요 시맨틱 전환 1]** → 실질적 변경 내용과 프로젝트 상태/역량/방향에 생긴 결과 (최신순 rolling window, 보통 약 5~8개)
+- **[주요 시맨틱 전환 2]** → ...
 
 ## 제품 목표
 이 프로젝트가 실제로 가능하게 만들고자 하는 핵심 목적, 해결하는 실질적 필요, 성공의 정의와 책임 경계를 간결하고 정보 밀도 높게 서술.
@@ -318,7 +319,7 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
   A. PROJECT STATE: repo/runtime/SSOT evidence에서 객관적으로 무엇이 확립되었는가
   B. CURRENT STAGE: 특정 진행 경로(Trajectory Rail)가 객관적으로 어디까지 왔는가 (레일당 최대 1개 그룹, 그룹 내 1개 이상의 객관적 현재 frontier 항목)
   C. CURRENT FOCUS: 사용자가 현재 어떤 product/problem을 중요하게 보고 있는가 (명시적 사용자 방향 증거가 없다면 기존 Focus를 보존하고, 단순 Git 커밋/활동량/현재 task만으로 Focus를 임의 추론하거나 이동하지 마)
-  D. RECENT PROGRESS: 단순 커밋 로그가 아닌 실질적 변경에 따른 시맨틱 전환 이력 기록
+  D. RECENT PROGRESS: 단순 커밋 로그가 아닌 실질적 변경에 따른 시맨틱 전환 이력 기록. 새 material transition을 넣을 때 오래되어 stable context가 된 항목은 제거할 수 있는지 함께 판단
 독자 관점의 필수 항목(의미, 현재 수준, 근거)과 명시적 관계 문법을 엄격히 유지하고,
 기존 `남은 문제`, `직면한 문제`, `다음 전환`의 선행조건 및 material한 `현재 수준` limitation을
 모두 open claim으로 재입장시켜, 이미 닫혔거나 현재 defect가 아닌지 closure/counterevidence를 적극적으로 탐색해줘.
@@ -330,7 +331,7 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
 저장 전 반드시 `cockpit check`를 실행하여 구조적 완전성을 기계적으로 증명해줘."
 ```
 
-에이전트가 `PROGRESS.md`를 저장하면, 열려 있는 Cockpit 화면에 즉시 변경사항이 반영됩니다.
+에이전트가 `PROGRESS.md`를 저장하면, 열려 있는 Cockpit 화면은 같은 파일을 다시 읽어 변경사항을 반영합니다. 이는 현재 문서의 재렌더링이며 Git 이력 조회나 자동 semantic refresh가 아닙니다.
 
 ### 멘탈 모델 델타 테스트 및 운영자 가이드라인 (Mental Model Delta Test & Operator Guidelines)
 
@@ -382,7 +383,7 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
    - `## 직면한 문제` (Facing Issues)
    - `## 최근 진척` (Recent Progress)
 3. **실행 중 서술 제거**: 현재 진행 중인 작업 내용 자체만을 묘사하는 문장을 제거합니다.
-4. **시맨틱 진척 이전**: 완료된 시맨틱 전환이 프로젝트 역량/상태를 실질적으로 변화시킨 경우에만 `## 최근 진척`으로 이동합니다.
+4. **시맨틱 진척 이전**: 완료된 시맨틱 전환이 프로젝트 역량/상태를 실질적으로 변화시킨 경우에만 `## 최근 진척`으로 이동하고, 이미 stable context가 되어 현재 상태 복원에 필요하지 않은 오래된 전환은 rolling window에서 제거합니다.
 5. **다음 전환의 미래성 확인**: `## 다음 전환`이 발행 이후 시점에서도 여전히 진정한 미래 마일스톤인지 확인합니다.
 
 실제 구현 및 증명 완료 후, 최종 발행 직전에 실제 최종 후보 문서에 대해 이 점검을 다시 실행합니다.
@@ -523,7 +524,7 @@ STABLE CONTEXT (영속적 맥락 프레임)
    - **직면한 문제 (`## 직면한 문제`)**: 해결이 필요한 실질적 블로커.
    - **영역 상세 (`## 영역 상세`)**: 각 영역의 의미, 현재 수준, 근거 및 (증거 기반 미해결 문제가 있는 경우) 남은 문제.
 2. **최근 시맨틱 전환 (Recent Progress — 하단 주 독서면)**:
-   - **최근 진척 (`## 최근 진척` / `## Recent Progress`)**: "이 프로젝트가 이전 상태에서 현재 상태로 어떻게 실질적으로 도달했는가?"를 설명하는 시맨틱 전환 이력. 하단 영역에서 가장 넓고 명확한 독서면으로 렌더링됩니다.
+   - **최근 진척 (`## 최근 진척` / `## Recent Progress`)**: "이 프로젝트가 바로 전 상태에서 현재 상태로 어떻게 실질적으로 도달했는가?"를 설명하는 최신순 rolling semantic window. 하단 영역에서 가장 넓고 명확한 독서면으로 렌더링되며, 오래된 history archive처럼 끝없이 누적하지 않습니다.
 3. **영속적 맥락 프레임 (Stable Context — 하단 보조 그리드)**:
    - **제품 목표 (`## 제품 목표`)** 및 **확정된 방향 (`## 확정된 방향`)**: 느리게 변하는 고정 기반 맥락으로, 하단에서 공간 낭비 없이 정보 밀도 높은 컴팩트 에디토리얼 패널로 나란히 배치됩니다.
 
@@ -545,12 +546,12 @@ STABLE CONTEXT (영속적 맥락 프레임)
 
 #### 3. 최근 진척 (Recent Progress)
 - **목적**: 새로운 독자나 재진입한 독자가 **"이 프로젝트가 이전 상태에서 현재 상태로 어떻게 실질적으로 도달했는가?"**를 온전히 재구성할 수 있도록 돕는 시맨틱 전환 이력입니다.
-- **형식**: `실질적 변경 (Material Change) → 프로젝트 상태/역량/증명/방향에 미친 영향 (Consequence)`.
-  * *모범 예시*: `멀티 프론티어 시맨틱 확립 — 이제 Current Stage가 궤적 레일별 객관적 frontier를 표현하며, 증거에 기반한 복수 frontier 항목 동시 표시를 지원함.`
-  * *모범 예시*: `유니버설 Handoff 완료 — 복사된 Focus/Area 컨텍스트가 자기 완결성을 갖추어 새로운 capable agent가 이전 개인 기억 없이도 즉시 문제를 검증하고 Execution Wave를 산출할 수 있음.`
+- **독서면**: Recent Progress는 끝없이 누적되는 history archive가 아니라, 현재 상태를 설명하는 **가장 최근의 material semantic transition 약 5~8개**를 담는 rolling window입니다. 새 transition이 들어오면 최신순을 유지하고, 오래되어 이제 stable context가 된 항목은 Current Situation / Area state / Product Frame / Settled Direction 등에 필요한 durable meaning이 남아 있는지 확인한 뒤 제거할 수 있습니다. 이는 고정된 `N개` 기계 규칙이 아닙니다.
+- **형식**: 각 항목은 가능한 한 `이전 상태/문제 → 새로운 상태` 또는 `실질적 변경 (Material Change) → 프로젝트 상태/역량/증명/방향에 미친 결과 (Consequence)`로 한눈에 읽혀야 합니다. 전환의 두 면을 구분하기 위해 제목과 결과 사이에 `→`를 권장합니다.
+  * *모범 예시*: `멀티 프론티어 시맨틱 확립 → 이제 Current Stage가 궤적 레일별 객관적 frontier를 표현하며, 증거에 기반한 복수 frontier 항목 동시 표시를 지원함.`
+  * *모범 예시*: `유니버설 Handoff 완료 → 복사된 Focus/Area 컨텍스트가 자기 완결성을 갖추어 새로운 capable agent가 이전 개인 기억 없이도 즉시 문제를 검증하고 Execution Wave를 산출할 수 있음.`
 - **지양**: 단순 커밋 SHA, PR 병합, 파일 수정, 테스트 개수 변동, CSS 수정 등 단순 엔지니어링 행위 나열 (기술적 증거는 뒷받침할 수 있으나 시맨틱 항목 자체가 되지 않음).
-- **수량**: 증거가 존재할 때 최근 궤적을 복원할 수 있는 **약 5~8개의 실질적 전환**을 최신순으로 기술합니다 (하드 스키마가 아니며, 증거가 부족하면 적은 수만 유지하고 절대 가상 항목을 날조하지 않음).
-- **갱신 시점**: 프로젝트에 실질적인 시맨틱 전환이 실제로 발생했을 때만 보수적으로 갱신합니다.
+- **갱신 시점**: 외부 capable agent가 fresh repository/runtime/SSOT evidence를 reconciliation하여 material semantic delta를 인정했을 때만 보수적으로 갱신합니다. 문서가 바뀌었다는 사실이나 브라우저 새로고침 자체는 갱신 트리거가 아닙니다.
 
 ---
 
@@ -585,7 +586,7 @@ Cockpit은 한국어와 영어 `## h2` 헤딩을 모두 지원합니다:
 | `## 현재 상황` / `## 지금` / `## 지금 하는 일` | `## Current Situation` / `## Current Frontier` | 우측 기본 개요: 현재 상황 (최근 실질적 변경 및 객관적 상태 종합) |
 | `## 다음 전환` / `## 다음` | `## Next Transition` / `## Next` | 우측 기본 개요: 다음 전환 |
 | `## 직면한 문제` / `## 막힌 것` | `## Facing Issues` / `## Blocked` | 우측 기본 개요: 직면한 문제 |
-| `## 최근 진척` / `## 최근 완료` | `## Recently Completed` / `## Recent Progress` | 하단 주 독서면: 최근 시맨틱 전환 이력 (실질적 변경 → 영향) |
+| `## 최근 진척` / `## 최근 완료` | `## Recently Completed` / `## Recent Progress` | 하단 주 독서면: 최신순 rolling semantic transition window (실질적 변경 → 영향) |
 | `## 제품 목표` / `## 프로젝트 큰 그림` | `## Product Goals` / `## Product Goal` / `## Project Frame` | 하단 영속적 맥락: 프로젝트 존재 이유 및 성공 경계 (컴팩트 에디토리얼) |
 | `## 확정된 방향` / `## 이미 정해진 방향` | `## Settled Direction` | 하단 영속적 맥락: 영속적 제약 결정 (컴팩트 에디토리얼) |
 

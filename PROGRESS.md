@@ -131,15 +131,14 @@ Cockpit은 마크다운 파서, 네이티브 맵 렌더러, 영역 검사기, Ha
 실제 외부 프로젝트 저장소 환경에서 Cockpit을 전역 설치하고, 외부 역량 에이전트가 제안된 운영 워크플로우(Operator Workflow)에 따라 실제 PROGRESS.md를 점검하고 시각화하는 실환경 이식성 검증을 수행합니다.
 
 ## 최근 진척
-- **실 프로젝트 수용성 검증의 테스트베드 경계 확립** — 외부 실제 프로젝트의 결함을 Cockpit 상태 표현·전송·reconciliation을 평가하기 위한 evidence로 한정하고, mutation-bearing acceptance는 하나의 사전 승인된 stimulus 뒤 관찰·Cockpit delta 추출·중단하도록 명시함. 정상적인 `Cockpit → Problem Framer → executor` 사용자 워크플로우는 그대로 유지함.
-- **기존 open claim 재입장 및 stale negative claim 반증 계약 확립** — 기존 `남은 문제`·`직면한 문제`·`다음 전환` 선행조건·material limitation을 자동 승계하지 않고, 외부 capable agent가 fresh implementation/runtime/proof의 closure와 counterevidence를 먼저 탐색하도록 하여 닫힌 문제의 잔존 표시와 무근거 remediation task 승격을 방지함.
-- **사실 기반 프로젝트 상태 재구축 및 다중 패스 증거 동화 계약 정립** — 가상의 데모(Orion) 멘탈 모델을 제거하고 실제 저장소 증거 기반의 PROGRESS를 수립함과 동시에, 4대 증거 축 대조 및 적대적 모순 심사를 거치는 이식 가능한 외부 에이전트 운영 계약과 닫힘 시점 정합성 규칙을 확립함.
-- **프론티어 그리드(B1.2) 비주얼 디렉션 및 컨텍스트 계층 개편** — 대시보드 클리셰와 AI UI 문법을 제거하고, 상단 지도 및 프론티어 강조, 하단 최근 진척 중심의 에디토리얼 정보 계층을 확립함.
-- **영역 상세 증거 진입 계약 정합화** — `남은 문제` 섹션을 증거가 입증된 경우에만 작성하도록 선택적 섹션으로 전환하고 불필요한 플레이스홀더를 배제함.
-- **Universal Execution Wave 연계 Handoff 컨텍스트 표준화** — Focus 및 Area 검토 Handoff 시 외부 Problem Framer가 즉시 NOW/SERIAL NOW/WAIT FOR EVIDENCE 작업을 도출할 수 있도록 자기완결적 마크다운 복사 계약을 수립함.
-- **Current Stage 멀티 프론티어 컨테이너 시맨틱 확립** — 궤적 레일별 객관적 현재 단계를 표현하며, 단일 레일 내 복수 frontier 항목 동시 표시 및 중립 레일 공존을 지원함.
-- **사용자 소유 Current Focus와 객관적 Current Stage의 분리** — 문제 중심의 사용자 관심사(`## 현재 집중`)와 시스템 궤적의 객관적 진척 위치(`#### 현재 단계`)를 완전히 분리하여 활동량 기반 임의 추론을 방지함.
-- **결정론적 구조 검사기(`cockpit check`) 및 독립 배포 패키징 검증** — 지도 항목과 영역 상세의 1:1 일치, 고아/중복 검출을 기계적으로 검증하고 standalone `dist/parser.js` 빌드 및 격리 접두사 전역 설치 스모크 테스트를 구축함.
+- **Recent Progress를 rolling semantic window로 재정렬하고 최신 전환 위계를 강화함** → 기존 9개 누적 목록을 현재 상태를 설명하는 8개 material transition으로 압축하고, 새 문서 갱신 때 stable context가 된 오래된 전환을 제거할 수 있게 했으며, 화면에서 최신 1–2개를 우선 읽도록 함.
+- **실 프로젝트 수용성 검증의 테스트베드 경계를 확립함** → 외부 실제 프로젝트의 결함을 Cockpit 상태 표현·전송·reconciliation을 평가하기 위한 evidence로 한정하고, mutation-bearing acceptance는 하나의 사전 승인된 stimulus 뒤 관찰·Cockpit delta 추출·중단하도록 명시함. 정상적인 `Cockpit → Problem Framer → executor` 사용자 워크플로우는 그대로 유지함.
+- **기존 open claim을 fresh evidence로 재입장시키는 반증 계약을 확립함** → 기존 `남은 문제`·`직면한 문제`·`다음 전환` 선행조건·material limitation을 자동 승계하지 않고, 외부 capable agent가 fresh implementation/runtime/proof의 closure와 counterevidence를 먼저 탐색하도록 하여 닫힌 문제의 잔존 표시와 무근거 remediation task 승격을 방지함.
+- **가상 Orion 상태를 제거하고 사실 기반 프로젝트 상태·다중 패스 동화 계약을 정립함** → 실제 저장소 증거 기반의 PROGRESS를 수립하고, 4대 증거 축 대조·적대적 모순 심사·닫힘 시점 정합성 규칙을 거치는 이식 가능한 외부 agent 운영 계약을 확립함.
+- **B1.2 Frontier Grid와 하단 맥락 계층을 정리함** → 대시보드 클리셰와 AI UI 문법을 제거하고, 상단 지도·프론티어 강조·하단 Recent Progress 중심의 에디토리얼 정보 계층을 확립함.
+- **영역 상세를 evidence-admitted semantics로 정합화함** → `남은 문제`를 증거가 입증한 경우에만 선택적으로 표시하고, 근거 없는 문제·플레이스홀더가 현재 mental model을 오염시키지 않도록 함.
+- **Universal Execution Wave 연계 Handoff 컨텍스트를 표준화함** → Focus 및 Area 검토 Handoff가 자기완결적 컨텍스트와 NOW/SERIAL NOW/WAIT FOR EVIDENCE 경계를 전달하여 외부 Problem Framer가 즉시 검증 가능한 다음 작업을 산출할 수 있게 함.
+- **Current Stage를 궤적별 객관적 frontier container로 확립함** → 한 레일의 현재 단계 안에서 복수 frontier와 중립 레일을 함께 표현하면서 사용자 소유 Current Focus와 객관적 stage 의미를 섞지 않도록 함.
 
 ## 제품 목표
 Cockpit은 프로젝트의 `PROGRESS.md`를 읽어 대화형 프로젝트 지도, 진행 궤적의 객관적 프론티어, 영역별 상세 검사기를 브라우저에 실시간 시각화해 주는 초경량 읽기 전용 PM 대시보드입니다. 외부 역량 에이전트가 단일 현황 문서를 통해 프로젝트의 최신 멘탈 모델을 공유하고 문제를 외부 Problem Framer로 결정론적으로 인계(Handoff)할 수 있도록 지원하며, Cockpit 바이너리 자체에는 AI, 데이터베이스, 백그라운드 데몬, 파일 쓰기 메커니즘을 일체 포함하지 않습니다.
