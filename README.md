@@ -273,6 +273,14 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
 6. 2단계 검증 및 구조 vs 시맨틱 분리 (STRUCTURALLY VALID != EVIDENCE-GROUNDED):
    - **`cockpit check`**: 마크다운 구조(지도-상세 1:1 대응, 문법)가 완전한지 결정론적으로 검증하는 기계 검사 도구다 (종료 코드 0: PASS).
    - **시맨틱 진실성(Semantic Ground Truth)**: `cockpit check`가 PASS라고 해서 내용이 사실임을 보증하지 않는다. 내용의 사실성, 증거 정합성, 날조 여부 판단은 전적으로 **외부 역량 에이전트의 다중 패스 추론 책임**이다.
+
+7. 태스크 누수 방지 (Task Leakage Prevention):
+   - `CURRENT FOCUS != CURRENT STAGE != CURRENT EXECUTOR TASK`, `RECENT TASK != CURRENT STAGE`.
+   - 일시적 실행 상태(문서 개편, README 보강, 리팩터링 등 단기 executor task) 자체는 제품의 궤적 단계(Current Stage)가 될 수 없다.
+
+8. 닫힘 시점 정합성 및 증거 비례적 주장 (Closure-Time Coherence & Proportional Claims):
+   - 현재 상황과 다음 전환은 작업 완료 및 발행 이후(post-closure)의 상태를 기준으로 기술한다.
+   - 주장의 강도는 직접 증거의 입증 범위에 엄격히 비례해야 하며('완벽', '보장', '무중단' 등 과대 표현 배제), 증거가 입증하는 정확한 경계만을 기술한다.
 ```
 
 ### 작업 중 PROGRESS.md 갱신하기
@@ -328,6 +336,28 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
 #### 5. 구조적 완전성과 시맨틱 진실성의 분리 (Structural Validity != Semantic Truth)
 - `cockpit check`의 통과(PASS, exit 0)는 마크다운 문서가 파싱 가능한 구조적 규약(지도 항목과 영역 상세의 1:1 매칭, 고아/중복 없음)을 만족함을 증명할 뿐, 내용이 실제 저장소의 진실임을 증명하지 않습니다.
 - 시맨틱 진실성(Semantic Truth)과 증거 기반 무결성은 외부 역량 에이전트가 다중 패스 동화(Multi-Pass Assimilation) 절차를 통해 독립적으로 확보해야 합니다.
+
+#### 6. 닫힘 시점 정합성 검토 패스 (Closure-Time Coherence Pass)
+
+유계 태스크를 종료하고 `PROGRESS.md` 변경을 확정하기 전, 외부 역량 에이전트는 다음 단계를 거칩니다:
+
+1. **상태 가상 전진**: 저장소 및 프로젝트 상태를 해당 작업이 완료되고 발행된 이후(post-closure)의 상태로 정신적으로 전진시킵니다.
+2. **핵심 표면 재독**: 다음 섹션들을 순서대로 다시 읽습니다:
+   - `## 현재 상황` (Current Situation)
+   - `#### 현재 단계` (Current Stage)
+   - `## 다음 전환` (Next Transition)
+   - `## 직면한 문제` (Facing Issues)
+   - `## 최근 진척` (Recent Progress)
+3. **실행 중 서술 제거**: 현재 진행 중인 작업 내용 자체만을 묘사하는 문장을 제거합니다.
+4. **시맨틱 진척 이전**: 완료된 시맨틱 전환이 프로젝트 역량/상태를 실질적으로 변화시킨 경우에만 `## 최근 진척`으로 이동합니다.
+5. **다음 전환의 미래성 확인**: `## 다음 전환`이 발행 이후 시점에서도 여전히 진정한 미래 마일스톤인지 확인합니다.
+
+실제 구현 및 증명 완료 후, 최종 발행 직전에 실제 최종 후보 문서에 대해 이 점검을 다시 실행합니다.
+
+#### 7. 태스크 누수 방지 및 증거 비례적 주장 (Task Leakage Prevention & Proportional Claims)
+
+- **`CURRENT FOCUS != CURRENT STAGE != CURRENT EXECUTOR TASK`** 및 **`RECENT TASK != CURRENT STAGE`**: 일회성 executor 태스크는 일시적 실행 상태일 뿐 영속적 프로젝트 단계가 아닙니다.
+- **주장 강도와 증거의 비례성**: '완벽', '완전히', '보장', '무중단', 'fully', 'guarantees'와 같은 절대적 수식어를 지양하고, 실제 테스트/코드/런타임 증거가 입증하는 구체적 경계와 관찰 사실에 맞춰 기술합니다.
 
 ### Problem Framer & Universal Execution Wave 연계 워크플로우
 
