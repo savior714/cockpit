@@ -263,7 +263,7 @@ body {
 .native-project-map {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
 .map-rail {
@@ -272,8 +272,8 @@ body {
   gap: 10px;
   background: transparent;
   border: none;
-  border-top: 1px solid var(--line-subtle);
-  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
 }
 
 .map-rail:first-child {
@@ -283,16 +283,17 @@ body {
 
 .rail-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
+  margin-bottom: 2px;
 }
 
 .rail-title {
   margin: 0;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   color: var(--ink);
 }
 
@@ -414,8 +415,8 @@ body {
 /* Rail: Project Trajectory Grid (B1.2 Frontier Grid) */
 .trajectory-groups-container {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr) minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr) minmax(0, 1fr);
+  gap: 12px;
   align-items: stretch;
   position: relative;
 }
@@ -423,11 +424,11 @@ body {
 .trajectory-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  padding: 8px 10px;
+  padding: 9px 11px;
   min-width: 0;
   position: relative;
 }
@@ -440,7 +441,7 @@ body {
   border-bottom: 1px solid var(--line-subtle);
 }
 
-/* Foundation Group (Past / Ready) */
+/* Foundation Group (Past / Settled) */
 .group-foundation {
   background: var(--panel);
 }
@@ -458,6 +459,7 @@ body {
 
 .card-foundation .card-title {
   color: var(--ink-secondary);
+  font-weight: 600;
 }
 
 /* CURRENT STAGE (Frontier Track Signature) */
@@ -470,7 +472,7 @@ body {
   font-family: var(--font-mono);
   font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   color: var(--accent);
   text-transform: uppercase;
   display: inline-flex;
@@ -481,15 +483,25 @@ body {
 .card-current-stage {
   background: var(--panel);
   border: 1px solid var(--stage-border);
+  border-left: 3px solid var(--frontier-track);
+  padding: 7px 9px 7px 8px;
 }
 
 .card-current-stage .card-title {
   color: var(--ink);
   font-weight: 700;
+  font-size: 0.87rem;
 }
 
 .card-current-stage:hover {
   border-color: var(--stage-border);
+  border-left-color: var(--frontier-track);
+}
+
+.card-current-stage.selected {
+  background: var(--accent-soft) !important;
+  border-color: var(--accent) !important;
+  border-left: 3px solid var(--accent) !important;
 }
 
 /* Future Group */
@@ -500,14 +512,14 @@ body {
 .future-steps-flow {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .card-future {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  gap: 6px;
+  gap: 7px;
   background: var(--panel);
   border: 1px dashed var(--line-strong);
 }
@@ -521,10 +533,11 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 17px;
-  height: 17px;
-  background: var(--badge-bg);
+  width: 18px;
+  height: 18px;
+  background: var(--line-subtle);
   color: var(--muted);
+  border: 1px solid var(--line);
   font-family: var(--font-mono);
   font-size: 0.65rem;
   font-weight: 700;
@@ -544,10 +557,11 @@ body {
 .future-step-arrow {
   text-align: center;
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   line-height: 1;
   user-select: none;
   padding: 1px 0;
+  font-family: var(--font-mono);
 }
 
 /* Right Side Panel: Quiet Technical Editorial */
@@ -838,7 +852,7 @@ body {
 .context-region {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   min-width: 0;
 }
 
@@ -851,40 +865,45 @@ body {
 /* Primary Lower Surface: Recent Progress */
 .panel-recent {
   border-radius: var(--radius-md);
-  padding: 14px 16px;
+  padding: 16px 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
 }
 
 .panel-recent h2 {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--ink);
   border-bottom: 1px solid var(--line-subtle);
-  padding-bottom: 5px;
-  margin-bottom: 8px;
+  padding-bottom: 6px;
+  margin-bottom: 10px;
 }
 
 .panel-recent .panel-body {
-  font-size: 0.86rem;
-  line-height: 1.55;
+  font-size: 0.88rem;
+  line-height: 1.6;
   color: var(--ink);
 }
 
 .panel-recent .panel-body ul,
 .panel-recent .panel-body ol {
-  margin: 0.3em 0;
-  padding-left: 1.3em;
+  margin: 0.35em 0;
+  padding-left: 1.25em;
 }
 
 .panel-recent .panel-body li {
-  margin-bottom: 0.35em;
+  margin-bottom: 0.4em;
   color: var(--ink-secondary);
+  line-height: 1.55;
 }
 
 .panel-recent .panel-body li strong {
   color: var(--ink);
+  font-weight: 700;
+  letter-spacing: -0.005em;
 }
 
 .panel-recent .panel-body li:last-child {
@@ -902,7 +921,9 @@ body {
 
 .panel-stable {
   border-radius: var(--radius-sm);
-  padding: 10px 14px;
+  padding: 11px 14px;
+  background: var(--panel);
+  border: 1px solid var(--line-subtle);
 }
 
 .panel-stable h2 {
