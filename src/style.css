@@ -111,25 +111,18 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Layout Grid */
+/* Layout Container */
 .cockpit {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 20px;
   max-width: 1720px;
   margin: 0 auto;
   padding: 20px clamp(16px, 2.5vw, 32px) 60px;
-  grid-template-columns: minmax(0, 1fr) clamp(340px, 30vw, 480px);
-  grid-template-areas:
-    "title title"
-    "map side"
-    "frame settled"
-    "recent extra";
-  align-items: start;
 }
 
 /* Header */
 .title-bar {
-  grid-area: title;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -179,6 +172,15 @@ body {
   box-shadow: 0 0 12px var(--stage-glow);
 }
 
+/* Primary Workspace: Map | Side (Sticky Container) */
+.primary-workspace {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) clamp(340px, 30vw, 480px);
+  align-items: start;
+  min-width: 0;
+}
+
 /* Base Panel */
 .panel {
   background: var(--panel);
@@ -200,9 +202,17 @@ body {
 
 /* Left Main Panel: Project Map */
 .panel-map {
-  grid-area: map;
   min-height: 72vh;
   padding: 24px;
+}
+
+.panel-map > .panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
 }
 
 .panel-map > .panel-header h2 {
@@ -211,7 +221,27 @@ body {
   color: var(--ink);
   text-transform: none;
   letter-spacing: -0.01em;
-  margin-bottom: 20px;
+  margin: 0;
+}
+
+.completeness-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: var(--stage-bg);
+  color: var(--stage-ink);
+  border: 1px solid var(--stage-border);
+}
+
+.completeness-badge.complete {
+  background: var(--badge-evidence-bg);
+  color: var(--badge-evidence-ink);
+  border-color: #a7f3d0;
 }
 
 .map-body {
@@ -582,7 +612,6 @@ body {
 
 /* Right Side Panel: Overview & Inspector */
 .side {
-  grid-area: side;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -806,25 +835,32 @@ body {
   text-align: center;
 }
 
-/* Bottom Context Panels */
+/* Bottom Context Region */
+.context-region {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+}
+
 .panel-context {
   font-size: 0.92rem;
 }
 
 #slot-frame {
-  grid-area: frame;
+  min-width: 0;
 }
 
 #slot-settled {
-  grid-area: settled;
+  min-width: 0;
 }
 
 #slot-recent {
-  grid-area: recent;
+  grid-column: 1 / -1;
 }
 
 #slot-extra {
-  grid-area: extra;
+  grid-column: 1 / -1;
   display: grid;
   gap: 16px;
   grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
@@ -922,22 +958,23 @@ body {
 
 /* Responsive / Mobile Breakdown */
 @media (max-width: 768px) {
-  .cockpit {
+  .primary-workspace {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "title"
-      "map"
-      "side"
-      "frame"
-      "settled"
-      "recent"
-      "extra";
   }
 
   .side {
     position: static;
     max-height: none;
     overflow-y: visible;
+  }
+
+  .context-region {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #slot-recent,
+  #slot-extra {
+    grid-column: 1;
   }
 
   .trajectory-groups-container {

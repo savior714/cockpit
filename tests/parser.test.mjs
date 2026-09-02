@@ -16,6 +16,7 @@ import {
   splitSections,
   parseAreaDetails,
   findAreaDetail,
+  getAreaCompleteness,
   renderNativeMap,
 } from "../src/parser.ts";
 
@@ -491,3 +492,122 @@ test("Native map rendering structural invariant across trajectory and neutral ra
   assert.ok(renderedHtml.includes("card-future"));
   assert.ok(renderedHtml.includes("NOW · 현재 단계"));
 });
+
+test("Area completeness calculation: complete vs partial document", () => {
+  // Case 1: Partial document (10 map items, only 6 matching area details)
+  const partialDoc = `
+# Partial Project
+
+## 프로젝트 지도
+
+### 주요 기능 레일
+#### 핵심 그룹
+- **Item 1** — First item
+- **Item 2** — Second item
+- **Item 3** — Third item
+- **Item 4** — Fourth item
+- **Item 5** — Fifth item
+- **Item 6** — Sixth item
+
+#### 현재 단계
+- **Item 7** — Seventh item
+
+### 보조 레일
+#### 연계 그룹
+- **Item 8** — Eighth item
+- **Item 9** — Ninth item
+- **Item 10** — Tenth item
+
+## 영역 상세
+
+### Item 1
+#### 의미
+Detail 1
+
+### Item 2
+#### 의미
+Detail 2
+
+### Item 3
+#### 의미
+Detail 3
+
+### Item 4
+#### 의미
+Detail 4
+
+### Item 5
+#### 의미
+Detail 5
+
+### Item 7
+#### 의미
+Detail 7
+`;
+
+  const tokens = md.parse(partialDoc, {});
+  const { sections } = splitSections(tokens);
+  const mapTokens = sections.get("project map");
+  const detailTokens = sections.get("area details");
+
+  const parsedMap = parseProjectMap(mapTokens);
+  const areaDetails = parseAreaDetails(detailTokens);
+
+  const completeness = getAreaCompleteness(parsedMap, areaDetails);
+  assert.equal(completeness.totalItems, 10);
+  assert.equal(completeness.matchedItems, 6);
+  assert.equal(completeness.missingItems, 4);
+  assert.deepEqual(completeness.missingTitles, ["Item 6", "Item 8", "Item 9", "Item 10"]);
+
+  // Case 2: Complete document (fixtures)
+  for (const fixtureName of ["operational-system.md", "software-architecture.md", "research-project.md"]) {
+    const fixturePath = path.join(__dirname, "fixtures", fixtureName);
+    const content = fs.readFileSync(fixturePath, "utf-8");
+    const fixTokens = md.parse(content, {});
+    const { sections: fixSections } = splitSections(fixTokens);
+    const fixMap = parseProjectMap(fixSections.get("project map"));
+    const fixDetails = parseAreaDetails(fixSections.get("area details"));
+
+    const fixCompleteness = getAreaCompleteness(fixMap, fixDetails);
+    assert.ok(fixCompleteness.totalItems > 0);
+    assert.equal(fixCompleteness.missingItems, 0, `${fixtureName} must be 100% complete`);
+    assert.equal(fixCompleteness.matchedItems, fixCompleteness.totalItems);
+    assert.equal(fixCompleteness.missingTitles.length, 0);
+  }
+});
+
+test("DOM and CSS containment invariant: primary-workspace isolates sticky aside from lower context region", () => {
+  const htmlPath = path.join(__dirname, "..", "index.html");
+  const html = fs.readFileSync(htmlPath, "utf-8");
+
+  // 1. DOM Order and Hierarchy assertion:
+  const primaryWorkspaceIdx = html.indexOf('id="primary-workspace"');
+  const slotMapIdx = html.indexOf('id="slot-map"');
+  const inspectorAsideIdx = html.indexOf('id="inspector-aside"');
+  const contextRegionIdx = html.indexOf('id="context-region"');
+  const slotFrameIdx = html.indexOf('id="slot-frame"');
+  const slotSettledIdx = html.indexOf('id="slot-settled"');
+
+  assert.ok(primaryWorkspaceIdx !== -1, "index.html must have #primary-workspace");
+  assert.ok(contextRegionIdx !== -1, "index.html must have #context-region");
+
+  // slot-map and inspector-aside must be inside primary-workspace before context-region starts
+  assert.ok(primaryWorkspaceIdx < slotMapIdx && slotMapIdx < contextRegionIdx, "#slot-map must be inside #primary-workspace");
+  assert.ok(primaryWorkspaceIdx < inspectorAsideIdx && inspectorAsideIdx < contextRegionIdx, "#inspector-aside must be inside #primary-workspace");
+
+  // slot-frame and slot-settled must be inside context-region after it starts
+  assert.ok(contextRegionIdx < slotFrameIdx, "#slot-frame must be inside #context-region");
+  assert.ok(contextRegionIdx < slotSettledIdx, "#slot-settled must be inside #context-region");
+
+  // 2. Completeness badge element exists in DOM
+  assert.ok(html.includes('id="map-completeness-badge"'), "index.html must include #map-completeness-badge");
+
+  // 3. CSS Structural Rules assertion
+  const cssPath = path.join(__dirname, "..", "src", "style.css");
+  const css = fs.readFileSync(cssPath, "utf-8");
+
+  assert.ok(css.includes(".primary-workspace"), "CSS must style .primary-workspace");
+  assert.ok(css.includes(".context-region"), "CSS must style .context-region");
+  assert.ok(css.includes(".completeness-badge"), "CSS must style .completeness-badge");
+});
+

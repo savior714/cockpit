@@ -417,10 +417,51 @@ export function findAreaDetail(
   return areaDetails.get(normalizeTitle(title));
 }
 
+export interface AreaCompleteness {
+  totalItems: number;
+  matchedItems: number;
+  missingItems: number;
+  missingTitles: string[];
+}
+
+/** Calculate structural area-detail completeness across all inspectable map items */
+export function getAreaCompleteness(
+  parsedMap: ParsedMap,
+  areaDetails: Map<string, AreaDetail>
+): AreaCompleteness {
+  const missingTitles: string[] = [];
+  let totalItems = 0;
+  let matchedItems = 0;
+
+  if (parsedMap && parsedMap.rails) {
+    for (const rail of parsedMap.rails) {
+      for (const group of rail.groups) {
+        for (const item of group.items) {
+          totalItems++;
+          const detail = findAreaDetail(item, areaDetails);
+          if (detail) {
+            matchedItems++;
+          } else {
+            missingTitles.push(item.title);
+          }
+        }
+      }
+    }
+  }
+
+  return {
+    totalItems,
+    matchedItems,
+    missingItems: totalItems - matchedItems,
+    missingTitles,
+  };
+}
+
 /** Render Native HTML Map */
 export function renderNativeMap(
   parsedMap: ParsedMap,
-  selectedAreaId: string | null = null
+  selectedAreaId: string | null = null,
+  areaDetails?: Map<string, AreaDetail>
 ): string {
   let html = `<div class="native-project-map">`;
 

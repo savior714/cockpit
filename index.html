@@ -16,73 +16,78 @@
         <span id="you-are-here-chip" class="stage-chip" hidden></span>
       </header>
 
-      <section id="slot-map" class="panel panel-map" aria-label="프로젝트 지도">
-        <div class="panel-header">
-          <h2>프로젝트 지도</h2>
-        </div>
-        <div class="panel-body map-body"></div>
-      </section>
+      <div id="primary-workspace" class="primary-workspace">
+        <section id="slot-map" class="panel panel-map" aria-label="프로젝트 지도">
+          <div class="panel-header">
+            <h2>프로젝트 지도</h2>
+            <span id="map-completeness-badge" class="completeness-badge" hidden></span>
+          </div>
+          <div class="panel-body map-body"></div>
+        </section>
 
-      <aside id="inspector-aside" class="side" aria-label="개요 및 영역 검사">
-        <!-- Default State: Overview Panel -->
-        <div id="overview-panel" class="inspector-panel">
-          <section id="slot-now" class="panel panel-side" aria-label="현재 상황">
-            <h2>현재 상황</h2>
-            <div class="panel-body"></div>
-          </section>
-          <section id="slot-next" class="panel panel-side" aria-label="다음 전환">
-            <h2>다음 전환</h2>
-            <div class="panel-body"></div>
-          </section>
-          <section id="slot-blocked" class="panel panel-side" aria-label="직면한 문제">
-            <h2>직면한 문제</h2>
-            <div class="panel-body"></div>
-          </section>
-        </div>
+        <aside id="inspector-aside" class="side" aria-label="개요 및 영역 검사">
+          <!-- Default State: Overview Panel -->
+          <div id="overview-panel" class="inspector-panel">
+            <section id="slot-now" class="panel panel-side" aria-label="현재 상황">
+              <h2>현재 상황</h2>
+              <div class="panel-body"></div>
+            </section>
+            <section id="slot-next" class="panel panel-side" aria-label="다음 전환">
+              <h2>다음 전환</h2>
+              <div class="panel-body"></div>
+            </section>
+            <section id="slot-blocked" class="panel panel-side" aria-label="직면한 문제">
+              <h2>직면한 문제</h2>
+              <div class="panel-body"></div>
+            </section>
+          </div>
 
-        <!-- Selected State: Area Inspector Panel -->
-        <div id="area-inspector-panel" class="inspector-panel area-inspector" hidden>
-          <div class="inspector-card panel">
-            <div class="inspector-top-bar">
-              <span id="inspector-group-tag" class="group-tag">영역 상세</span>
-              <button id="inspector-close-btn" class="btn-back" type="button" aria-label="프로젝트 개요로 돌아가기">
-                ← 프로젝트 개요
-              </button>
-            </div>
-            <h2 id="inspector-title" class="inspector-title"></h2>
-            <div id="inspector-summary" class="inspector-summary"></div>
-            
-            <div id="inspector-sections" class="inspector-subsections">
-              <!-- Dynamically populated: 의미, 현재 수준, 남은 문제, 다시 열리는 조건, 근거 -->
-            </div>
+          <!-- Selected State: Area Inspector Panel -->
+          <div id="area-inspector-panel" class="inspector-panel area-inspector" hidden>
+            <div class="inspector-card panel">
+              <div class="inspector-top-bar">
+                <span id="inspector-group-tag" class="group-tag">영역 상세</span>
+                <button id="inspector-close-btn" class="btn-back" type="button" aria-label="프로젝트 개요로 돌아가기">
+                  ← 프로젝트 개요
+                </button>
+              </div>
+              <h2 id="inspector-title" class="inspector-title"></h2>
+              <div id="inspector-summary" class="inspector-summary"></div>
+              
+              <div id="inspector-sections" class="inspector-subsections">
+                <!-- Dynamically populated: 의미, 현재 수준, 남은 문제, 다시 열리는 조건, 근거 -->
+              </div>
 
-            <div class="inspector-actions">
-              <button id="inspector-copy-btn" class="btn-handoff" type="button">
-                <span class="btn-icon">📋</span> 이 영역 검토하기
-              </button>
-              <span id="copy-toast" class="copy-toast" hidden>✓ 검토 요청이 복사되었습니다</span>
+              <div class="inspector-actions">
+                <button id="inspector-copy-btn" class="btn-handoff" type="button">
+                  <span class="btn-icon">📋</span> 이 영역 검토하기
+                </button>
+                <span id="copy-toast" class="copy-toast" hidden>✓ 검토 요청이 복사되었습니다</span>
+              </div>
             </div>
           </div>
-        </div>
-      </aside>
+        </aside>
+      </div>
 
-      <section id="slot-frame" class="panel panel-context" aria-label="제품 목표">
-        <h2>제품 목표</h2>
-        <div class="panel-body"></div>
-      </section>
+      <div id="context-region" class="context-region">
+        <section id="slot-frame" class="panel panel-context" aria-label="제품 목표">
+          <h2>제품 목표</h2>
+          <div class="panel-body"></div>
+        </section>
 
-      <section id="slot-settled" class="panel panel-context" aria-label="확정된 방향">
-        <h2>확정된 방향</h2>
-        <div class="panel-body"></div>
-      </section>
+        <section id="slot-settled" class="panel panel-context" aria-label="확정된 방향">
+          <h2>확정된 방향</h2>
+          <div class="panel-body"></div>
+        </section>
 
-      <section id="slot-recent" class="panel panel-context" aria-label="최근 진척" hidden>
-        <h2>최근 진척</h2>
-        <div class="panel-body"></div>
-      </section>
+        <section id="slot-recent" class="panel panel-context" aria-label="최근 진척" hidden>
+          <h2>최근 진척</h2>
+          <div class="panel-body"></div>
+        </section>
 
-      <section id="slot-extra" class="panel-context-stack" hidden aria-label="추가 맥락">
-      </section>
+        <section id="slot-extra" class="panel-context-stack" hidden aria-label="추가 맥락">
+        </section>
+      </div>
 
       <p id="empty-state" class="empty-state" hidden></p>
     </main>

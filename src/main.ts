@@ -8,6 +8,7 @@ import {
   type MapRail,
   type ParsedMap,
   type AreaDetail,
+  type AreaCompleteness,
   normalizeKey,
   escapeHtml,
   renderTokens,
@@ -16,6 +17,7 @@ import {
   parseProjectMap,
   parseAreaDetails,
   findAreaDetail,
+  getAreaCompleteness,
   renderNativeMap,
   isCurrentStageHeading,
   isFoundationHeading,
@@ -123,7 +125,7 @@ function updateInspectorView(item: MapItem | null) {
     const emptySub = document.createElement("div");
     emptySub.className = "inspector-sub-card empty-detail";
     emptySub.innerHTML = `
-      <p class="muted">이 영역에 대한 추가 세부 기록(의미, 현재 수준, 근거 등)이 아직 '## 영역 상세'에 작성되지 않았습니다.</p>
+      <p class="muted">이 영역('${escapeHtml(item.title)}')에 대한 추가 세부 기록(의미, 현재 수준, 남은 문제, 근거 등)이 소스 문서의 '## 영역 상세'에 아직 작성되지 않았습니다.</p>
     `;
     sectionsEl.appendChild(emptySub);
   }
@@ -208,7 +210,7 @@ async function renderDoc(source: string) {
   const mapBody = mapPanel.querySelector<HTMLElement>(".map-body")!;
 
   if (parsedMap.isNativeMap) {
-    mapBody.innerHTML = renderNativeMap(parsedMap);
+    mapBody.innerHTML = renderNativeMap(parsedMap, selectedAreaId, currentAreaDetails);
 
     // Bind click events on all map cards
     mapBody.querySelectorAll<HTMLButtonElement>(".map-card").forEach((btn) => {
@@ -228,6 +230,19 @@ async function renderDoc(source: string) {
       ? withMermaidPlaceholders(renderTokens(mapTokens))
       : `<p class="muted">프로젝트 지도 내용이 없습니다.</p>`;
     mapBody.innerHTML = html;
+  }
+
+  // Setup Area Detail Completeness Badge
+  const completeness = getAreaCompleteness(parsedMap, currentAreaDetails);
+  const completenessBadge = document.getElementById("map-completeness-badge");
+  if (completenessBadge) {
+    if (completeness.totalItems > 0 && completeness.missingItems > 0) {
+      completenessBadge.textContent = `영역 상세 ${completeness.matchedItems}/${completeness.totalItems} · ${completeness.missingItems}개 미작성`;
+      completenessBadge.className = "completeness-badge missing";
+      completenessBadge.hidden = false;
+    } else {
+      completenessBadge.hidden = true;
+    }
   }
 
   // Setup Header Stage Chip
@@ -375,5 +390,6 @@ export {
   splitSections,
   parseAreaDetails,
   findAreaDetail,
+  getAreaCompleteness,
   renderNativeMap,
 };
