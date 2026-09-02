@@ -1,7 +1,6 @@
 import MarkdownIt from "markdown-it";
 import type { Token } from "markdown-it";
 import mermaid from "mermaid";
-import source from "../PROGRESS.md?raw";
 import "./style.css";
 
 const md = new MarkdownIt({ html: false, linkify: true });
@@ -83,7 +82,7 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-async function render() {
+async function renderDoc(source: string) {
   const tokens = md.parse(source, {});
   const { title, sections } = splitSections(tokens);
 
@@ -140,7 +139,6 @@ async function render() {
 
   const chip = document.getElementById("you-are-here-chip")!;
   chip.hidden = true;
-  const mapFence = document.querySelector<HTMLElement>("#slot-map .mermaid[data-src]");
   for (const el of nodes) {
     const src = el.getAttribute("data-src") ?? "";
     if (!el.closest("#slot-map")) continue;
@@ -157,4 +155,31 @@ async function render() {
   }
 }
 
-void render();
+async function fetchAndRender() {
+  try {
+    const res = await fetch("/progress.md", { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const text = await res.text();
+    await renderDoc(text);
+  } catch (err) {
+    document.title = "Cockpit — Unavailable";
+    document.getElementById("project-title")!.textContent = "Document unavailable";
+    const empty = document.getElementById("empty-state")!;
+    empty.textContent = `Could not load progress document (${err instanceof Error ? err.message : String(err)}).`;
+    empty.hidden = false;
+  }
+}
+
+function initLiveReload() {
+  if (typeof EventSource === "undefined") return;
+  const es = new EventSource("/events");
+  es.addEventListener("change", () => {
+    void fetchAndRender();
+  });
+}
+
+void fetchAndRender();
+initLiveReload();
+

@@ -3,10 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "bin": {
+    "cockpit": "./scripts/serve.mjs"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cockpit": "node scripts/serve.mjs"
   },
   "dependencies": {
     "markdown-it": "^14.1.0",
