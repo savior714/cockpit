@@ -22,14 +22,13 @@
     "cockpit": "node scripts/serve.mjs"
   },
   "dependencies": {
-    "markdown-it": "^14.1.0",
-    "mermaid": "^11.10.1"
-  },
-  "devDependencies": {
     "@types/markdown-it": "^14.1.2",
+    "markdown-it": "^14.1.0",
+    "mermaid": "^11.10.1",
     "typescript": "^5.9.0",
     "vite": "^7.1.0"
   },
+  "devDependencies": {},
   "allowScripts": {
     "esbuild@0.28.2": true
   }
