@@ -69,14 +69,26 @@ cockpit ./docs/PROGRESS.md --port 5000 --no-open
 
 ## 4. Cockpit 동작 원리 및 워크플로우
 
-### Cockpit을 켜둔 채 작업하기
+### 권위 경계 및 동작 원리
 
-1. **자동 새로고침 (Live Reload)**: Cockpit은 대상 `PROGRESS.md` 파일을 감시(watch)합니다. 파일이 저장되면 브라우저를 새로고침하지 않아도 화면이 즉시 업데이트됩니다.
-2. **저장소 미침범 & 분석 없음**: Cockpit 자체는 Git 저장소나 코드를 직접 분석하거나 수정하지 않습니다. 모든 상태의 단일 진실 공급원(SSOT)은 `PROGRESS.md` 마크다운 파일 하나뿐입니다.
+Cockpit의 역할과 데이터 흐름은 다음과 같이 명확히 분리되어 있습니다:
+
+```text
+repo / runtime / 관련 SSOT (최신 실제 증거)
+        ↓ (대조 및 갱신)
+외부 역량 에이전트 (Claude Code, ChatGPT, Gemini 등)
+        ↓ (작성/저장)
+   PROGRESS.md (Cockpit이 읽는 단일 현황 문서)
+        ↓ (시각화)
+     Cockpit
+```
+
+- **단일 문서 시각화**: Cockpit은 지정된 단일 `PROGRESS.md` 문서만을 읽어 화면에 표시하며, 저장소나 런타임을 직접 검사·분석하지 않습니다.
+- **실제 증거 우선**: `PROGRESS.md`는 Cockpit이 읽고 보여주는 단일 현황 문서일 뿐, 최신 코드/런타임/도메인 증거보다 상위의 권위를 갖지 않습니다. 프로젝트 실재가 바뀌면 `PROGRESS.md`는 진부화(stale)될 수 있으며, 실제 증거와 충돌 시 언제나 최신 실제 증거가 우선합니다.
+- **외부 에이전트 갱신**: 프로젝트 상태가 달라지면 외부 코딩 에이전트가 최신 실제 증거와 기존 문서를 대조하여 `PROGRESS.md`를 갱신합니다.
+- **자동 새로고침 (Live Reload)**: Cockpit은 대상 `PROGRESS.md` 파일 저장을 감시하여 브라우저 새로고침 없이 화면을 즉시 갱신합니다.
 
 ### 작업 중 PROGRESS.md 갱신하기
-
-Cockpit 자체는 저장소 상태를 직접 검사하거나, PROGRESS.md를 수정하거나, 진척을 자체 추론하거나, 다음 작업을 선정하지 않습니다.
 
 작업을 진행한 뒤 사용자가 직접 외부의 역량 있는 코딩 에이전트(Claude Code, ChatGPT, Gemini 등)에게 다음과 같이 요청하여 `PROGRESS.md`를 갱신합니다:
 
