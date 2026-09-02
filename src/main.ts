@@ -14,12 +14,24 @@ mermaid.initialize({
 
 const HERE_MARKER = /^\s*%%\s*YOU\s+ARE\s+HERE\s*:\s*(\S+)/im;
 
+/** Korean heading text → canonical English slot key used internally. */
+const HEADING_ALIAS: Record<string, string> = {
+  "프로젝트 지도": "project map",
+  "지금 하는 일": "current frontier",
+  "다음": "next",
+  "막힌 것": "blocked",
+  "프로젝트 큰 그림": "project frame",
+  "이미 정해진 방향": "settled direction",
+  "최근 완료": "recently completed",
+};
+
 function normalizeHeading(inner: Token[]): string {
-  return inner
+  const raw = inner
     .filter((t) => t.type === "inline")
     .map((t) => t.content.trim().toLowerCase())
     .join(" ")
     .replace(/\s+/g, " ");
+  return HEADING_ALIAS[raw] ?? raw;
 }
 
 /** Split top-level token stream into sections keyed by normalized h2 heading text. */
@@ -75,7 +87,7 @@ function setSection(panelId: string, tokens: Token[] | undefined) {
   const body = panel.querySelector<HTMLElement>(".panel-body");
   if (!body) return;
   const html = tokens ? withMermaidPlaceholders(renderTokens(tokens)) : "";
-  body.innerHTML = html || `<p class="muted">Nothing recorded yet.</p>`;
+  body.innerHTML = html || `<p class="muted">아직 기록된 내용이 없습니다.</p>`;
 }
 
 function escapeHtml(s: string): string {
@@ -89,7 +101,7 @@ async function renderDoc(source: string) {
   const byHeading = (name: string) => sections.get(name);
 
   document.title = title ? `${title} — Cockpit` : "Cockpit";
-  document.getElementById("project-title")!.textContent = title || "Untitled project";
+  document.getElementById("project-title")!.textContent = title || "이름 없는 프로젝트";
 
   setSection("slot-map", byHeading("project map"));
   setSection("slot-now", byHeading("current frontier"));
@@ -116,7 +128,7 @@ async function renderDoc(source: string) {
     const card = document.createElement("section");
     card.className = "panel panel-context";
     card.innerHTML = `<h2>${escapeHtml(heading)}</h2><div class="panel-body">${
-      renderTokens(toks) || `<p class="muted">Nothing recorded yet.</p>`
+      renderTokens(toks) || `<p class="muted">아직 기록된 내용이 없습니다.</p>`
     }</div>`;
     extra.appendChild(card);
     extrasShown = true;
@@ -149,7 +161,7 @@ async function renderDoc(source: string) {
     if (g) {
       g.classList.add("you-are-here");
       const label = g.querySelector(".nodeLabel")?.textContent?.trim();
-      chip.textContent = `YOU ARE HERE — ${label || nodeId}`;
+      chip.textContent = `지금 여기 — ${label || nodeId}`;
       chip.hidden = false;
     }
   }
@@ -165,9 +177,9 @@ async function fetchAndRender() {
     await renderDoc(text);
   } catch (err) {
     document.title = "Cockpit — Unavailable";
-    document.getElementById("project-title")!.textContent = "Document unavailable";
+    document.getElementById("project-title")!.textContent = "문서를 불러올 수 없습니다";
     const empty = document.getElementById("empty-state")!;
-    empty.textContent = `Could not load progress document (${err instanceof Error ? err.message : String(err)}).`;
+    empty.textContent = `진행 문서를 불러오지 못했습니다 (${err instanceof Error ? err.message : String(err)}).`;
     empty.hidden = false;
   }
 }

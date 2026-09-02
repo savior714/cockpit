@@ -7,6 +7,7 @@ import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import { watch } from "node:fs";
 import { createHash } from "node:crypto";
+import { exec } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
 
@@ -17,6 +18,7 @@ const DEFAULT_PORT = 4321;
 function parseArgs(argv) {
   let file = null;
   let port = DEFAULT_PORT;
+  let noOpen = false;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--port" || a === "-p") {
@@ -24,8 +26,10 @@ function parseArgs(argv) {
       if (!Number.isInteger(port) || port < 0 || port > 65535) {
         throw new Error(`invalid --port value: ${argv[i]}`);
       }
+    } else if (a === "--no-open") {
+      noOpen = true;
     } else if (a === "--help" || a === "-h") {
-      return { help: true, file, port };
+      return { help: true, file, port, noOpen };
     } else if (a.startsWith("--port=")) {
       port = Number.parseInt(a.slice(7), 10);
       if (!Number.isInteger(port) || port < 0 || port > 65535) {
@@ -39,7 +43,7 @@ function parseArgs(argv) {
       throw new Error(`unexpected extra argument: ${a}`);
     }
   }
-  return { help: false, file, port };
+  return { help: false, file, port, noOpen };
 }
 
 const MIME = {
@@ -52,6 +56,20 @@ const MIME = {
   ".ico": "image/x-icon",
   ".woff2": "font/woff2",
 };
+
+function openBrowser(url) {
+  const plat = process.platform;
+  let cmd;
+  if (plat === "darwin") cmd = `open "${url}"`;
+  else if (plat === "win32") cmd = `start "" "${url}"`;
+  else cmd = `xdg-open "${url}"`;
+
+  exec(cmd, (err) => {
+    if (err) {
+      console.error(`cockpit: could not open browser — ${err.message}`);
+    }
+  });
+}
 
 async function fingerprint(file) {
   const [content, st] = await Promise.all([readFile(file), stat(file)]);
@@ -163,11 +181,14 @@ async function main() {
   }
 
   if (args.help || !args.file) {
-    console.log(`Usage: cockpit <path/to/PROGRESS.md> [--port <n>]
+    console.log(`Usage: cockpit <path/to/PROGRESS.md> [--port <n>] [--no-open]
 
 Serves the Cockpit viewer on http://127.0.0.1:<port> (default ${DEFAULT_PORT}),
 reading exactly the given Markdown file at runtime and live-reloading the page
-when it changes. Read-only.`);
+when it changes. Read-only.
+
+The default browser opens automatically once the server is ready.
+Pass --no-open to suppress this.`);
     process.exit(args.help ? 0 : 2);
   }
 
@@ -219,8 +240,12 @@ when it changes. Read-only.`);
 
   server.listen(args.port, "127.0.0.1", () => {
     const actual = server.address();
+    const url = `http://127.0.0.1:${actual.port}/`;
     console.log(`cockpit: viewing ${progressFile}`);
-    console.log(`cockpit: open http://127.0.0.1:${actual.port}/`);
+    console.log(`cockpit: open ${url}`);
+    if (!args.noOpen) {
+      openBrowser(url);
+    }
   });
 
   const shutdown = () => server.close(() => process.exit(0));
