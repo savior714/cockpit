@@ -1145,19 +1145,39 @@ export function formatExecutionWaveContractLines(): string[] {
   ];
 }
 
+/** Shared project-model admission contract across all Problem Framer handoffs */
+function formatProjectModelAdmissionLines(scope: "focus" | "area" = "focus"): string[] {
+  const openClaimLine = scope === "area"
+    ? "3. [Open-Claim Re-admission] [Falsification] Area Details의 `남은 문제`는 실행 task 목록이 아니라 fresh evidence로 재검증할 기존 claim이다. 각 항목을 task로 승격하기 전에 current implementation/runtime/proof에서 closure 및 counterevidence를 적극적으로 탐색하라. 이미 닫혔거나 defect가 아닌 항목은 제거 대상으로 판정하고, 전달된 모든 problem이 닫혔으면 NO_ACTION / NO_CHANGE를 낸다. 추론 중에는 `STILL_OPEN`/`CLOSED`/`PROOF_GAP`/`NOT_ADMITTED` 중 정확히 하나로 분류하라."
+    : "3. [Open-Claim Re-admission] [Falsification] 전달된 `남은 문제`/`직면한 문제`/`다음 전환`의 선행조건/material limitation은 실행 task가 아니라 fresh evidence로 재검증할 claim이다. 각 항목을 task로 승격하기 전에 current implementation/runtime/proof에서 closure/counterevidence를 적극적으로 탐색하고, 추론 중에만 `STILL_OPEN`/`CLOSED`/`PROOF_GAP`/`NOT_ADMITTED` 중 정확히 하나로 분류하라.";
+
+  return [
+    "2. [Mode Selection — REFRESH vs RECONSTRUCT] 먼저 기존 mental model의 신뢰성을 평가하고 진입 모드를 선택하라.",
+    "   - REFRESH: 기존 mental model의 신뢰성이 최근의 독립 evidence와 신뢰할 수 있는 provenance로 충분히 확립된 경우에만 사용한다. fresh evidence와 비교해 material semantic delta가 있는 surface만 Targeted Refresh하고, 무관한 stable surface는 보존한다.",
+    "   - RECONSTRUCT: 기존 mental model의 신뢰성을 전제로 할 수 없을 때 사용한다. current authority/code/runtime/proof/relevant Git에서 독립적으로 project model을 다시 구성하고, 기존 PROGRESS는 마지막 비교 전까지 topology/architecture truth가 아닌 historical claim/comparison source로만 취급한다.",
+    "   - 순서: current authority/code/runtime/proof/relevant Git → independent project reconstruction → coverage closure → claim admission/uncertainty handling → synthesis → existing PROGRESS comparison → stale/false/missing semantics의 replacement.",
+    "   - 대표적인 RECONSTRUCT 조건: Cockpit first-use/최초 프로젝트 연결; 사용자가 현재 model 정확성에 의문을 제기함; 여러 stale/false claim 발견; 실제 architecture/workflow와 Project Map decomposition이 맞지 않음; 장기간 재진입으로 baseline 신뢰성이 불명확함; 기존 PROGRESS의 provenance/fidelity를 신뢰할 근거가 충분하지 않음.",
+    "   - RECONSTRUCT는 모든 실행을 대체하는 기본 절차가 아니다. 신뢰성이 확립된 일반 bounded task에는 기존 Mental Model Delta Test와 Targeted Refresh를 유지한다.",
+    openClaimLine,
+    "4. [Positive Model Re-admission] RECONSTRUCT에서는 negative/open claim뿐 아니라 material positive model도 grandfather하지 않는다. subsystem의 존재/역할, A→B→C workflow, semantic owner, capability의 구현·검증 여부, Project Map decomposition, Current Stage는 current evidence가 다시 뒷받침할 때만 admitted한다. 코드·설정·테스트가 존재한다는 사실만으로 capability나 proof를 인정하지 않는다.",
+    "5. [Coverage Closure — transient] RECONSTRUCT synthesis 전에 각 material semantic surface를 가능한 범위에서 설명하라: 실제 역할, semantic owner, 실제 entry/runtime path, consequential consumer/downstream effect, authority/intent source, 직접적인 implementation/proof evidence, relevant history가 현재 의미를 바꾸는지, 최종 model에서 represented / intentionally omitted / UNKNOWN 중 무엇인지. 모든 파일/함수 전수 inventory, coverage %, persistent table/registry/schema/DB/score는 요구하거나 만들지 않는다. 설명되지 않은 material surface가 남아 있으면 synthesis를 완료한 것으로 간주하지 않는다.",
+    "6. [Project Map Escape Hatch] Focus/Area를 검토하다가 전달된 Area 또는 Project Map의 의미가 틀렸거나, semantic owner가 다른 곳에 있거나, Project Map decomposition이 실제 architecture/workflow를 왜곡하거나, root cause가 기존 boundary를 넘는다는 direct evidence가 나오면 기존 map에 억지로 맞추지 말고 RECONSTRUCT 또는 필요한 wider re-entry로 escalate하라. 기본 bounded review는 유지하되 자동으로 repository-wide audit으로 확대하지 않는다.",
+  ];
+}
+
 /** Format instruction block for Current Focus Problem Framer handoff */
 export function formatFocusHandoffInstruction(): string {
   const lines: string[] = [
     "---",
     "[PROBLEM FRAMER HANDOFF INSTRUCTION]",
     "1. [Fresh Evidence 대조] 외부 capable agent는 위 전달받은 context를 최종 truth로 신뢰하지 말고, 반드시 현재 repo/runtime/SSOT의 fresh evidence와 대조하여 실제 문제를 검증하라.",
-    "2. [Open-Claim Re-admission] 전달된 `남은 문제`/`직면한 문제`/`다음 전환`의 선행조건/material limitation은 실행 task가 아니라 fresh evidence로 재검증할 claim이다. 각 항목을 task로 승격하기 전에 current implementation/runtime/proof에서 closure/counterevidence를 적극적으로 탐색하고, 이미 닫혔거나 defect가 아닌 항목은 제거 대상으로 판정하라.",
-    "3. [Framing Objective] Current Focus를 Next Transition까지 전진시키기 위해 현재 시점에서 의미와 성공조건을 확정할 수 있는 bounded work를 찾는다. 현재 Focus와 무관한 작업을 단순히 task 수를 늘리기 위해 끌어오지 않는다.",
-    "4. [No Problem → No Task] 현재 Focus scope에서 실제 문제가 없거나 추가 작업이 불필요하다면 무리하게 task를 제조하지 말고 NO_ACTION / NO_CHANGE 결론을 낸다.",
-    "5. [Execution Wave 분류 & Local-Agent Prompts]:",
+    ...formatProjectModelAdmissionLines(),
+    "7. [Framing Objective] Current Focus를 Next Transition까지 전진시키기 위해 현재 시점에서 의미와 성공조건을 확정할 수 있는 bounded work를 찾는다. 현재 Focus와 무관한 작업을 단순히 task 수를 늘리기 위해 끌어오지 않는다.",
+    "8. [No Problem → No Task] 현재 Focus scope에서 실제 문제가 없거나 추가 작업이 불필요하다면 무리하게 task를 제조하지 말고 NO_ACTION / NO_CHANGE 결론을 낸다.",
+    "9. [Execution Wave 분류 & Local-Agent Prompts]:",
     ...formatExecutionWaveContractLines().map((l) => "   " + l),
-    "6. [No Persistence] Execution Wave는 일회성 transient framing 결과다. Cockpit/PROGRESS.md에 task registry, backlog, queue, task status, agent assignment, dependency persistence를 저장하거나 추가하지 않는다.",
-    "7. [Executor Neutrality] 모든 prompt는 특정 도구/에이전트 이름이나 사용자 개인 설정/메모리에 종속되지 않는 executor-neutral prompt로 작성한다.",
+    "10. [No Persistence] Execution Wave는 일회성 transient framing 결과다. Cockpit/PROGRESS.md에 task registry, backlog, queue, task status, agent assignment, dependency persistence를 저장하거나 추가하지 않는다. Model admission 분류 역시 일회성 transient reasoning이며 claim registry를 저장하지 않는다.",
+    "11. [Executor Neutrality] 모든 prompt는 특정 도구/에이전트 이름이나 사용자 개인 설정/메모리에 종속되지 않는 executor-neutral prompt로 작성한다.",
   ];
   return lines.join("\n");
 }
@@ -1168,14 +1188,14 @@ export function formatAreaHandoffInstruction(): string {
     "---",
     "[PROBLEM FRAMER HANDOFF INSTRUCTION]",
     "1. [Fresh Evidence 대조] 외부 capable agent는 위 전달받은 context를 최종 truth로 신뢰하지 말고, 반드시 현재 repo/runtime/SSOT의 fresh evidence와 대조하여 선택된 영역의 실제 상태/취약점/미해결 문제를 검증하라.",
-    "2. [Open-Claim Re-admission / Anti-Anchoring] Area Details의 `남은 문제`는 실행 task 목록이 아니라 fresh evidence로 재검증할 기존 claim이다. 각 항목을 task로 승격하기 전에 current implementation/runtime/proof에서 closure 및 counterevidence를 적극적으로 탐색하라. 이미 닫혔거나 defect가 아닌 항목은 제거 대상으로 판정하고, 전달된 모든 problem이 닫혔으면 NO_ACTION / NO_CHANGE를 낸다.",
-    "3. [Framing Objective] 선택된 Area의 실제 상태/취약점/미해결 문제를 fresh evidence로 깊게 검토하는 것이 objective다. root cause나 proof가 인접 Area를 실제로 통과한다면 필요한 범위까지 조사할 수 있으나, 임의로 프로젝트 전체 review로 확장하지 않는다.",
-    "4. [No Problem → No Task] 검토 결과 해당 영역에 실제 문제가 없거나 추가 조치가 불필요하다면 무리하게 task/Wave를 제조하지 말고 NO_ACTION / NO_CHANGE 결론을 낸다.",
-    "5. [Execution Wave 분류 & Local-Agent Prompts]:",
+    ...formatProjectModelAdmissionLines("area"),
+    "7. [Framing Objective] 선택된 Area의 실제 상태/취약점/미해결 문제를 fresh evidence로 깊게 검토하는 것이 objective다. root cause나 proof가 인접 Area를 실제로 통과한다면 필요한 범위까지 조사할 수 있으나, 임의로 프로젝트 전체 review로 확장하지 않는다.",
+    "8. [No Problem → No Task] 검토 결과 해당 영역에 실제 문제가 없거나 추가 조치가 불필요하다면 무리하게 task/Wave를 제조하지 말고 NO_ACTION / NO_CHANGE 결론을 낸다.",
+    "9. [Execution Wave 분류 & Local-Agent Prompts]:",
     "   - 문제가 확인되면 해당 문제를 해결하는 데 지금 확정 가능한 최대 범위까지만 Execution Wave를 구성한다.",
     ...formatExecutionWaveContractLines().map((l) => "   " + l),
-    "6. [No Persistence] Execution Wave는 일회성 transient framing 결과다. Cockpit/PROGRESS.md에 task registry, backlog, queue, task status, agent assignment, dependency persistence를 저장하거나 추가하지 않는다.",
-    "7. [Executor Neutrality] 모든 prompt는 특정 도구/에이전트 이름이나 사용자 개인 설정/메모리에 종속되지 않는 executor-neutral prompt로 작성한다.",
+    "10. [No Persistence] Execution Wave는 일회성 transient framing 결과다. Cockpit/PROGRESS.md에 task registry, backlog, queue, task status, agent assignment, dependency persistence를 저장하거나 추가하지 않는다. Model admission 분류 역시 일회성 transient reasoning이며 claim registry를 저장하지 않는다.",
+    "11. [Executor Neutrality] 모든 prompt는 특정 도구/에이전트 이름이나 사용자 개인 설정/메모리에 종속되지 않는 executor-neutral prompt로 작성한다.",
   ];
   return lines.join("\n");
 }

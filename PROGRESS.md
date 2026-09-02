@@ -6,16 +6,17 @@
 #### 마크다운 파싱 및 뷰어 렌더링 파이프라인
 1. **마크다운 파서 및 시맨틱 분해** — H2 슬롯, H3 레일/그룹, H3 영역 상세 속성을 토큰화하고 정형 데이터 구조로 변환
 2. **네이티브 프로젝트 지도 렌더링** — 목록 문법 기반 방향성 커넥터/대등 카드 그리드 및 Frontier Grid 렌더링
-3. **개요 패널 및 컨텍스트 Handoff** — 핵심 상태 요약 및 외부 Problem Framer 연계를 위한 컨텍스트 클립보드 복사
+3. **개요 패널 및 프로젝트 이해 Handoff** — 핵심 상태 요약 및 외부 Problem Framer에 검증 가능한 프로젝트 문맥·진입 계약을 전달하는 컨텍스트 클립보드 복사
 4. **영역 상세 검사기** — 1:1 타이틀 매칭 기반 영역별 의미, 수준, 근거 점진적 공개 및 영역별 Handoff 지원
 
-### 2차 배포 및 CLI 궤적
+### 2차 배포·운영 및 수용 궤적
 #### 확보된 기반
 - **루프백 HTTP 서버 및 SSE 실시간 리로드** — Node.js 내장 모듈 기반 단일 파일 서빙 및 파일 변경 감시 시 SSE 갱신 이벤트 전달
 - **결정론적 구조 검사기** — `cockpit check`를 통한 지도-상세 1:1 일치, 고아/중복 검출 및 구조적 규약 사전 검증
+- **독립 패키징 및 격리 설치 검증** — `prepack` 빌드, npm tarball 패키징, 격리된 접두사에서의 전역 설치 및 CLI/서버 구동 자동화 스모크 검증
 
 #### 현재 단계
-- **독립 패키징 및 격리 설치 검증** — `prepack` 빌드, npm tarball 패키징, 격리된 접두사에서의 전역 설치 및 CLI/서버 구동 자동화 스모크 검증
+- **프로젝트 이해 충실도 계약 및 독립 재구성 수용성** — baseline 신뢰성이 불명확한 진입에서 기존 PROGRESS anchoring을 끊고, material surface coverage·positive model·map boundary를 fresh evidence로 재구성하는 외부 agent 경로의 fidelity 검증
 
 #### 향후 여정
 - **실환경 다중 저장소 운용 및 이식성 검증** — 실제 외부 사용자 프로젝트 저장소 환경에서의 GitHub/npm 설치 및 외부 에이전트 운영 루프 실증
@@ -47,19 +48,19 @@ B1.2 Frontier Grid 비주얼 디렉션 구현. 명시적 마크다운 목록 문
 - `src/style.css`
 - `tests/parser.test.mjs` (네이티브 맵 렌더링 불변식 검증)
 
-### 개요 패널 및 컨텍스트 Handoff
+### 개요 패널 및 프로젝트 이해 Handoff
 
 #### 의미
-우측 상단 기본 화면에 프로젝트의 현재 상황, 다음 전환, 직면한 문제, 현재 집중을 표시하고, 외부 Problem Framer 연계를 위한 표준화된 Handoff 마크다운을 클립보드로 전송하는 컴포넌트.
+우측 상단 기본 화면에 프로젝트의 현재 상황, 다음 전환, 직면한 문제, 현재 집중을 표시하고, 외부 Problem Framer가 프로젝트 model을 검증·재구성할 수 있도록 표준화된 Handoff 마크다운과 진입 계약을 클립보드로 전송하는 컴포넌트.
 
 #### 현재 수준
-Current Focus 유무에 따른 조건부 렌더링, `buildFocusHandoffContext`를 통한 Execution Wave(NOW/SERIAL NOW/WAIT FOR EVIDENCE) 프레이밍 가이드라인 결합 클립보드 복사 함수 및 DOM 피드백 구조, Area handoff의 기존 `남은 문제` anti-anchoring 및 `NO_ACTION / NO_CHANGE` 지침이 구현되어 단위 테스트로 검증됨.
+Current Focus 유무에 따른 조건부 렌더링, `buildFocusHandoffContext`를 통한 Execution Wave(NOW/SERIAL NOW/WAIT FOR EVIDENCE) 프레이밍 가이드라인 결합 클립보드 복사 함수 및 DOM 피드백 구조, Focus/Area handoff의 REFRESH·RECONSTRUCT 모드 선택, anti-anchoring, positive-model re-admission, transient Coverage Closure 및 Project Map escape 지침이 구현되어 단위 테스트로 전송 동작을 검증함. 이는 외부 프로젝트 전반의 model fidelity 자체를 증명하는 것은 아님.
 
 #### 근거
 - `src/parser.ts:L850-1050`
 - `src/main.ts`
 - `tests/parser.test.mjs` (Handoff 컨텍스트 조립 검증)
-- `src/parser.ts:L1128-1273` (Focus/Area handoff contract and anti-anchoring instruction)
+- `src/parser.ts:L1148-1200` (Focus/Area handoff contract, REFRESH/RECONSTRUCT admission and anti-anchoring instruction)
 
 ### 영역 상세 검사기
 
@@ -118,19 +119,33 @@ Current Focus 유무에 따른 조건부 렌더링, `buildFocusHandoffContext`�
 실제 외부 프로젝트 저장소 환경에서 `github:savior714/cockpit#main` 또는 npm 배포본을 설치하고, 외부 역량 에이전트가 제안된 운영 루프(Operator Workflow)에 따라 실제 PROGRESS.md를 점검·시각화하는 실환경 수용성 검증.
 
 #### 현재 수준
-로컬 빌드 및 격리된 접두사 설치 스모크는 입증되었으나, 다양한 외부 실제 프로젝트 저장소에서의 GitHub 전역 설치 및 실제 에이전트 운영 루프를 거치는 실환경 이식성 검증이 향후 마일스톤으로 남아 있음.
+로컬 빌드 및 격리된 접두사 설치 스모크는 입증되었고, 프로젝트 이해 진입 계약은 RECONSTRUCT와 신뢰 가능한 baseline에 대한 REFRESH를 구분하도록 보강되었으나, 다양한 외부 실제 프로젝트 저장소에서 두 경로가 실제로 faithful한 model을 산출하는지에 대한 수용성 증명은 아직 없음. GitHub 전역 설치와 실제 에이전트 운영 루프를 거치는 이식성 검증은 이 fidelity gate 뒤의 마일스톤으로 남아 있음.
 
 #### 근거
 - `README.md` (설치 가이드 및 공식 운영 계약)
 - `tests/package-smoke.test.mjs` (현재 격리 테스트 경계)
 
+### 프로젝트 이해 충실도 계약 및 독립 재구성 수용성
+
+#### 의미
+기존 `PROGRESS.md`가 현재 프로젝트를 충분히 설명한다는 전제를 둘 수 없을 때, 외부 capable agent가 현재 권위·코드·runtime·proof·관련 Git에서 프로젝트 model을 독립적으로 다시 구성하고 문서와의 차이를 판단하는 수용성 표면. Cockpit은 이 reasoning을 수행하지 않고 그 계약이 담긴 문맥만 전달함.
+
+#### 현재 수준
+Handoff와 authoring contract가 신뢰 가능한 baseline에 대한 REFRESH와 불명확한 baseline에 대한 RECONSTRUCT를 구분하고, RECONSTRUCT에서 기존 문서 anchoring 차단, material semantic surface Coverage Closure, positive/open claim 재입장, Project Map boundary escape를 요구하도록 보강됨. 현재 저장소의 parser/contract 전송과 관련 regression은 입증되지만, 외부 실제 프로젝트에서 faithful한 model을 산출하는 수용성은 아직 검증되지 않음.
+
+#### 근거
+- `README.md` (Operator Workflow, First-Use / RECONSTRUCT 및 REFRESH 계약)
+- `src/parser.ts` (Focus/Area Handoff admission instruction)
+- `tests/parser.test.mjs` (양쪽 Handoff contract transport regression)
+
 ## 현재 상황
-Cockpit은 마크다운 파서, 네이티브 맵 렌더러, 영역 검사기, Handoff 컨텍스트 전송, 루프백 서버 및 `cockpit check` 구조 검사기 등 핵심 런타임을 구현하고 단위 및 패키지 격리 스모크 테스트를 통과했습니다. 가상 데이터(Orion 데모) 제거와 사실 기반 PROGRESS 수립, 다중 패스 증거 동화 및 기존 open/negative claim 재입장·반증 계약 공식화가 완료되었으며, 내부 개발 상의 실질적 결함 없이 안정적인 배포 검증 단계에 도달해 있습니다. 외부 실제 프로젝트를 대상으로 한 수용성 검증에서는 대상 프로젝트를 evidence로만 취급하고, 필요한 경우 하나의 사전 승인된 자극을 관찰한 뒤 Cockpit의 semantic delta만 추출하고 중단하는 운영 경계를 갖습니다.
+Cockpit은 마크다운 파서, 네이티브 맵 렌더러, 영역 검사기, Handoff 컨텍스트 전송, 루프백 서버 및 `cockpit check` 구조 검사기 등 핵심 런타임을 구현하고 단위 및 패키지 격리 스모크 테스트를 통과했습니다. 가상 데이터(Orion 데모) 제거와 사실 기반 PROGRESS 수립, 다중 패스 증거 동화 및 기존 open/negative claim 재입장·반증 계약을 진행했지만, self-dogfood 재구성에서 기존 계약이 baseline 신뢰성 없는 진입을 명시적으로 구분하지 않고 positive project model과 semantic surface coverage를 충분히 다시 admission하지 않는 fidelity gap이 드러났습니다. 이제 Handoff 계약은 REFRESH와 RECONSTRUCT를 분리하고, RECONSTRUCT에서 anti-anchoring·Coverage Closure·positive-model re-admission·Project Map escape를 요구합니다. 이 계약과 전송은 저장소 테스트로 입증되지만, 외부 프로젝트 전반에서 faithful한 model이 산출된다는 사실은 아직 입증하지 않습니다. 외부 실제 프로젝트 수용성 검증에서는 대상 프로젝트를 evidence로만 취급하고, 필요한 경우 하나의 사전 승인된 자극을 관찰한 뒤 Cockpit의 semantic delta만 추출하고 중단하는 운영 경계를 갖습니다.
 
 ## 다음 전환
-실제 외부 프로젝트 저장소 환경에서 Cockpit을 전역 설치하고, 외부 역량 에이전트가 제안된 운영 워크플로우(Operator Workflow)에 따라 실제 PROGRESS.md를 점검하고 시각화하는 실환경 이식성 검증을 수행합니다.
+실제 외부 프로젝트 저장소에서 first-use/불신 baseline의 RECONSTRUCT와 신뢰성이 확립된 baseline의 REFRESH를 각각 수행하여, 독립 재구성·Coverage Closure·positive model re-admission·Project Map escape가 실제 model fidelity를 높이는지 수용성 검증합니다. 이 fidelity gate를 통과한 뒤 Cockpit의 GitHub/npm 설치 및 다중 저장소 운영 이식성을 검증합니다.
 
 ## 최근 진척
+- **프로젝트 이해 충실도 acceptance gap을 식별하고 진입 모드를 분리함** → 기존 PROGRESS가 신뢰할 수 있는 baseline인지 먼저 판정하게 하고, 불명확하면 기존 문서에 anchoring하지 않는 RECONSTRUCT, 확립된 baseline에는 보수적인 REFRESH를 적용하며, 두 경로의 결과 차이를 설명할 수 있게 함.
 - **Recent Progress를 rolling semantic window로 재정렬하고 최신 전환 위계를 강화함** → 기존 9개 누적 목록을 현재 상태를 설명하는 8개 material transition으로 압축하고, 새 문서 갱신 때 stable context가 된 오래된 전환을 제거할 수 있게 했으며, 화면에서 최신 1–2개를 우선 읽도록 함.
 - **실 프로젝트 수용성 검증의 테스트베드 경계를 확립함** → 외부 실제 프로젝트의 결함을 Cockpit 상태 표현·전송·reconciliation을 평가하기 위한 evidence로 한정하고, mutation-bearing acceptance는 하나의 사전 승인된 stimulus 뒤 관찰·Cockpit delta 추출·중단하도록 명시함. 정상적인 `Cockpit → Problem Framer → executor` 사용자 워크플로우는 그대로 유지함.
 - **기존 open claim을 fresh evidence로 재입장시키는 반증 계약을 확립함** → 기존 `남은 문제`·`직면한 문제`·`다음 전환` 선행조건·material limitation을 자동 승계하지 않고, 외부 capable agent가 fresh implementation/runtime/proof의 closure와 counterevidence를 먼저 탐색하도록 하여 닫힌 문제의 잔존 표시와 무근거 remediation task 승격을 방지함.
@@ -138,16 +153,17 @@ Cockpit은 마크다운 파서, 네이티브 맵 렌더러, 영역 검사기, Ha
 - **B1.2 Frontier Grid와 하단 맥락 계층을 정리함** → 대시보드 클리셰와 AI UI 문법을 제거하고, 상단 지도·프론티어 강조·하단 Recent Progress 중심의 에디토리얼 정보 계층을 확립함.
 - **영역 상세를 evidence-admitted semantics로 정합화함** → `남은 문제`를 증거가 입증한 경우에만 선택적으로 표시하고, 근거 없는 문제·플레이스홀더가 현재 mental model을 오염시키지 않도록 함.
 - **Universal Execution Wave 연계 Handoff 컨텍스트를 표준화함** → Focus 및 Area 검토 Handoff가 자기완결적 컨텍스트와 NOW/SERIAL NOW/WAIT FOR EVIDENCE 경계를 전달하여 외부 Problem Framer가 즉시 검증 가능한 다음 작업을 산출할 수 있게 함.
-- **Current Stage를 궤적별 객관적 frontier container로 확립함** → 한 레일의 현재 단계 안에서 복수 frontier와 중립 레일을 함께 표현하면서 사용자 소유 Current Focus와 객관적 stage 의미를 섞지 않도록 함.
 
 ## 제품 목표
-Cockpit은 프로젝트의 `PROGRESS.md`를 읽어 대화형 프로젝트 지도, 진행 궤적의 객관적 프론티어, 영역별 상세 검사기를 브라우저에 실시간 시각화해 주는 초경량 읽기 전용 PM 대시보드입니다. 외부 역량 에이전트가 단일 현황 문서를 통해 프로젝트의 최신 멘탈 모델을 공유하고 문제를 외부 Problem Framer로 결정론적으로 인계(Handoff)할 수 있도록 지원하며, Cockpit 바이너리 자체에는 AI, 데이터베이스, 백그라운드 데몬, 파일 쓰기 메커니즘을 일체 포함하지 않습니다.
+Cockpit은 프로젝트의 `PROGRESS.md`를 읽어 대화형 프로젝트 지도, 진행 궤적의 객관적 프론티어, 영역별 상세 검사기를 브라우저에 실시간 시각화해 주는 초경량 읽기 전용 PM 대시보드입니다. 외부 역량 에이전트가 신뢰 가능한 경우에는 보수적으로 기존 mental model을 갱신하고, 신뢰할 수 없는 경우에는 현재 repo/runtime/SSOT 증거에서 독립적으로 project model을 재구성한 뒤 단일 현황 문서를 통해 문제를 외부 Problem Framer로 결정론적으로 인계(Handoff)할 수 있도록 지원합니다. Cockpit 바이너리 자체에는 AI, 데이터베이스, 백그라운드 데몬, 파일 쓰기 메커니즘을 일체 포함하지 않습니다.
 
 ## 확정된 방향
 - Cockpit은 순수 읽기 전용 뷰어이며, 파일 갱신 및 멘탈 모델 최신화는 외부 역량 에이전트(Claude, ChatGPT, Gemini 등)가 전담함.
 - 외부 실제 프로젝트를 대상으로 Cockpit을 수용 테스트할 때 대상 프로젝트는 **evidence이지 work queue가 아니다**. Cockpit의 표현·전송·reconciliation을 평가하고, 대상 프로젝트 결함을 Cockpit 작업으로 승격하거나 재귀적으로 remediation하지 않으며, 필요할 때만 하나의 사전 승인된 test stimulus를 실행한 뒤 관찰하고 멈춘다.
 - 일반 마크다운(`PROGRESS.md`)을 유일한 현황 저장소로 사용하며 독자적인 데이터베이스나 스키마를 요구하지 않음.
 - 기존 PROGRESS.md의 open/negative claim에는 evidentiary grandfather right가 없으며, 유지되는 `남은 문제`는 current positive evidence가 입증하는 현재 defect/필수 proof blocker여야 함. closure/falsification 분류는 외부 agent의 transient reasoning으로만 수행함.
+- 기존 mental model의 신뢰성이 확립된 경우에만 REFRESH를 사용하고, first-use·baseline 불명확·사용자 의문·복수 stale/false claim·Project Map 불일치 등에서는 RECONSTRUCT를 사용함. RECONSTRUCT의 coverage closure와 positive-model re-admission은 transient reasoning이며 persistent registry/schema/DB/score로 만들지 않음.
+- Focus/Area review에서 Project Map boundary 자체가 실제 evidence와 맞지 않으면 기존 Area에 강제 편입하지 않고 필요한 범위의 RECONSTRUCT 또는 wider re-entry로 재검토함.
 - 문제 중심의 사용자 관심사(`Current Focus`)와 궤적 레일별 객관적 진행 위치(`Current Stage`)를 독립된 개념으로 엄격히 분리함.
 - 마크다운 목록 문법(순서형 번호 목록 vs 비순서형 글머리 기호)을 지도의 순차 흐름 및 대등 관계를 결정하는 유일한 권위로 사용함.
 - 영역 상세의 `남은 문제`는 실제 증거로 입증된 경우에만 작성하며, 미확인 가상 문제나 '없음' 플레이스홀더를 작성하지 않음.

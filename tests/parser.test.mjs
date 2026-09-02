@@ -656,8 +656,9 @@ test("Recent Progress is a newest-first semantic rolling window with visible rec
     .map((token) => token.content.trim());
 
   assert.ok(recentItems.length >= 5 && recentItems.length <= 8, "Recent Progress must stay a bounded rolling window");
-  assert.match(recentItems[0], /^\*\*Recent Progress를 rolling semantic window/);
-  assert.match(recentItems[1], /^\*\*실 프로젝트 수용성 검증/);
+  assert.match(recentItems[0], /^\*\*프로젝트 이해 충실도 acceptance gap/);
+  assert.match(recentItems[1], /^\*\*Recent Progress를 rolling semantic window/);
+  assert.match(recentItems[2], /^\*\*실 프로젝트 수용성 검증/);
   for (const item of recentItems) {
     assert.match(item, /^\*\*.+\*\* → .+/, "each item must expose material change → consequence");
   }
@@ -1751,6 +1752,60 @@ test("Area handoff re-admits existing negative claims instead of anchoring remed
   );
 });
 
+test("Focus and Area handoffs distinguish REFRESH from RECONSTRUCT and close model coverage", () => {
+  const contexts = [
+    buildFocusHandoffContext({
+      projectTitle: "Reconstruction Test Project",
+      focusText: "Current focus",
+      projectMapText: "### Historical map\n- **Old boundary** — supplied context",
+    }),
+    buildAreaHandoffContext({
+      projectTitle: "Reconstruction Test Project",
+      areaTitle: "Supplied area",
+      areaDescription: "Supplied summary",
+    }),
+  ];
+
+  for (const context of contexts) {
+    assert.ok(context.includes("[Mode Selection — REFRESH vs RECONSTRUCT]"));
+    assert.ok(context.includes("REFRESH: 기존 mental model의 신뢰성이"));
+    assert.ok(context.includes("material semantic delta가 있는 surface만 Targeted Refresh하고"));
+    assert.ok(context.includes("RECONSTRUCT: 기존 mental model의 신뢰성을 전제로 할 수 없을 때"));
+    assert.ok(
+      context.includes(
+        "기존 PROGRESS는 마지막 비교 전까지 topology/architecture truth가 아닌 historical claim/comparison source"
+      )
+    );
+    assert.ok(context.includes("RECONSTRUCT는 모든 실행을 대체하는 기본 절차가 아니다."));
+
+    assert.ok(context.includes("[Positive Model Re-admission]"));
+    assert.ok(context.includes("Project Map decomposition, Current Stage는 current evidence가 다시 뒷받침할 때만 admitted한다."));
+    assert.ok(context.includes("[Coverage Closure — transient]"));
+    assert.ok(context.includes("represented / intentionally omitted / UNKNOWN"));
+    assert.ok(context.includes("persistent table/registry/schema/DB/score"));
+    assert.ok(context.includes("설명되지 않은 material surface가 남아 있으면 synthesis를 완료한 것으로 간주하지 않는다."));
+    assert.ok(context.includes("[Project Map Escape Hatch]"));
+    assert.ok(context.includes("RECONSTRUCT 또는 필요한 wider re-entry로 escalate하라."));
+  }
+
+  const reconstructionOrder = [
+    "current authority/code/runtime/proof/relevant Git",
+    "independent project reconstruction",
+    "coverage closure",
+    "claim admission/uncertainty handling",
+    "synthesis",
+    "existing PROGRESS comparison",
+    "stale/false/missing semantics",
+  ];
+  let previousIndex = -1;
+  for (const marker of reconstructionOrder) {
+    const index = contexts[0].indexOf(marker);
+    assert.notEqual(index, -1, `handoff must include reconstruction marker: ${marker}`);
+    assert.ok(index > previousIndex, `reconstruction marker must preserve order: ${marker}`);
+    previousIndex = index;
+  }
+});
+
 test("Area review handoff context assembly: minimal context without optional details/focus", () => {
   const minimalAreaContext = buildAreaHandoffContext({
     projectTitle: "Minimal Area Project",
@@ -2066,6 +2121,4 @@ test("Area Detail Evidence Admission: Area with Meaning + Current Level + Eviden
   assert.ok(handoffArea2.includes("#### 남은 문제\n- 파티션 리밸런싱"));
   assert.ok(handoffArea2.includes("#### 다시 열리는 조건\n- 카프카 클러스터"));
 });
-
-
 

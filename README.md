@@ -64,28 +64,23 @@ cockpit
 라고 요청했을 때, 에이전트가 따라야 하는 공식 권장 운영 워크플로우(Operator Workflow)는 다음과 같습니다:
 
 ```text
-1. 기존 PROGRESS.md 읽기
+1. 기존 mental model의 신뢰성에 따라 진입 모드 선택
+   ├── 신뢰성이 최근 독립 evidence와 provenance로 확립됨 → REFRESH
+   │    - 기존 PROGRESS.md를 baseline으로 읽고 현재 repo / runtime / SSOT의 fresh evidence와 대조한다.
+   │    - Mental Model Delta Test와 Open-Claim Re-admission을 수행하여 material delta가 있는 표면만 Targeted Refresh한다.
+   └── 신뢰성을 전제할 수 없음 → RECONSTRUCT
+        - 기존 PROGRESS.md는 마지막 비교 전까지 topology/architecture truth가 아닌 historical claim/comparison source로만 취급한다.
+        - current authority / code / runtime / proof / relevant Git에서 project model을 독립적으로 다시 구성한다.
+        - Coverage Closure와 positive/open model re-admission을 끝낸 뒤에만 synthesis하고, 마지막에 기존 문서와 비교하여 replacement를 결정한다.
         ↓
-2. 현재 repo / runtime / SSOT의 최신 실제 증거(fresh evidence)와 대조
+2. 선택한 경로의 model admission/reconciliation 완료
         ↓
-3. 기존 open/negative claim 재입장·반증 패스 (Open-Claim Re-admission / Falsification)
-   - `남은 문제`, `직면한 문제`, `다음 전환`의 선행조건, material한 `현재 수준` limitation을
-     기존 문구가 아니라 fresh evidence로 다시 심사한다.
-   - 각 claim에 대해 현재 구현/runtime/proof가 이미 닫혔거나 모순되는지 적극적으로 탐색한다.
+3. `cockpit check` 실행하여 구조적 완전성(PASS) 확인
         ↓
-4. 멘탈 모델 델타 테스트 (Mental Model Delta Test) 수행
-   - "현재 PROGRESS.md를 그대로 보여주면 사용자가 프로젝트의 현재 capability,
-      Current Stage, Current Focus, material gaps, proof, Next Transition을 오해하는가?"
-        ↓
-   ├── YES (실질적 차이 존재) → 영향받은 표면만 보수적으로 갱신 (Targeted Refresh)
-   └── NO (실질적 차이 없음) → PROGRESS.md 수정하지 않음 (Untouched)
-        ↓
-5. cockpit check 실행하여 구조적 완전성(PASS) 확인
-        ↓
-6. cockpit 실행 (뷰어 론칭)
+4. `cockpit` 실행 (뷰어 론칭)
 ```
 
-> **핵심 원칙**: 최신성 대조(Freshness Check)는 항상 수행하되, 파일 수정(File Mutation)은 실질적인 멘탈 모델 변화(Material Semantic Delta)가 있을 때만 수행합니다. 새 material transition을 넣을 때는 Recent Progress가 최신순 rolling semantic window로 남아 있는지도 함께 확인합니다.
+> **핵심 원칙**: REFRESH는 신뢰할 수 있는 baseline에 대한 보수적 delta 경로이고, RECONSTRUCT는 baseline 신뢰성이 없는 경우의 독립 재구성 경로입니다. RECONSTRUCT를 모든 실행의 기본 절차로 만들지는 않되, 기존 문서를 truth로 먼저 읽어 생길 수 있는 anchoring을 허용하지 않습니다. 어느 경로든 파일 수정은 실질적인 멘탈 모델 변화가 있을 때만 수행하며, 새 material transition을 넣을 때는 Recent Progress가 최신순 rolling semantic window로 남아 있는지도 함께 확인합니다.
 
 ### 다른 경로의 파일 지정하기
 
@@ -139,15 +134,15 @@ repo / runtime / 관련 SSOT (최신 실제 증거)
 - **외부 에이전트 갱신**: 프로젝트 상태가 달라지면 외부 코딩 에이전트가 최신 실제 증거와 기존 문서를 대조하여 `PROGRESS.md`를 갱신합니다.
 - **자동 새로고침 (Live Reload)**: Cockpit은 대상 `PROGRESS.md` 파일 저장을 감시하여 브라우저 새로고침 없이 화면을 즉시 갱신합니다.
 
-### 처음 시작할 때: 새 프로젝트에 PROGRESS.md 작성 요청하기 (First-Use Prompt)
+### 처음 시작할 때: 새 프로젝트에 PROGRESS.md 작성 요청하기 (First-Use / RECONSTRUCT Prompt)
 
-새로운 프로젝트나 기존 프로젝트에 처음 Cockpit을 연결할 때는 외부 역량 에이전트(Claude Code, ChatGPT, Gemini 등)에게 다음 프롬프트를 그대로 복사하여 전달합니다:
+새로운 프로젝트나 기존 프로젝트에 처음 Cockpit을 연결할 때는 기존 mental model의 신뢰성이 아직 확립되지 않았으므로 **RECONSTRUCT** 경로를 사용합니다. 기존 `PROGRESS.md`가 있더라도 독립 재구성을 끝내고 마지막 비교 단계에 도달하기 전에는 project topology/architecture truth로 사용하지 않습니다. 외부 역량 에이전트(Claude Code, ChatGPT, Gemini 등)에게 다음 프롬프트를 그대로 복사하여 전달합니다:
 
 ```text
 이 프로젝트의 실제 상태를 파악하여 Cockpit용 `PROGRESS.md` 문서를 작성해줘.
 
 [다중 패스 증거 동화 및 독자 중심 종합 계약 (Multi-Pass Evidence Assimilation Contract)]
-비자명한(non-trivial) 저장소에서 첫 번째 스캔 직후 PROGRESS.md를 곧바로 작성하지 말고, 다음의 독립된 증거/추론 패스를 거쳐 작성해야 한다 (영구 레지스트리/스키마/DB 금지, 에이전트 내부 추론으로 수행):
+이 프롬프트는 RECONSTRUCT 경로다. 비자명한(non-trivial) 저장소에서 첫 번째 스캔 직후 PROGRESS.md를 곧바로 작성하지 말고, 기존 PROGRESS.md의 구조나 표현에 맞춰 현재 project model을 만들지 말며, 다음의 독립된 증거/추론 패스를 거쳐 작성해야 한다 (영구 레지스트리/스키마/DB 금지, 에이전트 내부 추론으로 수행):
 
 1. PASS 1 — 권위 및 의도 모델 (Authority / Intent Model):
    - AGENTS.md, README.md, docs/, package.json, 명시적 계약 등 저장소 권위 문서를 통해 제품의 본래 목적, 사용자/소비자, 경계, 영속적 결정 의도를 파악한다.
@@ -184,14 +179,31 @@ repo / runtime / 관련 SSOT (최신 실제 증거)
      확립할 때, `PROOF_GAP`은 capability는 있을 수 있으나 요구된 exact proof가 없을 때, `NOT_ADMITTED`는
      추측·선택적 개선·미래 기능·사용자 소유 결정 또는 현재 defect가 아닌 경우에 사용한다.
 
-6. PASS 6 — 초안 작성 및 멘탈 모델 분해 (First Synthesis & Map Decomposition):
+   - **RECONSTRUCT positive-model re-admission (transient)**: 기존 negative/open claim뿐 아니라
+     material positive model도 grandfather하지 않는다. subsystem의 존재/역할, A→B→C workflow,
+     semantic owner, capability의 구현·검증 여부, Project Map decomposition, Current Stage는
+     current evidence가 다시 뒷받침할 때만 admitted한다. 코드·설정·테스트가 존재한다는 사실만으로
+     capability나 proof를 인정하지 않는다.
+
+6. PASS 6 — 일시적 semantic surface Coverage Closure:
+   - RECONSTRUCT synthesis 전에 material semantic surface를 가능한 범위에서 accounting한다. 각
+     surface에 대해 실제 역할, semantic owner, 실제 entry/runtime path, consequential consumer/
+     downstream effect, authority/intent source, 직접적인 implementation/proof evidence, relevant
+     history가 현재 의미를 바꾸는지, 최종 model에서 represented / intentionally omitted / UNKNOWN
+     중 무엇인지 설명할 수 있어야 한다.
+   - 모든 파일/함수 전수 inventory나 coverage %를 만들라는 뜻이 아니다. 이 closure는 agent 내부의
+     transient completeness test이며, persistent table/registry/schema/DB/score를 만들거나 PROGRESS에
+     저장하지 않는다. 설명되지 않은 material surface가 남아 있으면 synthesis를 완료한 것으로
+     간주하지 않는다.
+
+7. PASS 7 — 초안 작성 및 멘탈 모델 분해 (First Synthesis & Map Decomposition):
    - 실제 프로젝트 시맨틱에 기반하여 지도를 분해한다 (단순 폴더 구조 복사 금지).
    - 압축 손실 테스트(Compression Loss Test)를 적용하여 이질적인 영역은 분리 보존하고, 독립된 멘탈 모델 축은 H3 레일로 분리한다.
    - 명시적 목록 문법(번호 목록: 순차 흐름/화살표, 글머리 기호: 대등 카드)을 사용한다.
    - 궤적 레일의 Current Stage(`#### 현재 단계`)는 객관적 frontier 컨테이너로 설정한다 (복수 frontier 허용).
    - Current Focus(`## 현재 집중`)는 사용자 소유이며, 신뢰할 수 있는 사용자 방향 증거가 없다면 생략한다 (활동량/현재 task 기반 자동 추론 금지).
 
-7. PASS 7 — 적대적 모순 감사 (Adversarial Audit — 필수 2차 사이클):
+8. PASS 8 — 적대적 모순 감사 (Adversarial Audit — 필수 2차 사이클):
    - 작성된 초안을 엄격하게 공격하여 다음 허위/날조 요소가 있는지 점검한다:
      * 가상의 외부 시스템 / EMR / 검증 파이프라인
      * 가상의 사용자 / 고객 / 조직
@@ -203,10 +215,15 @@ repo / runtime / 관련 SSOT (최신 실제 증거)
    - negative claim을 current defect, proof gap, future enhancement, user-owned product decision으로
      구분한다. current defect가 아닌 항목을 `남은 문제`로 되살리거나 작업으로 승격하지 않는다.
    - "이 주장의 구체적 증거가 저장소 어디에 있는가?"에 답할 수 없다면 즉시 삭제하거나 한계를 명시한다 (Zero Tolerance for Plausible Fiction).
+   - Project Map의 boundary가 실제 architecture/workflow를 설명하지 못하거나 semantic owner가
+     다른 곳에 있다는 direct evidence가 있으면 기존 Area에 억지로 끼워 넣지 말고 map decomposition을
+     재검토하며 필요한 범위의 RECONSTRUCT/wider re-entry를 수행한다.
 
-8. PASS 8 — 독자 중심 종합 및 구조 사전 검사 (Reader Reconstruction & Structural Preflight):
+9. PASS 9 — 독자 중심 종합 및 구조 사전 검사 (Reader Reconstruction & Structural Preflight):
    - 외부인 관점의 6대 독자 테스트(WHAT, STRUCTURE, RELATION, WHERE, FOCUS, PATH)를 통과하는지 점검한다.
    - `cockpit check`를 실행하여 지도-상세 1:1 일치, 고아/중복 없음(PASS)을 기계적으로 확인한다.
+   - 독립 재구성이 끝난 마지막 단계에서만 기존 PROGRESS.md를 읽고 새 model과 비교하여 stale/false/missing
+     semantics를 판별하고 필요한 replacement를 결정한다.
 
 [마크다운 구조 및 작성 규칙]
 아래 마크다운 구조에 맞춰 사실 기반으로 작성해줘:
@@ -313,9 +330,16 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
 작업을 진행한 뒤 사용자가 직접 외부의 역량 있는 코딩 에이전트(Claude Code, ChatGPT, Gemini 등)에게 다음과 같이 요청하여 `PROGRESS.md`를 갱신합니다:
 
 ```text
-"이 프로젝트의 기존 PROGRESS.md를 먼저 읽고,
+"먼저 이 작업의 진입 모드를 판정해줘. 기존 mental model의 신뢰성이 최근 독립 evidence와 신뢰할 수 있는 provenance로 확립된 경우에만 REFRESH를 사용하고, 그 신뢰성을 전제할 수 없으면 RECONSTRUCT를 사용해줘.
+REFRESH에서는 기존 PROGRESS.md를 baseline으로 읽고,
+RECONSTRUCT에서는 기존 PROGRESS.md를 마지막 비교 전까지 topology/architecture truth로 사용하지 말고
+current authority / code / runtime / proof / relevant Git에서 project model을 독립적으로 다시 구성해줘.
+RECONSTRUCT가 필요한 대표 조건은 Cockpit first-use/최초 연결, 사용자의 model 정확성 의문, 여러 stale/false claim,
+실제 architecture/workflow와 Project Map 불일치, 장기간 재진입으로 baseline 신뢰 불명확, PROGRESS provenance/fidelity 근거 부족이야.
 다음 4대 증거 축(권위/의도, 구현/런타임, 테스트/증명, 최근 변경 이력)을 대조하여
-영향을 받는 시맨틱 표면만 선별적으로 보수적 갱신(Targeted Refresh)해줘:
+REFRESH라면 영향을 받는 시맨틱 표면만 선별적으로 보수적 갱신(Targeted Refresh)하고,
+RECONSTRUCT라면 독립 재구성 → coverage closure → claim admission/uncertainty handling → synthesis를 끝낸 뒤
+마지막에만 기존 문서와 비교하여 stale/false/missing semantics의 replacement를 결정해줘.
   A. PROJECT STATE: repo/runtime/SSOT evidence에서 객관적으로 무엇이 확립되었는가
   B. CURRENT STAGE: 특정 진행 경로(Trajectory Rail)가 객관적으로 어디까지 왔는가 (레일당 최대 1개 그룹, 그룹 내 1개 이상의 객관적 현재 frontier 항목)
   C. CURRENT FOCUS: 사용자가 현재 어떤 product/problem을 중요하게 보고 있는가 (명시적 사용자 방향 증거가 없다면 기존 Focus를 보존하고, 단순 Git 커밋/활동량/현재 task만으로 Focus를 임의 추론하거나 이동하지 마)
@@ -323,8 +347,16 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
 독자 관점의 필수 항목(의미, 현재 수준, 근거)과 명시적 관계 문법을 엄격히 유지하고,
 기존 `남은 문제`, `직면한 문제`, `다음 전환`의 선행조건 및 material한 `현재 수준` limitation을
 모두 open claim으로 재입장시켜, 이미 닫혔거나 현재 defect가 아닌지 closure/counterevidence를 적극적으로 탐색해줘.
-첫 substantial assimilation에서는 모든 Area와 project-level claim을 재검증하고, 일반 bounded-task refresh에서는
+RECONSTRUCT에서는 subsystem의 존재/역할, workflow, semantic owner, capability 구현·검증 여부, Project Map decomposition,
+Current Stage 같은 material positive model도 기존 문구를 승계하지 말고 current evidence로 다시 admission해줘.
+첫 substantial assimilation에서는 모든 Area와 project-level claim을 재검증하고, 일반 bounded-task REFRESH에서는
 직접 영향받은 Area와 truth가 달라질 수 있는 project-level `직면한 문제`/`다음 전환`만 재검증해줘.
+RECONSTRUCT synthesis 전에 각 material semantic surface의 역할, owner, entry/runtime path, consequential consumer/downstream effect,
+authority/intent source, 직접 implementation/proof evidence, relevant history 및 represented / intentionally omitted / UNKNOWN 상태를
+transient reasoning으로 설명해줘. 모든 파일/함수 전수 inventory, coverage %, persistent table/registry/schema/DB/score는 만들지 마.
+설명되지 않은 material surface가 남으면 synthesis를 조기 종료하지 마.
+Focus/Area evidence가 기존 map boundary 자체의 오류를 보여주면 억지로 기존 Area에 맞추지 말고 필요한 범위의 RECONSTRUCT/wider re-entry로
+escalate하되, 기본 bounded review를 무관한 repository-wide audit으로 확대하지 마.
 각 claim은 추론 중에만 `STILL_OPEN`/`CLOSED`/`PROOF_GAP`/`NOT_ADMITTED` 중 정확히 하나로 분류하고 이 label을 저장하지 마.
 실제 증거로 확인된 미해결 문제(증거가 없으면 '남은 문제' 섹션을 생략하며, '없음'을 날조하지 마)와 다단계 향후 여정을 보존하며,
 확인되지 않은 성공이나 가상의 문제를 성급히 주장/날조하지 마.
@@ -337,12 +369,21 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
 
 외부 역량 에이전트가 `PROGRESS.md`의 최신성을 대조하거나 갱신할 때는 다음 핵심 원칙을 따릅니다:
 
+#### 진입 모드: REFRESH와 RECONSTRUCT
+
+- **REFRESH**는 기존 mental model의 신뢰성이 최근 독립 evidence와 신뢰할 수 있는 provenance로 충분히 확립된 경우에만 사용합니다. 기존 `PROGRESS.md`를 baseline으로 삼아 fresh evidence와 대조하고, material semantic delta가 있는 surface만 Targeted Refresh합니다.
+- **RECONSTRUCT**는 기존 mental model의 신뢰성을 전제할 수 없을 때 사용합니다. Cockpit first-use/최초 프로젝트 연결, 사용자가 현재 model 정확성에 의문을 제기한 경우, 여러 stale/false claim이 발견된 경우, 실제 architecture/workflow와 Project Map 구조가 맞지 않는 경우, 장기간 재진입으로 baseline 신뢰성이 불명확한 경우, 기존 `PROGRESS.md`의 provenance/fidelity를 신뢰할 근거가 없는 경우가 대표적인 조건입니다.
+- RECONSTRUCT에서는 `current authority / code / runtime / proof / relevant Git → independent project reconstruction → coverage closure → claim admission/uncertainty handling → synthesis → existing PROGRESS comparison → replacement` 순서를 유지합니다. 기존 `PROGRESS.md`는 마지막 비교 전까지 historical claim/comparison source일 뿐 topology/architecture truth가 아닙니다.
+- RECONSTRUCT에서는 subsystem의 존재·역할, workflow, semantic owner, capability 구현·검증 여부, Project Map decomposition, Current Stage와 같은 material positive model도 current evidence로 다시 admit해야 하며, 기존 문구를 grandfather하지 않습니다. 기존 `남은 문제` 등 negative/open claim의 재입장·반증도 그대로 유지합니다.
+- RECONSTRUCT synthesis 전에 material semantic surface마다 역할, owner, entry/runtime path, consequential consumer/downstream effect, authority/intent source, 직접 implementation/proof evidence, relevant history 및 represented / intentionally omitted / UNKNOWN 상태를 transient reasoning으로 닫습니다. 전수 inventory, coverage %, persistent registry/schema/DB/score는 만들지 않습니다.
+- Focus/Area review 중 전달된 Area 또는 Project Map의 의미·owner·boundary가 실제 evidence와 맞지 않거나 root cause가 경계를 넘는다는 direct evidence가 나오면 기존 map에 강제 편입하지 않고 필요한 범위에서 RECONSTRUCT 또는 wider re-entry로 escalate합니다. 단순한 가능성만으로 매번 repository-wide audit으로 확대하지 않습니다.
+
 #### 1. 멘탈 모델 델타 테스트 (Mental Model Delta Test)
 외부 역량 에이전트는 다음 핵심 질문을 통해 `PROGRESS.md` 수정 여부를 판단합니다:
 > **“현재 PROGRESS.md를 그대로 보여주면, 사용자가 프로젝트의 capability, 위치(Current Stage frontier), 관심점(Current Focus), material gaps, proof 또는 다음 경로(Next Transition)를 실질적으로 잘못 이해하게 되는가? 특히 fresh evidence가 이미 닫혔거나 잘못 분류했거나 더 이상 적용되지 않는 problem, blocker, limitation 또는 Next Transition prerequisite를 현재 문서가 계속 보존하고 있지는 않은가?”**
 
 - **NO (실질적 오해 없음)** → `PROGRESS.md`를 일체 수정하지 않습니다 (Unchanged).
-- **YES (실질적 왜곡 발생)** → 영향을 받는 시맨틱 표면만 선별적으로 보수적 갱신합니다 (Targeted Refresh).
+- **YES (실질적 왜곡 발생)** → 선택한 모드에 따라 처리합니다. REFRESH라면 영향을 받는 시맨틱 표면만 선별적으로 보수적 갱신하고(Targeted Refresh), RECONSTRUCT라면 독립 재구성·coverage closure·model admission 결과에 따라 필요한 표면을 대체합니다.
 - 닫힌 `남은 문제` 하나를 제거하는 것은 Current Stage/Focus가 움직이지 않거나 이번 task에서 새 feature가 추가되지 않아도 material semantic delta다. `FRONTIER UNCHANGED`와 `PROGRESS NO_CHANGE`를 동일시하지 않는다.
 
 *이 테스트는 외부 역량 에이전트의 지능적 판단 규칙이며, 기계적 점수화(score)나 파서 차원의 기계적 검증으로 대체하지 않습니다.*
@@ -423,9 +464,11 @@ PROGRESS.md 보수적 갱신
 **핵심 원칙:**
 - **Execution Wave 비영속화**: Execution Wave, 태스크 목록, 상태 머신, 에이전트 배정 등은 Cockpit이나 `PROGRESS.md`의 persistent state가 아닙니다. Cockpit에 태스크 관리자/백로그 엔진을 추가하지 않으며, `PROGRESS.md`에 `## Execution Wave` 같은 임시 실행 상태를 기록하지 않습니다.
 - **Problem Framer의 역할과 계약**: 복사된 프로젝트 문맥을 전달받은 외부 Problem Framer가 최신 코드/런타임/도메인 실제 증거와 대조하여 문제를 검증합니다.
+  - Handoff에 포함된 Project Map, Area, Current Stage 및 positive description은 RECONSTRUCT에서 truth가 아니라 검증할 가설입니다. material positive model도 current evidence로 재입장시킵니다.
   - Area Details의 `남은 문제`는 실행 task 목록이 아니라 재검증 대상 claim이다. 각 항목을 task로 승격하기 전에 current evidence로 closure/counterevidence를 적극적으로 탐색하고, 이미 닫혔거나 defect가 아닌 항목은 제거 대상으로 판정한다.
   - 문제가 없으면 무리하게 작업을 제조하지 않고 `NO_ACTION`으로 종료합니다.
   - 전달된 문제가 모두 닫혔거나 추가 조치가 불필요하면 `NO_ACTION / NO_CHANGE`를 유지합니다.
+  - 전달된 Area 또는 Project Map의 의미·semantic owner·boundary가 fresh evidence와 맞지 않으면 기존 map에 강제로 맞추지 않고 필요한 범위의 RECONSTRUCT 또는 wider re-entry로 escalate합니다. direct evidence 없는 임의 확장은 하지 않습니다.
   - 문제가 있으면 지금 확정 가능한 최대 범위에서 `NOW` (병렬 독립 작업), `SERIAL NOW` (동일 표면/상태 공유로 순차 실행이 필요한 작업), `WAIT FOR EVIDENCE` (결과 대기)로 분류하고, 실행 가능한 모든 작업에 대해 executor-neutral 로컬 에이전트 프롬프트를 같은 응답에서 산출합니다.
 - **PROGRESS.md 갱신 시점**: Execution Wave가 생성되었다는 이유만으로 `PROGRESS.md`를 갱신하지 않습니다. Bounded tasks가 실제로 완료되어 프로젝트의 객관적 상태나 사용자 관심사(Current Focus)가 실질적으로 달라졌을 때만 해당 멘탈 모델 표면을 갱신합니다.
 - **판단 소유권**: claim의 closure/falsification/re-admission은 외부 capable agent가 수행하며, Cockpit binary는 이 판단을 자동화하지 않고 읽기 전용 deterministic presentation/context transport만 제공합니다.
