@@ -890,7 +890,8 @@ body {
   fill: var(--stage-bg) !important;
 }
 
-/* Generic Rail Groups */
+/* Neutral / Generic Rail Groups */
+.neutral-groups-container,
 .generic-groups-container {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
@@ -898,6 +899,7 @@ body {
   align-items: stretch;
 }
 
+.neutral-group,
 .generic-group {
   display: flex;
   flex-direction: column;
@@ -907,6 +909,15 @@ body {
   border-radius: var(--radius-md);
   padding: 14px;
   min-width: 0;
+}
+
+.neutral-group .group-header,
+.generic-group .group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-subtle);
 }
 
 /* Responsive / Mobile Breakdown */
@@ -933,6 +944,8 @@ body {
     grid-template-columns: 1fr;
   }
 
+  .neutral-groups-container,
+  .generic-groups-container,
   .workflow-groups-container {
     grid-template-columns: 1fr;
   }

@@ -18,7 +18,8 @@
     "build": "tsc --noEmit && vite build",
     "prepack": "npm run build",
     "preview": "vite preview",
-    "cockpit": "node scripts/serve.mjs"
+    "cockpit": "node scripts/serve.mjs",
+    "test": "node --test tests/**/*.test.mjs"
   },
   "dependencies": {},
   "devDependencies": {
