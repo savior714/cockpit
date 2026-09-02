@@ -773,9 +773,7 @@ export function renderNativeMap(
           html += `
             <div class="trajectory-group group-foundation">
               <div class="group-header">
-                <span class="group-badge-subtle">기반 영역</span>
                 <h4 class="group-name">${escapeHtml(group.title)}</h4>
-                <span class="group-caption">진행 근거 확보됨 (필요시 언제든 재검토 가능)</span>
               </div>
               <div class="group-items-grid">
           `;
@@ -822,7 +820,7 @@ export function renderNativeMap(
               >
                 <div class="stage-card-content">
                   <div class="stage-title-wrap">
-                    <span class="stage-pulse-dot" aria-hidden="true"></span>
+                    <span class="stage-frontier-dot" aria-hidden="true"></span>
                     <span class="card-title">${escapeHtml(item.title)}</span>
                   </div>
                   ${
@@ -839,9 +837,7 @@ export function renderNativeMap(
           html += `
             <div class="trajectory-group group-future">
               <div class="group-header">
-                <span class="group-badge-subtle">향후 여정</span>
                 <h4 class="group-name">${escapeHtml(group.title)}</h4>
-                <span class="group-caption">단계적 도입 및 실운영 전환</span>
               </div>
               <div class="future-steps-flow">
           `;
