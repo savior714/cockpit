@@ -611,3 +611,71 @@ test("DOM and CSS containment invariant: primary-workspace isolates sticky aside
   assert.ok(css.includes(".completeness-badge"), "CSS must style .completeness-badge");
 });
 
+test("Independent multi-rail mental-model axis invariants: single Current Stage ownership and neutral rail coexistence", () => {
+  // Case A: Multi-rail map with 1 neutral operational rail and 1 trajectory rollout rail
+  const multiRailDoc = `
+## 프로젝트 지도
+
+### 도메인 및 운영 모델
+#### 접수 및 진료
+- **외래 접수** — 당일 외래 환자 접수 및 대기열 등록
+- **진료 기록** — 담당의 임상 소견 및 처방 기록
+
+### 도입 및 검증 여정
+#### 확보된 기반
+- **기초 파이프라인** — 기본 진료 데이터 연동 확립
+
+#### 현재 단계
+- **원내 실증** — 실제 외래 환경 단일 진료실 파일럿 검증
+
+#### 향후 계획
+- **원외 전파** — 전체 진료과 확대 배포
+`;
+
+  const tokens = md.parse(multiRailDoc, {});
+  const { sections } = splitSections(tokens);
+  const mapTokens = sections.get("project map");
+  assert.ok(mapTokens);
+
+  const parsedMap = parseProjectMap(mapTokens);
+  assert.equal(parsedMap.isNativeMap, true);
+  assert.equal(parsedMap.rails.length, 2);
+
+  // Rail 1: Neutral operational rail
+  assert.equal(parsedMap.rails[0].title, "도메인 및 운영 모델");
+  assert.equal(parsedMap.rails[0].railType, "neutral");
+  assert.equal(parsedMap.rails[0].groups.length, 1);
+  assert.equal(parsedMap.rails[0].groups[0].items.length, 2);
+
+  // Rail 2: Trajectory adoption rail owning Current Stage
+  assert.equal(parsedMap.rails[1].title, "도입 및 검증 여정");
+  assert.equal(parsedMap.rails[1].railType, "trajectory");
+  assert.equal(parsedMap.rails[1].groups.length, 3);
+  assert.equal(parsedMap.currentStageTitle, "원내 실증");
+
+  const renderedHtml = renderNativeMap(parsedMap);
+  assert.ok(renderedHtml.includes("map-rail-neutral"));
+  assert.ok(renderedHtml.includes("map-rail-trajectory"));
+  assert.ok(renderedHtml.includes("도메인 및 운영 모델"));
+  assert.ok(renderedHtml.includes("도입 및 검증 여정"));
+  assert.ok(renderedHtml.includes("NOW · 현재 단계"));
+
+  // Case B: Single neutral rail (no current stage anywhere)
+  const singleNeutralDoc = `
+## 프로젝트 지도
+
+### 시스템 아키텍처
+#### 스토리지 레이어
+- **블록 저장소** — 원시 블록 볼륨 I/O
+#### 네트워크 레이어
+- **RPC 브리지** — 노드 간 내부 메시징
+`;
+
+  const singleTokens = md.parse(singleNeutralDoc, {});
+  const singleSections = splitSections(singleTokens).sections;
+  const singleParsed = parseProjectMap(singleSections.get("project map"));
+  assert.equal(singleParsed.rails.length, 1);
+  assert.equal(singleParsed.rails[0].railType, "neutral");
+  assert.equal(singleParsed.currentStageTitle, undefined);
+});
+
