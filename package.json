@@ -1,14 +1,23 @@
 {
   "name": "cockpit",
-  "version": "0.2.0",
+  "version": "0.3.0-preview.1",
   "private": true,
   "type": "module",
+  "files": [
+    "dist",
+    "scripts"
+  ],
   "bin": {
     "cockpit": "./scripts/serve.mjs"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "prepare": "npm run build",
+    "prepack": "npm run build",
     "preview": "vite preview",
     "cockpit": "node scripts/serve.mjs"
   },

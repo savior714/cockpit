@@ -8,11 +8,13 @@ import { readFile, stat } from "node:fs/promises";
 import { watch } from "node:fs";
 import { createHash } from "node:crypto";
 import { exec } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
 import process from "node:process";
 
-const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
-const DIST_ROOT = path.join(REPO_ROOT, "dist");
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PKG_ROOT = path.resolve(__dirname, "..");
+const DIST_ROOT = path.join(PKG_ROOT, "dist");
 const DEFAULT_PORT = 4321;
 
 function parseArgs(argv) {
@@ -180,30 +182,45 @@ async function main() {
     process.exit(2);
   }
 
-  if (args.help || !args.file) {
-    console.log(`Usage: cockpit <path/to/PROGRESS.md> [--port <n>] [--no-open]
+  if (args.help) {
+    console.log(`Usage: cockpit [path/to/PROGRESS.md] [--port <n>] [--no-open]
 
 Serves the Cockpit viewer on http://127.0.0.1:<port> (default ${DEFAULT_PORT}),
-reading exactly the given Markdown file at runtime and live-reloading the page
-when it changes. Read-only.
+reading the target Markdown file (defaults to ./PROGRESS.md in the current directory)
+at runtime and live-reloading the page when it changes. Read-only.
 
 The default browser opens automatically once the server is ready.
 Pass --no-open to suppress this.`);
-    process.exit(args.help ? 0 : 2);
+    process.exit(0);
   }
 
-  const initial = await stat(args.file).catch(() => null);
-  if (!initial || !initial.isFile()) {
-    console.error(`cockpit: not a readable file: ${args.file}`);
-    process.exit(1);
+  let progressFile = args.file;
+  if (!progressFile) {
+    const defaultPath = path.resolve(process.cwd(), "PROGRESS.md");
+    const exists = await stat(defaultPath).then((st) => st.isFile()).catch(() => false);
+    if (!exists) {
+      console.error(`cockpit: PROGRESS.md not found in the current directory.
+
+To start Cockpit:
+  1. Create PROGRESS.md in your project root, or
+  2. Pass a file path explicitly:
+     cockpit /path/to/PROGRESS.md`);
+      process.exit(1);
+    }
+    progressFile = defaultPath;
+  } else {
+    const initial = await stat(progressFile).catch(() => null);
+    if (!initial || !initial.isFile()) {
+      console.error(`cockpit: not a readable file: ${progressFile}`);
+      process.exit(1);
+    }
   }
+
   const distIndex = await stat(path.join(DIST_ROOT, "index.html")).catch(() => null);
   if (!distIndex) {
     console.error("cockpit: dist/index.html missing — run `npm run build` first.");
     process.exit(1);
   }
-
-  const progressFile = args.file;
   const server = createServer((req, res) => {
     if (req.method !== "GET" && req.method !== "HEAD") {
       res.writeHead(405, { allow: "GET, HEAD", "content-type": "text/plain; charset=utf-8" });
@@ -248,9 +265,45 @@ Pass --no-open to suppress this.`);
     }
   });
 
-  const shutdown = () => server.close(() => process.exit(0));
+  const sockets = new Set();
+  server.on("connection", (socket) => {
+    sockets.add(socket);
+    socket.once("close", () => sockets.delete(socket));
+  });
+
+  const shutdown = () => {
+    try {
+      if (typeof server.closeAllConnections === "function") {
+        server.closeAllConnections();
+      }
+    } catch {}
+    for (const socket of sockets) {
+      try {
+        socket.destroy();
+      } catch {}
+    }
+    try {
+      server.close();
+    } catch {}
+    process.exit(0);
+  };
+
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
+  process.on("SIGHUP", shutdown);
+
+  if (process.stdin.isTTY) {
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (chunk) => {
+      const s = String(chunk).trim().toLowerCase();
+      if (s === "q" || s === "exit" || chunk === "\u0003" || chunk === "\u0004") {
+        shutdown();
+      }
+    });
+    process.stdin.resume();
+  }
 }
 
 void main();
+
+
