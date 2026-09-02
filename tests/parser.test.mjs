@@ -281,7 +281,7 @@ test("Synthetic Fixture 1: Operational and telemetry system topology verificatio
   const areaDetails = parseAreaDetails(detailTokens);
   assert.equal(areaDetails.size, 8);
 
-  // 3. Verify EVERY map item has full 4-pillar source content in Inspector
+  // 3. Verify EVERY map item has required evidence-bearing source content in Inspector
   for (const rail of parsedMap.rails) {
     for (const group of rail.groups) {
       for (const item of group.items) {
@@ -299,10 +299,6 @@ test("Synthetic Fixture 1: Operational and telemetry system topology verificatio
         assert.ok(
           subheadings.some((h) => h.includes("현재 수준")),
           `Area "${item.title}" missing '현재 수준'`
-        );
-        assert.ok(
-          subheadings.some((h) => h.includes("남은 문제")),
-          `Area "${item.title}" missing '남은 문제'`
         );
         assert.ok(
           subheadings.some((h) => h.includes("근거")),
@@ -359,7 +355,7 @@ test("Synthetic Fixture 2: Distributed software architecture verification", () =
   const areaDetails = parseAreaDetails(detailTokens);
   assert.equal(areaDetails.size, 7);
 
-  // 3. Verify EVERY map item has full 4-pillar source content in Inspector
+  // 3. Verify EVERY map item has required evidence-bearing source content in Inspector
   for (const rail of parsedMap.rails) {
     for (const group of rail.groups) {
       for (const item of group.items) {
@@ -377,10 +373,6 @@ test("Synthetic Fixture 2: Distributed software architecture verification", () =
         assert.ok(
           subheadings.some((h) => h.toLowerCase().includes("current level")),
           `Area "${item.title}" missing 'Current Level'`
-        );
-        assert.ok(
-          subheadings.some((h) => h.toLowerCase().includes("remaining issues")),
-          `Area "${item.title}" missing 'Remaining Issues'`
         );
         assert.ok(
           subheadings.some((h) => h.toLowerCase().includes("evidence")),
@@ -437,7 +429,7 @@ test("Synthetic Fixture 3: Multicenter clinical research pipeline verification",
   const areaDetails = parseAreaDetails(detailTokens);
   assert.equal(areaDetails.size, 5);
 
-  // 3. Verify EVERY map item has full 4-pillar source content in Inspector
+  // 3. Verify EVERY map item has required evidence-bearing source content in Inspector
   for (const rail of parsedMap.rails) {
     for (const group of rail.groups) {
       for (const item of group.items) {
@@ -455,10 +447,6 @@ test("Synthetic Fixture 3: Multicenter clinical research pipeline verification",
         assert.ok(
           subheadings.some((h) => h.includes("현재 수준")),
           `Area "${item.title}" missing '현재 수준'`
-        );
-        assert.ok(
-          subheadings.some((h) => h.includes("남은 문제")),
-          `Area "${item.title}" missing '남은 문제'`
         );
         assert.ok(
           subheadings.some((h) => h.includes("근거")),
@@ -1488,7 +1476,7 @@ test("Project Map text formatting across rails and group types", () => {
   assert.ok(text.includes("- **항목 B**"));
 });
 
-test("Area details text formatting preserves all pillar subsections", () => {
+test("Area details text formatting preserves available evidence subsections", () => {
   const detailDoc = `
 ## 영역 상세
 
@@ -1890,6 +1878,96 @@ test("Current Stage Canonical Semantics: Multi-rail independent Current Stages +
 
   assert.equal(parsedMap.hasCurrentStage, true);
 });
+
+test("Area Detail Evidence Admission: Area with Meaning + Current Level + Evidence and NO Remaining Problems is structurally valid and renders cleanly", () => {
+  const doc = `# 무장애 증거 수용 시스템
+
+## 프로젝트 지도
+
+### 1차 데이터 파이프라인
+#### 확보된 기반
+- **배치 수집 엔진** — 안정화된 일괄 수집 모듈
+
+#### 현재 단계
+- **스트림 처리기** — 실시간 데이터 변환 및 전송
+
+## 영역 상세
+
+### 배치 수집 엔진
+#### 의미
+과거 데이터의 일괄 수집 및 데이터베이스 인제스천을 담당하는 모듈입니다.
+#### 현재 수준
+일일 500만 건 배치 처리가 결함 없이 완료되었으며 안정화 운영 단계입니다.
+#### 근거
+- 야간 배치 실행 로그 및 SLA 100% 달성 기록
+
+### 스트림 처리기
+#### 의미
+실시간 이벤트 스트림의 윈도우 집계 및 필터링 엔진입니다.
+#### 현재 수준
+초당 10만 건 스트림 처리 테스트 진행 중입니다.
+#### 남은 문제
+- 파티션 리밸런싱 중 일시적 메시지 지연
+#### 다시 열리는 조건
+- 카프카 클러스터 버전 업그레이드 시 커넥터 재검증
+#### 근거
+- 벤치마크 테스트 리포트 STREAM-2026-08
+`;
+
+  const tokens = md.parse(doc, {});
+  const { title, sections } = splitSections(tokens);
+
+  // 1. Structural check passes with zero missing/orphan/errors
+  const validation = checkProgressStructure(tokens);
+  assert.equal(validation.ok, true, "Document with optional remaining problems must pass structural check");
+  assert.equal(validation.totalMapItems, 2);
+  assert.equal(validation.matchedDetails, 2);
+  assert.equal(validation.missingDetails, 0);
+  assert.equal(validation.orphanDetails, 0);
+
+  // 2. Parse details
+  const areaDetails = parseAreaDetails(sections.get("area details"));
+  assert.equal(areaDetails.size, 2);
+
+  // 3. Inspect Area 1 (No remaining problems, meaning + current level + evidence only)
+  const area1 = areaDetails.get(normalizeTitle("배치 수집 엔진"));
+  assert.ok(area1, "배치 수집 엔진 detail exists");
+  assert.equal(area1.subsections.length, 3, "Area 1 must have exactly 3 subsections");
+  const subheadings1 = area1.subsections.map((s) => s.subheading.trim());
+  assert.deepEqual(subheadings1, ["의미", "현재 수준", "근거"]);
+  assert.equal(subheadings1.some((h) => h.includes("남은 문제")), false, "Must not contain '남은 문제'");
+
+  // 4. Inspect Area 2 (With remaining problems + reopen conditions)
+  const area2 = areaDetails.get(normalizeTitle("스트림 처리기"));
+  assert.ok(area2, "스트림 처리기 detail exists");
+  assert.equal(area2.subsections.length, 5, "Area 2 must have 5 subsections");
+  const subheadings2 = area2.subsections.map((s) => s.subheading.trim());
+  assert.deepEqual(subheadings2, ["의미", "현재 수준", "남은 문제", "다시 열리는 조건", "근거"]);
+
+  // 5. Handoff context formatting for Area 1 omits Remaining Problems cleanly
+  const handoffArea1 = buildAreaHandoffContext({
+    projectTitle: title,
+    areaTitle: "배치 수집 엔진",
+    areaDescription: "안정화된 일괄 수집 모듈",
+    areaDetail: area1,
+  });
+  assert.ok(handoffArea1.includes("#### 의미\n과거 데이터의 일괄 수집"));
+  assert.ok(handoffArea1.includes("#### 현재 수준\n일일 500만 건"));
+  assert.ok(handoffArea1.includes("#### 근거\n- 야간 배치"));
+  assert.equal(handoffArea1.includes("남은 문제"), false, "Handoff for Area 1 must not manufacture '남은 문제'");
+  assert.equal(handoffArea1.includes("없음"), false, "Handoff must not contain filler '없음'");
+
+  // 6. Handoff context formatting for Area 2 includes Remaining Problems and Reopen Conditions
+  const handoffArea2 = buildAreaHandoffContext({
+    projectTitle: title,
+    areaTitle: "스트림 처리기",
+    areaDescription: "실시간 데이터 변환 및 전송",
+    areaDetail: area2,
+  });
+  assert.ok(handoffArea2.includes("#### 남은 문제\n- 파티션 리밸런싱"));
+  assert.ok(handoffArea2.includes("#### 다시 열리는 조건\n- 카프카 클러스터"));
+});
+
 
 
 

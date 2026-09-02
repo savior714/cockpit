@@ -154,7 +154,7 @@ function updateInspectorView(item: MapItem | null) {
     const emptySub = document.createElement("div");
     emptySub.className = "inspector-sub-card empty-detail";
     emptySub.innerHTML = `
-      <p class="muted">이 영역('${escapeHtml(item.title)}')에 대한 추가 세부 기록(의미, 현재 수준, 남은 문제, 근거 등)이 소스 문서의 '## 영역 상세'에 아직 작성되지 않았습니다.</p>
+      <p class="muted">이 영역('${escapeHtml(item.title)}')에 대한 추가 세부 기록(의미, 현재 수준, 근거 등)이 소스 문서의 '## 영역 상세'에 아직 작성되지 않았습니다.</p>
     `;
     sectionsEl.appendChild(emptySub);
   }

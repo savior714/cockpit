@@ -99,8 +99,6 @@ test("Distribution artifact smoke: pack, install into isolated prefix, and verif
 센서 데이터 수집.
 #### 현재 수준
 완료.
-#### 남은 문제
-- 없음
 #### 근거
 - 코드 확인
 
