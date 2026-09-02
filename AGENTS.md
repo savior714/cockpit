@@ -23,7 +23,7 @@ Tiers 1–3 are instructions; tier 4 is implementation evidence. When current ev
 | Evidence / validation semantics | `docs/operations/TESTING.md` |
 | Actual implementation state | code, tests, config, runtime evidence |
 
-Read only the owners directly relevant to the current task. Project-specific build/test/run instructions are added later from actual chosen implementation evidence; until they exist, derive commands from the repository itself.
+Read only the owners directly relevant to the current task. Concrete commands are in §5 below and in `README.md` §6 (Korean).
 
 ## 3. Decision boundary
 
@@ -34,3 +34,22 @@ Read only the owners directly relevant to the current task. Project-specific bui
 ## 4. Execution
 
 Ordinary repository-native execution is canonical. Do not introduce runners, daemons, queues, schedulers, persistent work/task state, admission protocols, or other execution-lifecycle machinery. Detailed execution and publication semantics are owned by `docs/operations/DEVELOPMENT.md`; evidence semantics by `docs/operations/TESTING.md`.
+
+## 5. Commands and build facts
+
+Cockpit is a read-only local viewer for one `PROGRESS.md`: Vite/TypeScript frontend (`src/main.ts`) plus loopback CLI server (`scripts/serve.mjs`). This repo dogfoods itself — the root `PROGRESS.md` is its own progress file in the format it renders.
+
+```bash
+npm run dev        # Vite dev server (serves /src/main.ts directly)
+npm run build      # tsc --noEmit && vite build && separate tsc emit of dist/parser.js
+npm test           # node --test tests/*.test.mjs (no test framework)
+node --test tests/parser.test.mjs          # fast parser-only suite
+npm run cockpit -- /path/to/PROGRESS.md    # run built viewer from dist/
+node scripts/serve.mjs check [path]        # deterministic structural preflight, exit 0/1
+```
+
+- `scripts/serve.mjs` imports `../dist/parser.js`, not source. After any change to `src/parser.ts`, run `npm run build` before CLI/smoke verification; otherwise the CLI silently runs stale parser logic.
+- `dist/` is committed to git. Regenerate and commit it together with source changes that affect build output.
+- `tests/package-smoke.test.mjs` runs `npm pack` + isolated global install — slow and may need network. Scope tests to `parser.test.mjs` during iteration; run the full suite only as final proof.
+- README §5 (Korean) is the authoring contract for `PROGRESS.md`; `src/parser.ts` is its canonical implementation. Section/heading semantics changes must land together across parser, `tests/fixtures/`, and README §5.
+- Node engines: `^20.19.0 || >=22.12.0`.
