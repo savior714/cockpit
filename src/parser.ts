@@ -63,6 +63,7 @@ export interface MapItem {
 
 export interface MapGroup {
   title: string;
+  isOrdered?: boolean;
   items: MapItem[];
 }
 
@@ -284,6 +285,7 @@ export function parseProjectMap(tokens: Token[]): ParsedMap {
         currentGroup.title,
         isCurrentStage
       );
+      currentGroup.isOrdered = groupTokens.some((t) => t.type === "ordered_list_open");
 
       if (isCurrentStage && currentGroup.items.length > 0 && !currentStageTitle) {
         currentStageTitle = currentGroup.items[0].title;
@@ -844,20 +846,130 @@ export function renderNativeMap(
           });
           html += `</div></div>`;
         } else {
-          // Neutral group inside trajectory
+          // Other group inside trajectory
+          const isGroupOrdered = Boolean(group.isOrdered);
           html += `
-            <div class="trajectory-group neutral-group">
+            <div class="trajectory-group neutral-group ${isGroupOrdered ? "group-ordered" : "group-peer"}">
               <div class="group-header">
                 <h4 class="group-name">${escapeHtml(group.title)}</h4>
               </div>
-              <div class="group-items-grid">
           `;
+          if (isGroupOrdered) {
+            html += `<div class="group-items-flow group-items-ordered">`;
+            group.items.forEach((item, itemIdx) => {
+              const isSelected = selectedAreaId === item.id;
+              if (itemIdx > 0) {
+                html += `<div class="flow-step-arrow" aria-hidden="true">↓</div>`;
+              }
+              html += `
+                <button
+                  type="button"
+                  class="map-card card-ordered ${isSelected ? "selected" : ""}"
+                  data-item-id="${escapeHtml(item.id)}"
+                  aria-label="${escapeHtml(item.title)} 영역 검사"
+                >
+                  <span class="step-num">${itemIdx + 1}</span>
+                  <div class="step-body">
+                    <span class="card-title">${escapeHtml(item.title)}</span>
+                    ${
+                      item.description
+                        ? `<span class="card-desc">${escapeHtml(item.description)}</span>`
+                        : ""
+                    }
+                  </div>
+                </button>
+              `;
+            });
+            html += `</div>`;
+          } else {
+            html += `<div class="group-items-grid group-items-peer">`;
+            for (const item of group.items) {
+              const isSelected = selectedAreaId === item.id;
+              html += `
+                <button
+                  type="button"
+                  class="map-card card-peer ${isSelected ? "selected" : ""}"
+                  data-item-id="${escapeHtml(item.id)}"
+                  aria-label="${escapeHtml(item.title)} 영역 검사"
+                >
+                  <div class="card-inner">
+                    <span class="card-title">${escapeHtml(item.title)}</span>
+                    ${
+                      item.description
+                        ? `<span class="card-desc">${escapeHtml(item.description)}</span>`
+                        : ""
+                    }
+                  </div>
+                </button>
+              `;
+            }
+            html += `</div>`;
+          }
+          html += `</div>`;
+        }
+      }
+      html += `</div>`;
+    } else {
+      // Neutral rail: support sequential vs peer tracks and ordered vs peer groups
+      const isSequentialRail =
+        rail.groups.length > 1 && rail.groups.every((g) => g.isOrdered);
+
+      html += `<div class="neutral-groups-container ${
+        isSequentialRail ? "sequential-track" : "peer-track"
+      }">`;
+
+      rail.groups.forEach((group, gIdx) => {
+        if (isSequentialRail && gIdx > 0) {
+          html += `
+            <div class="neutral-group-connector" aria-hidden="true">
+              <span class="group-arrow">→</span>
+            </div>
+          `;
+        }
+
+        const isGroupOrdered = Boolean(group.isOrdered);
+        html += `
+          <div class="neutral-group ${isGroupOrdered ? "group-ordered" : "group-peer"}">
+            <div class="group-header">
+              <h4 class="group-name">${escapeHtml(group.title)}</h4>
+            </div>
+        `;
+
+        if (isGroupOrdered) {
+          html += `<div class="group-items-flow group-items-ordered">`;
+          group.items.forEach((item, itemIdx) => {
+            const isSelected = selectedAreaId === item.id;
+            if (itemIdx > 0) {
+              html += `<div class="flow-step-arrow" aria-hidden="true">↓</div>`;
+            }
+            html += `
+              <button
+                type="button"
+                class="map-card card-ordered ${isSelected ? "selected" : ""}"
+                data-item-id="${escapeHtml(item.id)}"
+                aria-label="${escapeHtml(item.title)} 영역 검사"
+              >
+                <span class="step-num">${itemIdx + 1}</span>
+                <div class="step-body">
+                  <span class="card-title">${escapeHtml(item.title)}</span>
+                  ${
+                    item.description
+                      ? `<span class="card-desc">${escapeHtml(item.description)}</span>`
+                      : ""
+                  }
+                </div>
+              </button>
+            `;
+          });
+          html += `</div>`;
+        } else {
+          html += `<div class="group-items-grid group-items-peer">`;
           for (const item of group.items) {
             const isSelected = selectedAreaId === item.id;
             html += `
               <button
                 type="button"
-                class="map-card ${isSelected ? "selected" : ""}"
+                class="map-card card-peer ${isSelected ? "selected" : ""}"
                 data-item-id="${escapeHtml(item.id)}"
                 aria-label="${escapeHtml(item.title)} 영역 검사"
               >
@@ -872,43 +984,12 @@ export function renderNativeMap(
               </button>
             `;
           }
-          html += `</div></div>`;
+          html += `</div>`;
         }
-      }
-      html += `</div>`;
-    } else {
-      // Neutral rail: clean horizontal grid of groups
-      html += `<div class="neutral-groups-container">`;
-      for (const group of rail.groups) {
-        html += `
-          <div class="neutral-group">
-            <div class="group-header">
-              <h4 class="group-name">${escapeHtml(group.title)}</h4>
-            </div>
-            <div class="group-items-grid">
-        `;
-        for (const item of group.items) {
-          const isSelected = selectedAreaId === item.id;
-          html += `
-            <button
-              type="button"
-              class="map-card ${isSelected ? "selected" : ""}"
-              data-item-id="${escapeHtml(item.id)}"
-              aria-label="${escapeHtml(item.title)} 영역 검사"
-            >
-              <div class="card-inner">
-                <span class="card-title">${escapeHtml(item.title)}</span>
-                ${
-                  item.description
-                    ? `<span class="card-desc">${escapeHtml(item.description)}</span>`
-                    : ""
-                }
-              </div>
-            </button>
-          `;
-        }
-        html += `</div></div>`;
-      }
+
+        html += `</div>`;
+      });
+
       html += `</div>`;
     }
 

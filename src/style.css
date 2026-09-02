@@ -926,17 +926,43 @@ body {
   fill: var(--stage-bg) !important;
 }
 
-/* Neutral / Generic Rail Groups */
-.neutral-groups-container,
-.generic-groups-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+/* Neutral / Native Map Rail Groups & Explicit Relationship Flow */
+.neutral-groups-container {
   gap: 14px;
   align-items: stretch;
+  position: relative;
 }
 
-.neutral-group,
-.generic-group {
+.neutral-groups-container.peer-track {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+}
+
+.neutral-groups-container.sequential-track {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.neutral-groups-container.sequential-track .neutral-group {
+  flex: 1;
+  min-width: 220px;
+}
+
+.neutral-group-connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 1.25rem;
+  font-weight: 800;
+  user-select: none;
+  flex-shrink: 0;
+  padding: 0 4px;
+}
+
+.neutral-group {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -945,15 +971,53 @@ body {
   border-radius: var(--radius-md);
   padding: 14px;
   min-width: 0;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s ease;
 }
 
-.neutral-group .group-header,
-.generic-group .group-header {
+.neutral-group .group-header {
   display: flex;
   align-items: center;
   gap: 8px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--line-subtle);
+}
+
+.group-items-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.flow-step-arrow {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1;
+  user-select: none;
+  padding: 1px 0;
+}
+
+.card-ordered {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--panel);
+  border-color: var(--line);
+}
+
+.card-ordered .step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.card-peer {
+  background: var(--panel);
+  border-color: var(--line);
 }
 
 /* Responsive / Mobile Breakdown */
@@ -981,14 +1045,19 @@ body {
     grid-template-columns: 1fr;
   }
 
-  .neutral-groups-container,
-  .generic-groups-container,
-  .workflow-groups-container {
+  .neutral-groups-container.peer-track {
     grid-template-columns: 1fr;
   }
 
-  .workflow-arrow {
-    transform: rotate(90deg);
+  .neutral-groups-container.sequential-track {
+    flex-direction: column;
+  }
+
+  .neutral-group-connector {
     padding: 6px 0;
+  }
+
+  .neutral-group-connector .group-arrow {
+    transform: rotate(90deg);
   }
 }

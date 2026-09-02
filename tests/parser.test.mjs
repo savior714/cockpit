@@ -957,4 +957,212 @@ test("Structural check: Missing required top-level surfaces => FAIL", () => {
   );
 });
 
+test("Explicit relationship grammar: bullet list => peer rendering, no directional arrows", () => {
+  const markdown = `
+# Peer System
+
+## 프로젝트 지도
+
+### 아키텍처 계층
+#### 코어 서비스
+- **인증 서비스** — 토큰 발급 및 검증
+- **사용자 서비스** — 프로필 및 권한 관리
+
+#### 데이터 스토리지
+- **메인 DB** — 트랜잭션 데이터 저장
+- **캐시 클러스터** — 세션 및 고빈도 조회 데이터 캐싱
+`;
+
+  const tokens = md.parse(markdown, {});
+  const { sections } = splitSections(tokens);
+  const mapTokens = sections.get("project map");
+  assert.ok(mapTokens);
+  const parsedMap = parseProjectMap(mapTokens);
+
+  assert.equal(parsedMap.rails.length, 1);
+  const rail = parsedMap.rails[0];
+  assert.equal(rail.groups.length, 2);
+  assert.equal(rail.groups[0].isOrdered, false);
+  assert.equal(rail.groups[1].isOrdered, false);
+
+  const html = renderNativeMap(parsedMap);
+
+  // Structural checks
+  assert.ok(html.includes("peer-track"), "Neutral rail with bullet lists should have peer-track class");
+  assert.ok(!html.includes("sequential-track"), "Neutral rail with bullet lists should not have sequential-track class");
+  assert.ok(!html.includes("neutral-group-connector"), "Peer groups should not have directional group connectors");
+  assert.ok(!html.includes("flow-step-arrow"), "Peer groups should not have directional step arrows");
+  assert.ok(html.includes("group-peer"), "Groups should have group-peer class");
+  assert.ok(html.includes("card-peer"), "Cards should have card-peer class");
+  assert.ok(!html.includes("card-ordered"), "Cards should not have card-ordered class");
+});
+
+test("Explicit relationship grammar: ordered list => sequential rendering with directional connectors and step numbers", () => {
+  const markdown = `
+# Sequential Flow System
+
+## 프로젝트 지도
+
+### 데이터 처리 파이프라인
+#### 수집 및 전처리
+1. **원천 데이터 수집** — 외부 스트림 인제스천
+2. **스키마 검증 및 정제** — 필드 타입 검증 및 이상치 필터링
+
+#### 변환 및 적재
+1. **집계 변환** — 1분 단위 롤업 집계
+2. **웨어하우스 적재** — 분석 저장소 최종 적재
+`;
+
+  const tokens = md.parse(markdown, {});
+  const { sections } = splitSections(tokens);
+  const mapTokens = sections.get("project map");
+  assert.ok(mapTokens);
+  const parsedMap = parseProjectMap(mapTokens);
+
+  assert.equal(parsedMap.rails.length, 1);
+  const rail = parsedMap.rails[0];
+  assert.equal(rail.groups.length, 2);
+  assert.equal(rail.groups[0].isOrdered, true);
+  assert.equal(rail.groups[1].isOrdered, true);
+
+  const html = renderNativeMap(parsedMap);
+
+  // Structural checks for sequential track
+  assert.ok(html.includes("sequential-track"), "Sequential rail should have sequential-track class");
+  assert.ok(html.includes("neutral-group-connector"), "Consecutive ordered groups should have directional connector");
+  assert.ok(html.includes("group-arrow"), "Connector should include group arrow");
+  assert.ok(html.includes("group-items-ordered"), "Items container should have group-items-ordered class");
+  assert.ok(html.includes("flow-step-arrow"), "Consecutive items within group should have step flow arrow");
+  assert.ok(html.includes("card-ordered"), "Cards should have card-ordered class");
+  assert.ok(html.includes("step-num"), "Cards should have step numbers");
+});
+
+test("Vocabulary invariance: Titles do NOT determine sequential vs peer mode without explicit list grammar", () => {
+  // Title contains "Workflow" and "Pipeline", but list uses bullet points
+  const bulletWorkflow = `
+# Title Invariance Test
+
+## 프로젝트 지도
+
+### 워크플로우 파이프라인
+#### 처리 순서
+- **1단계 작업** — 첫번째
+- **2단계 작업** — 두번째
+`;
+
+  const parsedBullet = parseProjectMap(splitSections(md.parse(bulletWorkflow, {})).sections.get("project map"));
+  assert.equal(parsedBullet.rails[0].groups[0].isOrdered, false);
+  const bulletHtml = renderNativeMap(parsedBullet);
+  assert.ok(!bulletHtml.includes("flow-step-arrow"), "Workflow title with bullet list must NOT render flow arrows");
+  assert.ok(bulletHtml.includes("card-peer"), "Workflow title with bullet list must render card-peer");
+
+  // Title contains "Static Components", but list uses ordered numbers
+  const orderedComponents = `
+# Title Invariance Test
+
+## 프로젝트 지도
+
+### 정적 구성요소 모음
+#### 독립 모듈
+1. **모듈 A** — 첫번째
+2. **모듈 B** — 두번째
+`;
+
+  const parsedOrdered = parseProjectMap(splitSections(md.parse(orderedComponents, {})).sections.get("project map"));
+  assert.equal(parsedOrdered.rails[0].groups[0].isOrdered, true);
+  const orderedHtml = renderNativeMap(parsedOrdered);
+  assert.ok(orderedHtml.includes("flow-step-arrow"), "Ordered list must render flow arrows regardless of title");
+  assert.ok(orderedHtml.includes("card-ordered"), "Ordered list must render card-ordered");
+});
+
+test("Structural check: Complete document with ordered map list => PASS", () => {
+  const completeOrderedDoc = `
+# 순차 파이프라인 프로젝트
+
+## 프로젝트 지도
+
+### 데이터 수집 및 처리
+#### 데이터 인제스천
+1. **센서 데이터 수신** — MQTT 실시간 수신
+2. **데이터 유효성 검증** — 스키마 검증
+
+#### 현재 단계
+1. **파티셔닝 엔진** — 시계열 파티셔닝
+
+#### 향후 여정
+1. **대용량 집계 파이프라인** — 분산 롤업
+2. **실시간 이상 감지** — 스트림 이상치 감지
+
+## 영역 상세
+
+### 센서 데이터 수신
+#### 의미
+수신
+#### 현재 수준
+완료
+#### 남은 문제
+- 없음
+#### 근거
+- 코드 및 테스트
+
+### 데이터 유효성 검증
+#### 의미
+검증
+#### 현재 수준
+완료
+#### 남은 문제
+- 없음
+#### 근거
+- 코드 및 테스트
+
+### 파티셔닝 엔진
+#### 의미
+엔진
+#### 현재 수준
+진행중
+#### 남은 문제
+- 성능 튜닝
+#### 근거
+- 벤치마크
+
+### 대용량 집계 파이프라인
+#### 의미
+집계
+#### 현재 수준
+설계중
+#### 남은 문제
+- 클러스터 구성
+#### 근거
+- 아키텍처 문서
+
+### 실시간 이상 감지
+#### 의미
+감지
+#### 현재 수준
+대기
+#### 남은 문제
+- 모델 선정
+#### 근거
+- 요구사항 정의서
+
+## 현재 상황
+최근 파티셔닝 엔진 프로토타입 구현이 완료되어 벤치마크 테스트를 진행하고 있습니다.
+
+## 다음 전환
+파티셔닝 엔진 벤치마크 통과 후 대용량 집계 파이프라인 구현 착수.
+
+## 직면한 문제
+- 10만 RPS 부하 시 메모리 스파이크 현상 분석 중.
+`;
+
+  const result = checkProgressStructure(completeOrderedDoc);
+  assert.equal(result.ok, true);
+  assert.equal(result.totalMapItems, 5);
+  assert.equal(result.matchedDetails, 5);
+  assert.equal(result.missingDetails, 0);
+  assert.equal(result.orphanDetails, 0);
+  assert.equal(result.currentStageCount, 1);
+});
+
+
 
