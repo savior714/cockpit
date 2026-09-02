@@ -14,7 +14,7 @@ import process from "node:process";
 import {
   checkProgressStructure,
   formatStructuralCheckReport,
-} from "../src/parser.ts";
+} from "../dist/parser.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = path.resolve(__dirname, "..");

@@ -20,7 +20,7 @@ import {
   renderNativeMap,
   checkProgressStructure,
   formatStructuralCheckReport,
-} from "../src/parser.ts";
+} from "../dist/parser.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const md = new MarkdownIt({ html: true, linkify: true });
