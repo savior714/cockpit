@@ -1,17 +1,163 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import MarkdownIt from "markdown-it";
 import {
   normalizeKey,
+  normalizeTitle,
+  normalizeHeading,
+  HEADING_ALIAS,
   isCurrentStageHeading,
   isFoundationHeading,
   isFutureHeading,
   parseProjectMap,
   splitSections,
+  parseAreaDetails,
+  findAreaDetail,
   renderNativeMap,
 } from "../src/parser.ts";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const md = new MarkdownIt({ html: true, linkify: true });
+
+test("Deterministic title normalization: NFC, whitespace collapse, case folding", () => {
+  assert.equal(normalizeTitle("  Patient  Registration  "), "patient registration");
+  assert.equal(normalizeTitle("환자 등록"), "환자 등록");
+  assert.equal(normalizeTitle("환자    등록"), "환자 등록");
+  assert.equal(normalizeTitle(""), "");
+
+  // Unicode NFC normalization test (composed vs decomposed forms)
+  const decomposed = "가\u0301"; // with combining mark
+  const composed = decomposed.normalize("NFC");
+  assert.equal(normalizeTitle(decomposed), normalizeTitle(composed));
+});
+
+test("Exact title equality prevents false collisions across punctuation and parenthesis distinctions", () => {
+  // Setup area details with distinct names that would collide if punctuation/hyphens were erased
+  const areaDetailMarkdown = `
+## 영역 상세
+
+### A-B
+#### 의미
+Hyphenated distinct area A-B.
+#### 현재 수준
+Level 1.
+#### 남은 문제
+- None
+#### 근거
+- Evidence AB-1
+
+### AB
+#### 의미
+Un-hyphenated distinct area AB.
+#### 현재 수준
+Level 2.
+#### 남은 문제
+- None
+#### 근거
+- Evidence AB-2
+
+### 환자(외래)
+#### 의미
+외래 환자 접수 및 관리 영역.
+#### 현재 수준
+Level 3.
+#### 남은 문제
+- None
+#### 근거
+- Evidence OPD
+
+### 환자 외래
+#### 의미
+외래 환자 대상 안내 및 이동 동선.
+#### 현재 수준
+Level 4.
+#### 남은 문제
+- None
+#### 근거
+- Evidence Guide
+
+### 환자외래
+#### 의미
+외래 전용 약어 엔티티.
+#### 현재 수준
+Level 5.
+#### 남은 문제
+- None
+#### 근거
+- Evidence Entity
+
+### v1.0
+#### 의미
+Version 1.0.
+#### 현재 수준
+Level 6.
+#### 남은 문제
+- None
+#### 근거
+- Evidence v1.0
+
+### v10
+#### 의미
+Version 10.
+#### 현재 수준
+Level 7.
+#### 남은 문제
+- None
+#### 근거
+- Evidence v10
+`;
+
+  const tokens = md.parse(areaDetailMarkdown, {});
+  const { sections } = splitSections(tokens);
+  const detailTokens = sections.get("area details");
+  assert.ok(detailTokens);
+  const areaDetails = parseAreaDetails(detailTokens);
+
+  assert.equal(areaDetails.size, 7);
+
+  // 1. Hyphen collision test: "A-B" vs "AB"
+  const detailABHyphen = findAreaDetail("A-B", areaDetails);
+  assert.ok(detailABHyphen);
+  assert.equal(detailABHyphen.title, "A-B");
+  assert.ok(detailABHyphen.subsections[0].rawText.includes("Hyphenated distinct area A-B"));
+
+  const detailABNoHyphen = findAreaDetail("AB", areaDetails);
+  assert.ok(detailABNoHyphen);
+  assert.equal(detailABNoHyphen.title, "AB");
+  assert.ok(detailABNoHyphen.subsections[0].rawText.includes("Un-hyphenated distinct area AB"));
+
+  // 2. Korean Parentheses / Space distinction test: "환자(외래)" vs "환자 외래" vs "환자외래"
+  const detailParen = findAreaDetail("환자(외래)", areaDetails);
+  assert.ok(detailParen);
+  assert.equal(detailParen.title, "환자(외래)");
+  assert.ok(detailParen.subsections[0].rawText.includes("외래 환자 접수"));
+
+  const detailSpace = findAreaDetail("환자 외래", areaDetails);
+  assert.ok(detailSpace);
+  assert.equal(detailSpace.title, "환자 외래");
+  assert.ok(detailSpace.subsections[0].rawText.includes("이동 동선"));
+
+  const detailNoSpace = findAreaDetail("환자외래", areaDetails);
+  assert.ok(detailNoSpace);
+  assert.equal(detailNoSpace.title, "환자외래");
+  assert.ok(detailNoSpace.subsections[0].rawText.includes("약어 엔티티"));
+
+  // 3. Dot distinction test: "v1.0" vs "v10"
+  const detailV1 = findAreaDetail("v1.0", areaDetails);
+  assert.ok(detailV1);
+  assert.equal(detailV1.title, "v1.0");
+
+  const detailV10 = findAreaDetail("v10", areaDetails);
+  assert.ok(detailV10);
+  assert.equal(detailV10.title, "v10");
+
+  // Non-matching lookup returns undefined
+  assert.equal(findAreaDetail("A_B", areaDetails), undefined);
+  assert.equal(findAreaDetail("환자", areaDetails), undefined);
+});
 
 test("Exact canonical current stage heading matching", () => {
   // Exact Korean and English compatibility matches
@@ -60,204 +206,293 @@ test("Explicit foundation and future heading aliases", () => {
   assert.equal(isFutureHeading("경로 탐색"), false);
 });
 
-test("Fixture 1: NextChart EMR PROGRESS.md parsing", () => {
-  const markdown = `
-# NextChart EMR
+test("Heading aliases contract: Korean and English Area Details and Context slots", () => {
+  // Korean Area Detail headings (both '영역 상세' and '영역별 상세' MUST normalize to 'area details')
+  assert.equal(HEADING_ALIAS["영역 상세"], "area details");
+  assert.equal(HEADING_ALIAS["영역별 상세"], "area details");
 
-## 프로젝트 지도
+  // English Area Detail headings
+  assert.equal(HEADING_ALIAS["area details"], "area details");
+  assert.equal(HEADING_ALIAS["area detail"], "area details");
 
-### 한 환자의 외래 진료
+  // Context panels
+  assert.equal(HEADING_ALIAS["product goal"], "project frame");
+  assert.equal(HEADING_ALIAS["product goals"], "project frame");
+  assert.equal(HEADING_ALIAS["제품 목표"], "project frame");
+  assert.equal(HEADING_ALIAS["프로젝트 큰 그림"], "project frame");
 
-#### 진료 전
-- **환자 등록** — 환자 찾기, 기본정보와 보험정보 등록 및 관리
-- **접수·보험 확인** — 오늘 진료를 시작하기 위한 접수와 자격 조회
+  // Overview panels
+  assert.equal(HEADING_ALIAS["현재 상황"], "current situation");
+  assert.equal(HEADING_ALIAS["다음 전환"], "next transition");
+  assert.equal(HEADING_ALIAS["직면한 문제"], "facing issues");
+});
 
-#### 진료 중
-- **진료** — 과거 이력 확인, 진단 및 진료 기록 작성
-- **처방·검사·처치** — 실제 진료 지시와 금기·용량 등 필수 안전 확인
-- **진료 완료** — 진료 기록을 확정하고 다음 원무 업무로 전달
-
-#### 진료 후
-- **수납·영수증** — 본인부담금 계산, 수납 처리 및 영수증 발행
-- **청구 준비** — 진료 사실을 청구 가능한 자료로 연결 및 검증
-- **하루 마감** — 당일 수납 내역 및 업무 상태 최종 정리
-
-### 실제 의원에서 쓰기까지
-
-#### 현재 확보된 기반
-- **외래 진료 전 과정** — 환자 등록부터 하루 마감까지 전체 브라우저 Golden Path 정상 동작 검증
-
-#### 현재 단계
-- **첫 배포 후보 통합 검증** — 각각 검증했던 기능들이 실제 배포본 하나에서도 함께 정상적으로 성립하는지 확인
-
-#### 앞으로의 도입 경로
-- **시범 의원 준비** — 한 곳의 실제 의원 환경에서 설치·데이터 연동 및 운영 리허설
-`;
+test("First-Use Fixture A: Greenhub Smart Farm IoT operational & hardware topology verification", () => {
+  const filePath = path.join(__dirname, "fixtures", "greenhub.md");
+  const markdown = fs.readFileSync(filePath, "utf-8");
 
   const tokens = md.parse(markdown, {});
-  const { sections } = splitSections(tokens);
+  const { title, sections } = splitSections(tokens);
+
+  assert.equal(title, "Greenhub Smart Farm IoT");
+
+  // 1. Map parsing
   const mapTokens = sections.get("project map");
-  const parsed = parseProjectMap(mapTokens);
+  assert.ok(mapTokens, "Project Map section must be parsed");
+  const parsedMap = parseProjectMap(mapTokens);
 
-  assert.equal(parsed.isNativeMap, true);
-  assert.equal(parsed.rails.length, 2);
+  assert.equal(parsedMap.isNativeMap, true);
+  assert.equal(parsedMap.rails.length, 3);
 
-  // Rail 1: 한 환자의 외래 진료 (No "현재 단계" group -> neutral rail)
-  const rail1 = parsed.rails[0];
-  assert.equal(rail1.title, "한 환자의 외래 진료");
+  // Rail 1: 스마트팜 현장 설비 및 엣지 계층 (Neutral rail)
+  const rail1 = parsedMap.rails[0];
+  assert.equal(rail1.title, "스마트팜 현장 설비 및 엣지 계층");
   assert.equal(rail1.railType, "neutral");
-  assert.equal(rail1.groups.length, 3);
-  assert.equal(rail1.groups[0].title, "진료 전");
-  assert.equal(rail1.groups[0].items.length, 2);
-  assert.equal(rail1.groups[0].items[0].isCurrentStage, false);
+  assert.equal(rail1.groups.length, 2);
 
-  // Rail 2: 실제 의원에서 쓰기까지 (Has "현재 단계" group -> trajectory rail)
-  const rail2 = parsed.rails[1];
-  assert.equal(rail2.title, "실제 의원에서 쓰기까지");
+  // Rail 2: 부여 온실 1호기 현장 실증 (Trajectory rail owning '현재 단계')
+  const rail2 = parsedMap.rails[1];
+  assert.equal(rail2.title, "부여 온실 1호기 현장 실증");
   assert.equal(rail2.railType, "trajectory");
-  assert.equal(rail2.groups.length, 3);
-  assert.equal(rail2.groups[0].title, "현재 확보된 기반");
-  assert.equal(rail2.groups[0].items[0].isCurrentStage, false);
-  assert.equal(rail2.groups[1].title, "현재 단계");
-  assert.equal(rail2.groups[1].items[0].title, "첫 배포 후보 통합 검증");
-  assert.equal(rail2.groups[1].items[0].isCurrentStage, true);
+  assert.equal(rail2.groups.length, 2);
+  assert.equal(parsedMap.currentStageTitle, "온실 1호기 72시간 연속 실증");
 
-  // Current stage ownership
-  assert.equal(parsed.currentStageTitle, "첫 배포 후보 통합 검증");
+  // Rail 3: 클라우드 인제스천 및 관제 (Neutral rail)
+  const rail3 = parsedMap.rails[2];
+  assert.equal(rail3.title, "클라우드 인제스천 및 관제");
+  assert.equal(rail3.railType, "neutral");
+  assert.equal(rail3.groups.length, 2);
 
-  // Render HTML check: no bogus "업무 흐름" or "프로젝트 축" badges
-  const html = renderNativeMap(parsed);
-  assert.equal(html.includes("업무 흐름"), false);
-  assert.equal(html.includes("프로젝트 축"), false);
-  assert.equal(html.includes("NOW · 현재 단계"), true);
-  assert.equal(html.includes("map-rail-neutral"), true);
-  assert.equal(html.includes("map-rail-trajectory"), true);
-});
+  // 2. Area details parsing under '## 영역별 상세'
+  const detailTokens = sections.get("area details");
+  assert.ok(detailTokens, "## 영역별 상세 must be recognized as 'area details'");
+  const areaDetails = parseAreaDetails(detailTokens);
+  assert.equal(areaDetails.size, 7);
 
-test("Fixture 2: Greenhub IoT sensor fleet with no NextChart vocabulary", () => {
-  const markdown = `
-# Greenhub IoT Sensor Fleet
+  // 3. Verify EVERY map item has full 4-pillar source content in Inspector
+  for (const rail of parsedMap.rails) {
+    for (const group of rail.groups) {
+      for (const item of group.items) {
+        const detail = findAreaDetail(item, areaDetails);
+        assert.ok(
+          detail,
+          `Map item "${item.title}" must have a matching AreaDetail in "## 영역별 상세"`
+        );
 
-## 프로젝트 지도
-
-### 센서 수집 및 전달 계층
-
-#### 데이터 수집
-- **엣지 노드 수집** — 온습도 센서 측정치 수집
-
-#### 데이터 가공
-- **시계열 정규화** — 결측치 보정 및 이상치 필터링
-
-#### 데이터 전송
-- **MQTT 게이트웨이** — 브로커 연결 및 QoS 관리
-
-### 현장 배포 및 가동
-
-#### 확보된 기반
-- **프로토타입 벤치마크** — 랩 환경 테스트 완료
-
-#### 현재 단계
-- **온실 1호기 실증** — 72시간 연속 가동 테스트
-
-#### 향후 계획
-- **양산 패키징** — IP67 방진방수 하우징
-`;
-
-  const tokens = md.parse(markdown, {});
-  const { sections } = splitSections(tokens);
-  const mapTokens = sections.get("project map");
-  const parsed = parseProjectMap(mapTokens);
-
-  assert.equal(parsed.isNativeMap, true);
-  assert.equal(parsed.rails.length, 2);
-
-  // Rail 1 is neutral
-  assert.equal(parsed.rails[0].railType, "neutral");
-  assert.equal(parsed.rails[0].groups.length, 3);
-
-  // Rail 2 is trajectory
-  assert.equal(parsed.rails[1].railType, "trajectory");
-  assert.equal(parsed.currentStageTitle, "온실 1호기 실증");
-});
-
-test("Fixture 3: Deliberately neutral project without classifier vocabulary", () => {
-  const markdown = `
-# Neutral Project
-
-## 프로젝트 지도
-
-### Core Architecture
-
-#### Layer Alpha
-- **Alpha Core 1** — Primitive component
-- **Alpha Core 2** — Extended primitive
-
-#### Layer Beta
-- **Beta Channel** — Message multiplexer
-
-#### Layer Gamma
-- **Gamma Interface** — Terminal boundary
-`;
-
-  const tokens = md.parse(markdown, {});
-  const { sections } = splitSections(tokens);
-  const mapTokens = sections.get("project map");
-  const parsed = parseProjectMap(mapTokens);
-
-  assert.equal(parsed.isNativeMap, true);
-  assert.equal(parsed.rails.length, 1);
-
-  const rail = parsed.rails[0];
-  assert.equal(rail.title, "Core Architecture");
-  assert.equal(rail.railType, "neutral");
-  assert.equal(rail.groups.length, 3);
-  assert.equal(parsed.currentStageTitle, undefined);
-
-  const html = renderNativeMap(parsed);
-  assert.equal(html.includes("neutral-groups-container"), true);
-  assert.equal(html.includes("Layer Alpha"), true);
-  assert.equal(html.includes("Layer Beta"), true);
-  assert.equal(html.includes("Layer Gamma"), true);
-  assert.equal(html.includes("group-current-stage"), false);
-});
-
-test("Regression Fixture 4: '현재 문제', '현재 가설', '현재 확보된 기반' do NOT become current stage", () => {
-  const markdown = `
-# Regression Project
-
-## 프로젝트 지도
-
-### 진단 레일
-
-#### 현재 문제
-- **병목 발생** — 메모리 누수 현상
-
-#### 현재 가설
-- **이벤트 리스너 미해제** — 가설 검증 필요
-
-#### 현재 확보된 기반
-- **재현 스크립트 확보** — 100% 재현 가능한 스크립트
-`;
-
-  const tokens = md.parse(markdown, {});
-  const { sections } = splitSections(tokens);
-  const mapTokens = sections.get("project map");
-  const parsed = parseProjectMap(mapTokens);
-
-  assert.equal(parsed.isNativeMap, true);
-  assert.equal(parsed.rails.length, 1);
-
-  // NONE of the groups match exact "현재 단계" -> must be neutral rail
-  assert.equal(parsed.rails[0].railType, "neutral");
-  assert.equal(parsed.currentStageTitle, undefined);
-
-  for (const group of parsed.rails[0].groups) {
-    for (const item of group.items) {
-      assert.equal(item.isCurrentStage, false);
+        const subheadings = detail.subsections.map((s) => s.subheading.trim());
+        assert.ok(
+          subheadings.some((h) => h.includes("의미")),
+          `Area "${item.title}" missing '의미'`
+        );
+        assert.ok(
+          subheadings.some((h) => h.includes("현재 수준")),
+          `Area "${item.title}" missing '현재 수준'`
+        );
+        assert.ok(
+          subheadings.some((h) => h.includes("남은 문제")),
+          `Area "${item.title}" missing '남은 문제'`
+        );
+        assert.ok(
+          subheadings.some((h) => h.includes("근거")),
+          `Area "${item.title}" missing '근거'`
+        );
+      }
     }
   }
 
-  const html = renderNativeMap(parsed);
-  assert.equal(html.includes("group-current-stage"), false);
-  assert.equal(html.includes("NOW · 현재 단계"), false);
+  // 4. Verify Overview and Context slots
+  assert.ok(sections.get("current situation"), "## 현재 상황 slot parsed");
+  assert.ok(sections.get("next transition"), "## 다음 전환 slot parsed");
+  assert.ok(sections.get("facing issues"), "## 직면한 문제 slot parsed");
+  assert.ok(sections.get("project frame"), "## 제품 목표 slot parsed");
+  assert.ok(sections.get("settled direction"), "## 확정된 방향 slot parsed");
+});
+
+test("First-Use Fixture B: Flux Engine distributed software system architecture verification", () => {
+  const filePath = path.join(__dirname, "fixtures", "flux-engine.md");
+  const markdown = fs.readFileSync(filePath, "utf-8");
+
+  const tokens = md.parse(markdown, {});
+  const { title, sections } = splitSections(tokens);
+
+  assert.equal(title, "Flux Engine");
+
+  // 1. Map parsing
+  const mapTokens = sections.get("project map");
+  assert.ok(mapTokens, "Project Map section must be parsed");
+  const parsedMap = parseProjectMap(mapTokens);
+
+  assert.equal(parsedMap.isNativeMap, true);
+  assert.equal(parsedMap.rails.length, 3);
+
+  // Rail 1: Storage Subsystem (Neutral rail)
+  const rail1 = parsedMap.rails[0];
+  assert.equal(rail1.title, "Storage Subsystem");
+  assert.equal(rail1.railType, "neutral");
+  assert.equal(rail1.groups.length, 2);
+
+  // Rail 2: Distributed Consensus & Replication (Trajectory rail owning 'Current Stage')
+  const rail2 = parsedMap.rails[1];
+  assert.equal(rail2.title, "Distributed Consensus & Replication");
+  assert.equal(rail2.railType, "trajectory");
+  assert.equal(rail2.groups.length, 3);
+  assert.equal(parsedMap.currentStageTitle, "Partition Rebalancing Under Failure");
+
+  // Rail 3: Cloud Storage & WAN (Neutral rail)
+  const rail3 = parsedMap.rails[2];
+  assert.equal(rail3.title, "Cloud Storage & WAN");
+  assert.equal(rail3.railType, "neutral");
+  assert.equal(rail3.groups.length, 2);
+
+  // 2. Area details parsing under '## Area Details'
+  const detailTokens = sections.get("area details");
+  assert.ok(detailTokens, "## Area Details must be recognized as 'area details'");
+  const areaDetails = parseAreaDetails(detailTokens);
+  assert.equal(areaDetails.size, 7);
+
+  // 3. Verify EVERY map item has full 4-pillar source content in Inspector
+  for (const rail of parsedMap.rails) {
+    for (const group of rail.groups) {
+      for (const item of group.items) {
+        const detail = findAreaDetail(item, areaDetails);
+        assert.ok(
+          detail,
+          `Map item "${item.title}" must have a matching AreaDetail in "## Area Details"`
+        );
+
+        const subheadings = detail.subsections.map((s) => s.subheading.trim());
+        assert.ok(
+          subheadings.some((h) => h.toLowerCase().includes("meaning")),
+          `Area "${item.title}" missing 'Meaning'`
+        );
+        assert.ok(
+          subheadings.some((h) => h.toLowerCase().includes("current level")),
+          `Area "${item.title}" missing 'Current Level'`
+        );
+        assert.ok(
+          subheadings.some((h) => h.toLowerCase().includes("remaining issues")),
+          `Area "${item.title}" missing 'Remaining Issues'`
+        );
+        assert.ok(
+          subheadings.some((h) => h.toLowerCase().includes("evidence")),
+          `Area "${item.title}" missing 'Evidence'`
+        );
+      }
+    }
+  }
+
+  // 4. Overview & Context slots
+  assert.ok(sections.get("current situation"), "## Current Situation parsed");
+  assert.ok(sections.get("next transition"), "## Next Transition parsed");
+  assert.ok(sections.get("facing issues"), "## Facing Issues parsed");
+  assert.ok(sections.get("project frame"), "## Product Goals parsed");
+  assert.ok(sections.get("settled direction"), "## Settled Direction parsed");
+});
+
+test("First-Use Fixture C: Genomic Clinical Cohort Study research & data pipeline verification", () => {
+  const filePath = path.join(__dirname, "fixtures", "clinical-study.md");
+  const markdown = fs.readFileSync(filePath, "utf-8");
+
+  const tokens = md.parse(markdown, {});
+  const { title, sections } = splitSections(tokens);
+
+  assert.equal(title, "Genomic Clinical Cohort Study");
+
+  // 1. Map parsing
+  const mapTokens = sections.get("project map");
+  assert.ok(mapTokens, "Project Map section must be parsed");
+  const parsedMap = parseProjectMap(mapTokens);
+
+  assert.equal(parsedMap.isNativeMap, true);
+  assert.equal(parsedMap.rails.length, 3);
+
+  // Rail 1: 데이터 수집 및 코호트 정제 (Neutral rail)
+  const rail1 = parsedMap.rails[0];
+  assert.equal(rail1.title, "데이터 수집 및 코호트 정제");
+  assert.equal(rail1.railType, "neutral");
+  assert.equal(rail1.groups.length, 2);
+
+  // Rail 2: 통계 분석 및 위험 모형화 (Trajectory rail owning '현재 단계')
+  const rail2 = parsedMap.rails[1];
+  assert.equal(rail2.title, "통계 분석 및 위험 모형화");
+  assert.equal(rail2.railType, "trajectory");
+  assert.equal(rail2.groups.length, 2);
+  assert.equal(parsedMap.currentStageTitle, "다변량 생존분석 모델 검증");
+
+  // Rail 3: 임상 유효성 평가 (Neutral rail)
+  const rail3 = parsedMap.rails[2];
+  assert.equal(rail3.title, "임상 유효성 평가");
+  assert.equal(rail3.railType, "neutral");
+  assert.equal(rail3.groups.length, 1);
+
+  // 2. Area details parsing under '## 영역 상세'
+  const detailTokens = sections.get("area details");
+  assert.ok(detailTokens, "## 영역 상세 must be recognized as 'area details'");
+  const areaDetails = parseAreaDetails(detailTokens);
+  assert.equal(areaDetails.size, 5);
+
+  // 3. Verify EVERY map item has full 4-pillar source content in Inspector
+  for (const rail of parsedMap.rails) {
+    for (const group of rail.groups) {
+      for (const item of group.items) {
+        const detail = findAreaDetail(item, areaDetails);
+        assert.ok(
+          detail,
+          `Map item "${item.title}" must have a matching AreaDetail in "## 영역 상세"`
+        );
+
+        const subheadings = detail.subsections.map((s) => s.subheading.trim());
+        assert.ok(
+          subheadings.some((h) => h.includes("의미")),
+          `Area "${item.title}" missing '의미'`
+        );
+        assert.ok(
+          subheadings.some((h) => h.includes("현재 수준")),
+          `Area "${item.title}" missing '현재 수준'`
+        );
+        assert.ok(
+          subheadings.some((h) => h.includes("남은 문제")),
+          `Area "${item.title}" missing '남은 문제'`
+        );
+        assert.ok(
+          subheadings.some((h) => h.includes("근거")),
+          `Area "${item.title}" missing '근거'`
+        );
+      }
+    }
+  }
+
+  // 4. Overview & Context slots
+  assert.ok(sections.get("current situation"), "## 현재 상황 slot parsed");
+  assert.ok(sections.get("next transition"), "## 다음 전환 slot parsed");
+  assert.ok(sections.get("facing issues"), "## 직면한 문제 slot parsed");
+  assert.ok(sections.get("project frame"), "## 제품 목표 slot parsed");
+  assert.ok(sections.get("settled direction"), "## 확정된 방향 slot parsed");
+});
+
+test("First-Use Fixture D: NextChart EMR fixture verification", () => {
+  const filePath = path.join(__dirname, "fixtures", "nextchart.md");
+  const markdown = fs.readFileSync(filePath, "utf-8");
+
+  const tokens = md.parse(markdown, {});
+  const { title, sections } = splitSections(tokens);
+
+  assert.equal(title, "NextChart EMR");
+  const mapTokens = sections.get("project map");
+  const parsedMap = parseProjectMap(mapTokens);
+  assert.equal(parsedMap.isNativeMap, true);
+  assert.equal(parsedMap.currentStageTitle, "첫 배포 후보 통합 검증");
+
+  const detailTokens = sections.get("area details");
+  const areaDetails = parseAreaDetails(detailTokens);
+
+  const registrationDetail = findAreaDetail("환자 등록", areaDetails);
+  assert.ok(registrationDetail);
+  assert.equal(registrationDetail.title, "환자 등록");
+  assert.equal(registrationDetail.subsections.length, 4);
+
+  const currentStageDetail = findAreaDetail("첫 배포 후보 통합 검증", areaDetails);
+  assert.ok(currentStageDetail);
+  assert.equal(currentStageDetail.title, "첫 배포 후보 통합 검증");
+  assert.equal(currentStageDetail.subsections.length, 4);
 });

@@ -15,6 +15,7 @@ import {
   splitSections,
   parseProjectMap,
   parseAreaDetails,
+  findAreaDetail,
   renderNativeMap,
   isCurrentStageHeading,
   isFoundationHeading,
@@ -32,23 +33,6 @@ let activeProjectTitle = "Cockpit";
 let currentAreaDetails = new Map<string, AreaDetail>();
 let currentParsedMap: ParsedMap | null = null;
 let selectedAreaId: string | null = null;
-
-/** Find matching AreaDetail for a given map item */
-function findAreaDetail(item: MapItem): AreaDetail | undefined {
-  const exactKey = normalizeKey(item.title);
-  if (currentAreaDetails.has(exactKey)) {
-    return currentAreaDetails.get(exactKey);
-  }
-
-  // Fuzzy match by inclusion
-  for (const [key, detail] of currentAreaDetails) {
-    if (exactKey.includes(key) || key.includes(exactKey)) {
-      return detail;
-    }
-  }
-
-  return undefined;
-}
 
 /** Find MapItem by ID across all parsed rails */
 function findMapItemById(id: string): MapItem | null {
@@ -100,7 +84,7 @@ function updateInspectorView(item: MapItem | null) {
   groupTag.textContent = `${item.railTitle} · ${item.groupTitle}`;
   titleEl.textContent = item.title;
 
-  const detail = findAreaDetail(item);
+  const detail = findAreaDetail(item, currentAreaDetails);
 
   if (item.description) {
     summaryEl.innerHTML = `<p class="inspector-lead">${escapeHtml(item.description)}</p>`;
@@ -390,5 +374,6 @@ export {
   parseProjectMap,
   splitSections,
   parseAreaDetails,
+  findAreaDetail,
   renderNativeMap,
 };

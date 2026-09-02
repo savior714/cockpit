@@ -13,7 +13,9 @@ export const HEADING_ALIAS: Record<string, string> = {
 
   // Area details
   "영역 상세": "area details",
+  "영역별 상세": "area details",
   "area details": "area details",
+  "area detail": "area details",
 
   // Overview Panel (3 slots)
   "현재 상황": "current situation",
@@ -37,6 +39,7 @@ export const HEADING_ALIAS: Record<string, string> = {
   "프로젝트 큰 그림": "project frame",
   "project frame": "project frame",
   "product goal": "project frame",
+  "product goals": "project frame",
 
   "확정된 방향": "settled direction",
   "이미 정해진 방향": "settled direction",
@@ -104,6 +107,16 @@ export function normalizeKey(str: string): string {
     .replace(/[\s—\-:·]/g, "")
     .toLowerCase()
     .trim();
+}
+
+/** Dedicated safe title normalization for deterministic map ↔ detail matching */
+export function normalizeTitle(str: string): string {
+  if (!str) return "";
+  return str
+    .normalize("NFC")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
 }
 
 export function escapeHtml(s: string): string {
@@ -374,7 +387,7 @@ export function parseAreaDetails(tokens: Token[]): Map<string, AreaDetail> {
       const title = tokens[i + 1]?.content.trim() ?? "";
       currentArea = {
         title,
-        normalizedKey: normalizeKey(title),
+        normalizedKey: normalizeTitle(title),
         subsections: [],
       };
       i += 2;
@@ -393,6 +406,15 @@ export function parseAreaDetails(tokens: Token[]): Map<string, AreaDetail> {
 
   flushArea();
   return details;
+}
+
+/** Find matching AreaDetail for a given map item by deterministic exact title equality */
+export function findAreaDetail(
+  item: MapItem | string,
+  areaDetails: Map<string, AreaDetail>
+): AreaDetail | undefined {
+  const title = typeof item === "string" ? item : item.title;
+  return areaDetails.get(normalizeTitle(title));
 }
 
 /** Render Native HTML Map */
