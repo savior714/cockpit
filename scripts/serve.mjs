@@ -217,7 +217,8 @@ Deterministically verifies that PROGRESS.md is structurally complete:
   - Every map item has exactly one matching Area Detail (H3)
   - No orphan Area Details (title drift)
   - No duplicate Area Detail titles
-  - At most one canonical Current Stage owner
+  - At most one Current Stage per trajectory rail
+  - At most one Current Focus section if present
 
 Exits with code 0 on PASS, 1 on structural FAIL.`);
       process.exit(0);

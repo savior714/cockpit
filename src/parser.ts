@@ -17,7 +17,12 @@ export const HEADING_ALIAS: Record<string, string> = {
   "area details": "area details",
   "area detail": "area details",
 
-  // Overview Panel (3 slots)
+  // Overview Panel
+  "현재 집중": "current focus",
+  "현재의 집중": "current focus",
+  "current focus": "current focus",
+  "focus": "current focus",
+
   "현재 상황": "current situation",
   "지금 하는 일": "current situation",
   "지금": "current situation",
@@ -436,6 +441,7 @@ export interface StructuralCheckResult {
   orphanTitles: string[];
   duplicateDetails: string[];
   currentStageCount: number;
+  currentFocusCount: number;
   hasProjectMap: boolean;
   hasAreaDetails: boolean;
   errors: string[];
@@ -458,26 +464,46 @@ export function checkProgressStructure(
   const hasProjectMap = Boolean(mapTokens && mapTokens.length > 0);
   const hasAreaDetails = Boolean(detailTokens && detailTokens.length > 0);
 
+  // Count Current Focus H2 sections
+  let currentFocusCount = 0;
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (t.level === 0 && t.type === "heading_open" && t.tag === "h2") {
+      const headingToken = tokens[i + 1];
+      if (headingToken && normalizeHeading([headingToken]) === "current focus") {
+        currentFocusCount++;
+      }
+    }
+  }
+
   const parsedMap = mapTokens
     ? parseProjectMap(mapTokens)
     : { isNativeMap: false, rails: [] };
 
-  // Count Current Stage groups and gather map items
+  // Count Current Stage groups per rail and gather map items
   let currentStageCount = 0;
   const mapItemTitles: string[] = [];
   const mapItemKeyCounts = new Map<string, number>();
+  const multiStageRailErrors: string[] = [];
 
   if (parsedMap.rails) {
     for (const rail of parsedMap.rails) {
+      let railStageCount = 0;
       for (const group of rail.groups) {
         if (isCurrentStageHeading(group.title)) {
           currentStageCount++;
+          railStageCount++;
         }
         for (const item of group.items) {
           mapItemTitles.push(item.title);
           const key = normalizeTitle(item.title);
           mapItemKeyCounts.set(key, (mapItemKeyCounts.get(key) ?? 0) + 1);
         }
+      }
+      if (railStageCount > 1) {
+        multiStageRailErrors.push(
+          `Multiple '현재 단계' (Current Stage) groups found in rail '${rail.title}' (${railStageCount}). At most 1 allowed per rail.`
+        );
       }
     }
   }
@@ -598,10 +624,13 @@ export function checkProgressStructure(
       `Duplicate Area Detail title(s) found: ${duplicateDetails.join(", ")}`
     );
   }
-  if (currentStageCount > 1) {
+  if (currentFocusCount > 1) {
     errors.push(
-      `Multiple '현재 단계' (Current Stage) groups found (${currentStageCount}). At most 1 allowed across all rails.`
+      `Multiple '현재 집중' (Current Focus) sections found (${currentFocusCount}). At most 1 allowed.`
     );
+  }
+  for (const err of multiStageRailErrors) {
+    errors.push(err);
   }
 
   const ok = errors.length === 0;
@@ -616,6 +645,7 @@ export function checkProgressStructure(
     orphanTitles,
     duplicateDetails,
     currentStageCount,
+    currentFocusCount,
     hasProjectMap,
     hasAreaDetails,
     errors,
@@ -641,6 +671,9 @@ export function formatStructuralCheckReport(
     lines.push(`Duplicates:      ${result.duplicateDetails.length}`);
   }
   lines.push(`Current stage:   ${result.currentStageCount}`);
+  if (result.currentFocusCount > 0) {
+    lines.push(`Current focus:   ${result.currentFocusCount}`);
+  }
   lines.push("");
 
   if (result.missingTitles.length > 0) {

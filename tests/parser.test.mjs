@@ -225,6 +225,10 @@ test("Heading aliases contract: Korean and English Area Details and Context slot
   assert.equal(HEADING_ALIAS["프로젝트 큰 그림"], "project frame");
 
   // Overview panels
+  assert.equal(HEADING_ALIAS["현재 집중"], "current focus");
+  assert.equal(HEADING_ALIAS["현재의 집중"], "current focus");
+  assert.equal(HEADING_ALIAS["current focus"], "current focus");
+  assert.equal(HEADING_ALIAS["focus"], "current focus");
   assert.equal(HEADING_ALIAS["현재 상황"], "current situation");
   assert.equal(HEADING_ALIAS["다음 전환"], "next transition");
   assert.equal(HEADING_ALIAS["직면한 문제"], "facing issues");
@@ -818,18 +822,131 @@ test("Structural check: Title drift => missing + orphan detection", () => {
   assert.ok(report.includes("- 운영 안전 경계 및 검증"));
 });
 
-test("Structural check: Duplicate Current Stage across multiple rails => FAIL", () => {
+test("Structural check: Multi-rail independent Current Stages across different rails => PASS", () => {
   const multiCurrentDoc = `
-# 다중 현재 단계 오류 문서
+# 다중 궤적 레일 정상 문서
+
+## 현재 집중
+외래 진료 전체 흐름의 실제 완결성 확보 및 전송 지연 시간 단축.
 
 ## 프로젝트 지도
-### 1차 레일
-#### 현재 단계
-- **항목 A** — 1차 레일의 현재 항목
+### 1차 임상 진료 레일
+#### 확보된 기반
+- **환자 접수** — 접수 대기열 관리
 
-### 2차 레일
 #### 현재 단계
-- **항목 B** — 2차 레일의 현재 항목
+- **진료 소견 작성** — 임상 기록 및 처방 입력
+
+#### 향후 계획
+- **검사 오더 연동** — 검사실 인터페이스 연동
+
+### 2차 데이터 파이프라인 궤적
+#### 확보된 기반
+- **메시지 큐 수집** — 실시간 HL7/FHIR 수집
+
+#### 현재 단계
+- **정규화 엔진** — 표준 용어 매핑
+
+#### 향후 여정
+- **실시간 서빙 레이어** — 임상 대시보드 서빙
+
+## 영역 상세
+### 환자 접수
+#### 의미
+외래 접수.
+#### 현재 수준
+완료.
+#### 남은 문제
+- 없음
+#### 근거
+- 접수 모듈 코드
+
+### 진료 소견 작성
+#### 의미
+임상 기록 작성.
+#### 현재 수준
+진행 중.
+#### 남은 문제
+- 서명 지연
+#### 근거
+- 진료 기록 단위 테스트
+
+### 검사 오더 연동
+#### 의미
+검사실 데이터 연동.
+#### 현재 수준
+설계 중.
+#### 남은 문제
+- 인터페이스 규격 확정 필요
+#### 근거
+- 연동 문서
+
+### 메시지 큐 수집
+#### 의미
+실시간 데이터 수집.
+#### 현재 수준
+완료.
+#### 남은 문제
+- 없음
+#### 근거
+- 큐 성능 벤치마크
+
+### 정규화 엔진
+#### 의미
+표준 용어 매핑 및 데이터 정제.
+#### 현재 수준
+진행 중.
+#### 남은 문제
+- 특수 약어 처리
+#### 근거
+- 정규화 테스트 슈트
+
+### 실시간 서빙 레이어
+#### 의미
+임상 데이터 실시간 서빙.
+#### 현재 수준
+대기 중.
+#### 남은 문제
+- 캐시 정책 수립
+#### 근거
+- 서빙 아키텍처 초안
+`;
+
+  const tokens = md.parse(multiCurrentDoc, {});
+  const { sections } = splitSections(tokens);
+  assert.ok(sections.get("current focus"), "Current Focus section must be extracted");
+
+  const parsedMap = parseProjectMap(sections.get("project map"));
+  assert.equal(parsedMap.rails.length, 2);
+  assert.equal(parsedMap.rails[0].railType, "trajectory");
+  assert.equal(parsedMap.rails[1].railType, "trajectory");
+
+  const result = checkProgressStructure(multiCurrentDoc);
+  assert.equal(result.ok, true, "Multi-rail with independent Current Stages must PASS check");
+  assert.equal(result.currentStageCount, 2);
+  assert.equal(result.currentFocusCount, 1);
+  assert.equal(result.totalMapItems, 6);
+  assert.equal(result.matchedDetails, 6);
+  assert.equal(result.missingDetails, 0);
+  assert.equal(result.orphanDetails, 0);
+
+  const report = formatStructuralCheckReport(result);
+  assert.ok(report.includes("PROGRESS structural check: PASS"));
+  assert.ok(report.includes("Current stage:   2"));
+  assert.ok(report.includes("Current focus:   1"));
+});
+
+test("Structural check: Duplicate Current Stage in the SAME rail => FAIL", () => {
+  const sameRailMultiCurrentDoc = `
+# 단일 레일 내 다중 현재 단계 오류 문서
+
+## 프로젝트 지도
+### 코어 궤적 레일
+#### 현재 단계
+- **항목 A** — 1차 현재 단계
+
+#### 현재 단계
+- **항목 B** — 2차 중복 현재 단계
 
 ## 영역 상세
 ### 항목 A
@@ -853,18 +970,91 @@ test("Structural check: Duplicate Current Stage across multiple rails => FAIL", 
 - 근거 B
 `;
 
-  const result = checkProgressStructure(multiCurrentDoc);
+  const result = checkProgressStructure(sameRailMultiCurrentDoc);
   assert.equal(result.ok, false);
   assert.equal(result.currentStageCount, 2);
   assert.ok(
     result.errors.some((e) =>
-      e.includes("Multiple '현재 단계' (Current Stage) groups found (2)")
+      e.includes("Multiple '현재 단계' (Current Stage) groups found in rail '코어 궤적 레일' (2)")
     )
   );
 
   const report = formatStructuralCheckReport(result);
   assert.ok(report.includes("PROGRESS structural check: FAIL"));
   assert.ok(report.includes("Current stage:   2"));
+  assert.ok(report.includes("Multiple '현재 단계' (Current Stage) groups found in rail '코어 궤적 레일' (2)"));
+});
+
+test("Structural check: Multiple '## 현재 집중' (Current Focus) sections => FAIL", () => {
+  const multiFocusDoc = `
+# 다중 현재 집중 오류 문서
+
+## 현재 집중
+첫 번째 집중 영역.
+
+## Current Focus
+두 번째 중복 집중 영역.
+
+## 프로젝트 지도
+### 코어 레일
+#### 현재 단계
+- **항목 A** — 현재 항목
+
+## 영역 상세
+### 항목 A
+#### 의미
+의미 A
+#### 현재 수준
+수준 A
+#### 남은 문제
+- 없음
+#### 근거
+- 근거 A
+`;
+
+  const result = checkProgressStructure(multiFocusDoc);
+  assert.equal(result.ok, false);
+  assert.equal(result.currentFocusCount, 2);
+  assert.ok(
+    result.errors.some((e) =>
+      e.includes("Multiple '현재 집중' (Current Focus) sections found (2)")
+    )
+  );
+
+  const report = formatStructuralCheckReport(result);
+  assert.ok(report.includes("PROGRESS structural check: FAIL"));
+  assert.ok(report.includes("Multiple '현재 집중' (Current Focus) sections found (2)"));
+});
+
+test("Structural check & parsing: Document without Current Focus => PASS, no fake focus generated", () => {
+  const noFocusDoc = `
+# Focus 없는 일반 문서
+
+## 프로젝트 지도
+### 코어 레일
+#### 현재 단계
+- **항목 A** — 현재 항목
+
+## 영역 상세
+### 항목 A
+#### 의미
+의미 A
+#### 현재 수준
+수준 A
+#### 남은 문제
+- 없음
+#### 근거
+- 근거 A
+`;
+
+  const tokens = md.parse(noFocusDoc, {});
+  const { sections } = splitSections(tokens);
+  assert.equal(sections.get("current focus"), undefined, "No fake current focus section should exist");
+
+  const result = checkProgressStructure(noFocusDoc);
+  assert.equal(result.ok, true);
+  assert.equal(result.currentFocusCount, 0);
+  assert.equal(result.currentStageCount, 1);
 });
 
 test("Structural check: Duplicate Area Detail title in ## 영역 상세 => FAIL", () => {
@@ -1163,6 +1353,48 @@ test("Structural check: Complete document with ordered map list => PASS", () => 
   assert.equal(result.orphanDetails, 0);
   assert.equal(result.currentStageCount, 1);
 });
+
+test("Fixture verification: visual-test-focus.md (Current Focus + multi-rail Current Stage + neutral rail)", () => {
+  const filePath = path.join(__dirname, "fixtures", "visual-test-focus.md");
+  const content = fs.readFileSync(filePath, "utf-8");
+
+  const tokens = md.parse(content, {});
+  const { title, sections } = splitSections(tokens);
+  assert.ok(title.includes("스마트 병원"));
+  assert.ok(sections.get("current focus"), "Current focus section must exist");
+
+  const result = checkProgressStructure(content);
+  assert.equal(result.ok, true);
+  assert.equal(result.totalMapItems, 9);
+  assert.equal(result.matchedDetails, 9);
+  assert.equal(result.missingDetails, 0);
+  assert.equal(result.currentStageCount, 2);
+  assert.equal(result.currentFocusCount, 1);
+
+  const parsedMap = parseProjectMap(sections.get("project map"));
+  assert.equal(parsedMap.rails.length, 3);
+  assert.equal(parsedMap.rails[0].railType, "trajectory");
+  assert.equal(parsedMap.rails[1].railType, "trajectory");
+  assert.equal(parsedMap.rails[2].railType, "neutral");
+});
+
+test("Fixture verification: visual-test-nofocus.md (No Current Focus + single trajectory rail)", () => {
+  const filePath = path.join(__dirname, "fixtures", "visual-test-nofocus.md");
+  const content = fs.readFileSync(filePath, "utf-8");
+
+  const tokens = md.parse(content, {});
+  const { sections } = splitSections(tokens);
+  assert.equal(sections.get("current focus"), undefined, "No Current focus section should exist");
+
+  const result = checkProgressStructure(content);
+  assert.equal(result.ok, true);
+  assert.equal(result.totalMapItems, 3);
+  assert.equal(result.matchedDetails, 3);
+  assert.equal(result.missingDetails, 0);
+  assert.equal(result.currentStageCount, 1);
+  assert.equal(result.currentFocusCount, 0);
+});
+
 
 
 

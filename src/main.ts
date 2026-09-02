@@ -245,16 +245,24 @@ async function renderDoc(source: string) {
     }
   }
 
-  // Setup Header Stage Chip
-  const chip = document.getElementById("you-are-here-chip")!;
-  chip.hidden = true;
-
-  if (parsedMap.currentStageTitle) {
-    chip.textContent = `현재 단계 · ${parsedMap.currentStageTitle}`;
-    chip.hidden = false;
+  // Setup Header Chip (hidden by default; local stage markers live in each rail)
+  const chip = document.getElementById("you-are-here-chip");
+  if (chip) {
+    chip.hidden = true;
   }
 
   // Setup Overview Panels
+  const focusTokens = byHeading("current focus");
+  const slotFocus = document.getElementById("slot-focus");
+  if (slotFocus) {
+    if (focusTokens && focusTokens.length > 0) {
+      setSection("slot-focus", focusTokens);
+      slotFocus.hidden = false;
+    } else {
+      slotFocus.hidden = true;
+    }
+  }
+
   setSection("slot-now", byHeading("current situation"));
   setSection("slot-next", byHeading("next transition"));
   setSection("slot-blocked", byHeading("facing issues"));
@@ -278,6 +286,7 @@ async function renderDoc(source: string) {
   const known = new Set([
     "project map",
     "area details",
+    "current focus",
     "current situation",
     "next transition",
     "facing issues",
@@ -343,9 +352,6 @@ async function renderDoc(source: string) {
       );
       if (g) {
         g.classList.add("you-are-here");
-        const label = g.querySelector(".nodeLabel")?.textContent?.trim();
-        chip.textContent = `현재 단계 · ${label || nodeId}`;
-        chip.hidden = false;
       }
     }
   }
