@@ -13,6 +13,7 @@ This document owns the repository's durable **evidence semantics**: what counts 
 
 - Choose the smallest faithful proof layer that detects the changed behavior; add a new test only when existing coverage would actually miss the changed invariant.
 - Escalate breadth only when fan-out is genuinely broad (shared config, lockfile/dependency change, shared interface, runtime lifecycle).
+- A proof-owner/criterion-only movement preserves the semantic delta but forbids stale proof or JIT reuse: rerun only the directly affected targeted proof layer. Restart a broad suite only when the movement actually invalidates that broad criterion; this refresh is evidence maintenance, not automatic publication proof.
 - Do not run unrelated broad suites for reassurance. Once adequate proof for the criterion exists, stop; do not bolt on unrelated validation machinery.
 
 ## 3. No contract weakening
