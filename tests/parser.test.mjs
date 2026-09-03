@@ -35,6 +35,7 @@ import {
   parseStrategicThreads,
   parseMaterialMovements,
   parseMentalModel,
+  classifySubsectionTone,
 } from "../dist/parser.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -2533,3 +2534,196 @@ test("Native map links its single current-stage group to the declared current st
   const ambiguousHtml = renderNativeMap(ambiguousMap, null, undefined, "Stage 1A: Primary Care Baseline RC");
   assert.ok(!ambiguousHtml.includes("stage-id-tag"));
 });
+
+test("Semantic Tone Contract: Case 1 - Explicitly closed or 'none' remaining issues are neutral", () => {
+  assert.equal(classifySubsectionTone("남은 문제", "없음"), "neutral");
+  assert.equal(classifySubsectionTone("남은 문제", "해당 없음"), "neutral");
+  assert.equal(classifySubsectionTone("남은 문제", "해당 없음."), "neutral");
+  assert.equal(classifySubsectionTone("남은 문제", "남은 문제: 없음"), "neutral");
+  assert.equal(classifySubsectionTone("남은 문제", "- 없음"), "neutral");
+  assert.equal(classifySubsectionTone("직면한 문제", "해결됨"), "neutral");
+  assert.equal(classifySubsectionTone("막힌 것", "닫힘"), "neutral");
+});
+
+test("Semantic Tone Contract: Case 2 - Genuine remaining problems and blockers are danger", () => {
+  assert.equal(classifySubsectionTone("남은 문제", "- EMR 어댑터 스키마 불일치"), "danger");
+  assert.equal(classifySubsectionTone("직면한 문제", "Vite 빌드 시 메모리 부족 현상"), "danger");
+  assert.equal(classifySubsectionTone("막힌 것", "인증 토큰 갱신 실패"), "danger");
+  assert.equal(classifySubsectionTone("remaining issues", "Network retry logic missing"), "danger");
+  assert.equal(classifySubsectionTone("blocker", "Upstream API timeout"), "danger");
+});
+
+test("Semantic Tone Contract: Case 3 - Core area context subsections default to neutral", () => {
+  assert.equal(classifySubsectionTone("의미", "유니버설 인스펙터의 단일 시맨틱 문법 정의"), "neutral");
+  assert.equal(classifySubsectionTone("현재 수준", "기본 렌더러 구현 완료"), "neutral");
+  assert.equal(classifySubsectionTone("meaning", "Primary interface for area drilldown"), "neutral");
+  assert.equal(classifySubsectionTone("current level", "Initial release"), "neutral");
+  assert.equal(classifySubsectionTone("이미 닫힌 경계", "레거시 모달 인스펙터 폐기"), "neutral");
+  assert.equal(classifySubsectionTone("closed boundaries", "No global mutable state"), "neutral");
+});
+
+test("Semantic Tone Contract: Case 4 - Empty or resolved issues do not claim danger", () => {
+  assert.equal(classifySubsectionTone("남은 문제", "All resolved."), "neutral");
+  assert.equal(classifySubsectionTone("remaining issues", "none"), "neutral");
+  assert.equal(classifySubsectionTone("remaining issues", "No remaining issues"), "neutral");
+  assert.equal(classifySubsectionTone("남은 문제", ""), "neutral");
+});
+
+test("Semantic Tone Contract: Case 5 - Supporting evidence is evidence, but unverified/empty evidence is neutral", () => {
+  // Concrete supporting evidence:
+  assert.equal(
+    classifySubsectionTone("근거", "Commit 94c02fd, npm test 58 pass across all synthetic fixtures"),
+    "evidence"
+  );
+  assert.equal(
+    classifySubsectionTone("증거", "실측치: 응답 지연 12ms (SLA 50ms 만족)"),
+    "evidence"
+  );
+  assert.equal(
+    classifySubsectionTone("evidence", "Test report EMR-2026-09 verifies boundary closure"),
+    "evidence"
+  );
+
+  // Unverified, placeholder, or absent evidence must NOT be promoted to evidence:
+  assert.equal(classifySubsectionTone("근거", ""), "neutral");
+  assert.equal(classifySubsectionTone("근거", "미확인"), "neutral");
+  assert.equal(classifySubsectionTone("근거", "UNKNOWN"), "neutral");
+  assert.equal(classifySubsectionTone("근거", "NOT PROVEN"), "neutral");
+  assert.equal(classifySubsectionTone("근거", "TBD"), "neutral");
+  assert.equal(classifySubsectionTone("evidence", "unverified"), "neutral");
+  assert.equal(classifySubsectionTone("evidence", "none"), "neutral");
+});
+
+test("Semantic Tone Contract: Case 6 - Transitions, entry conditions, and movement phases are active", () => {
+  assert.equal(classifySubsectionTone("진입 조건", "Stage 1A release proof passes cleanly"), "active");
+  assert.equal(classifySubsectionTone("개시 조건", "Reader acceptance verified"), "active");
+  assert.equal(classifySubsectionTone("entry condition", "All checks green"), "active");
+  assert.equal(classifySubsectionTone("opens when", "A fresh reader accepts the rendered cockpit"), "active");
+  assert.equal(classifySubsectionTone("다음 전환", "Release 0.4.0 packaging"), "active");
+  assert.equal(classifySubsectionTone("next transition", "Contract migration"), "active");
+  assert.equal(classifySubsectionTone("왜 지금", "Legacy drift causing friction"), "active");
+  assert.equal(classifySubsectionTone("단계 영향", "Directly blocks Stage 2 promotion"), "active");
+  assert.equal(classifySubsectionTone("BEFORE", "Legacy modal inspector"), "active");
+  assert.equal(classifySubsectionTone("MATERIAL CHANGE", "Universal Inspector with deterministic tone contract"), "active");
+  assert.equal(classifySubsectionTone("AFTER", "Unified inspector drawer"), "active");
+});
+
+test("Semantic Tone Contract: Case 7 - Unknown custom subsections fall back safely to neutral", () => {
+  assert.equal(classifySubsectionTone("기타 메모", "추후 고려할 아이디어 목록"), "neutral");
+  assert.equal(classifySubsectionTone("히스토리", "과거 회의록 요약"), "neutral");
+  assert.equal(classifySubsectionTone("FAQ", "자주 묻는 질문"), "neutral");
+  assert.equal(classifySubsectionTone("custom section", "arbitrary developer notes"), "neutral");
+});
+
+test("Semantic Tone Contract: AreaDetail parser populates tone field accurately across diverse subsections", () => {
+  const doc = `
+# 시맨틱 톤 테스트 문서
+
+## 프로젝트 지도
+### 코어 트랙
+#### 현재 단계
+- **인스펙터 코어** — Universal Inspector 모듈
+
+## 영역 상세
+### 인스펙터 코어
+#### 의미
+유니버설 인스펙터의 시맨틱 시각 문법을 정의합니다.
+#### 현재 수준
+모든 엔티티 서브섹션 톤 분류 규칙이 수립되었습니다.
+#### 진입 조건
+Reader-level acceptance가 완료되어야 합니다.
+#### 남은 문제
+- 다크모드 콘트라스트 미세 조정 필요
+#### 근거
+Commit af97c57 및 유닛 테스트 60+ 건 통과
+#### 기타 메모
+외부 디자인 시스템 확장은 범위 밖입니다.
+`;
+
+  const tokens = md.parse(doc, {});
+  const { sections } = splitSections(tokens);
+  const details = parseAreaDetails(sections.get("area details"));
+  const area = details.get("인스펙터 코어");
+  assert.ok(area);
+
+  const meaning = area.subsections.find((s) => s.subheading === "의미");
+  const current = area.subsections.find((s) => s.subheading === "현재 수준");
+  const entry = area.subsections.find((s) => s.subheading === "진입 조건");
+  const remaining = area.subsections.find((s) => s.subheading === "남은 문제");
+  const evidence = area.subsections.find((s) => s.subheading === "근거");
+  const notes = area.subsections.find((s) => s.subheading === "기타 메모");
+
+  assert.equal(meaning?.tone, "neutral");
+  assert.equal(current?.tone, "neutral");
+  assert.equal(entry?.tone, "active");
+  assert.equal(remaining?.tone, "danger");
+  assert.equal(evidence?.tone, "evidence");
+  assert.equal(notes?.tone, "neutral");
+});
+
+test("Semantic Tone Repair: unverified / planned-only evidence stays neutral", () => {
+  // Required adversarial cases
+  assert.equal(classifySubsectionTone("근거", "아직 근거 없음"), "neutral");
+  assert.equal(classifySubsectionTone("근거", "테스트 예정"), "neutral");
+  assert.equal(classifySubsectionTone("Evidence", "Verification required"), "neutral");
+
+  // Representative Korean wording (bounded, phrase-level only)
+  assert.equal(classifySubsectionTone("근거", "검증 예정"), "neutral");
+  assert.equal(classifySubsectionTone("근거", "확인 필요"), "neutral");
+  assert.equal(classifySubsectionTone("근거", "추후 검증"), "neutral");
+  assert.equal(classifySubsectionTone("근거", "미검증"), "neutral");
+  assert.equal(classifySubsectionTone("근거", "근거: 아직 근거 없음"), "neutral");
+  assert.equal(classifySubsectionTone("근거", "- 테스트 예정"), "neutral");
+  assert.equal(classifySubsectionTone("근거", "향후 작업"), "neutral");
+  assert.equal(classifySubsectionTone("근거", "추후 과제"), "neutral");
+
+  // Representative English wording (bounded, phrase-level only)
+  assert.equal(classifySubsectionTone("Evidence", "NOT VERIFIED"), "neutral");
+  assert.equal(classifySubsectionTone("Evidence", "NO EVIDENCE"), "neutral");
+  assert.equal(classifySubsectionTone("Evidence", "To be verified"), "neutral");
+  assert.equal(classifySubsectionTone("Evidence", "UNKNOWN"), "neutral");
+  assert.equal(classifySubsectionTone("Evidence", "UNVERIFIED"), "neutral");
+  assert.equal(classifySubsectionTone("Evidence", "NOT PROVEN"), "neutral");
+  assert.equal(classifySubsectionTone("Evidence", "TBD"), "neutral");
+  assert.equal(classifySubsectionTone("Evidence", "N/A"), "neutral");
+  assert.equal(classifySubsectionTone("Evidence", "planned"), "neutral");
+  assert.equal(classifySubsectionTone("Evidence", "future-work"), "neutral");
+  assert.equal(classifySubsectionTone("Evidence", "future work"), "neutral");
+});
+
+test("Semantic Tone Repair: concrete and mixed evidence stays evidence", () => {
+  // Required adversarial cases
+  assert.equal(classifySubsectionTone("근거", "66 tests passed"), "evidence");
+  // Concrete evidence + future plan stays evidence
+  assert.equal(classifySubsectionTone("근거", "66 tests passed; 추가 테스트 예정"), "evidence");
+  assert.equal(classifySubsectionTone("근거", "브라우저에서 실제 동작 확인됨"), "evidence");
+
+  // Representative mixed content: secured evidence first, follow-up plan appended
+  assert.equal(
+    classifySubsectionTone("근거", "commit abcdef1에서 수정 확인, 배포 검증은 추후 예정"),
+    "evidence"
+  );
+  assert.equal(
+    classifySubsectionTone("Evidence", "Test report EMR-2026-09 verifies boundary closure; follow-up verification pending"),
+    "evidence"
+  );
+});
+
+test("Semantic Tone Repair: incidental keywords never promote custom subsections", () => {
+  // Heading isolation over body keywords
+  assert.equal(
+    classifySubsectionTone("검토 메모", "근거 자료를 검토했고 문제 후보와 예정된 후속 작업을 메모함"),
+    "neutral"
+  );
+  assert.equal(
+    classifySubsectionTone("검토 메모", "이 근거와 저 문제, 그리고 예정 사항을 함께 정리함"),
+    "neutral"
+  );
+
+  // Existing regression: explicitly closed remaining problems stay neutral
+  assert.equal(classifySubsectionTone("남은 문제", "남은 문제: 없음"), "neutral");
+
+  // Existing regression: real unresolved issues stay danger
+  assert.equal(classifySubsectionTone("남은 문제", "대용량 동시 요청 시 쿼리 타임아웃 발생"), "danger");
+});
+

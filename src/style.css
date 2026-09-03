@@ -779,20 +779,42 @@ body {
 }
 
 .sub-badge {
+  display: inline-flex;
+  align-items: center;
   font-family: var(--font-mono);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
+  line-height: 1.2;
 }
 
-.badge-evidence {
-  color: var(--badge-evidence-ink);
+.sub-badge.tone-neutral {
+  color: var(--muted);
 }
 
+.sub-badge.tone-active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+}
+
+.sub-badge.tone-danger,
 .badge-remaining {
   color: var(--badge-remaining-ink);
+  background: var(--badge-remaining-bg);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+}
+
+.sub-badge.tone-evidence,
+.badge-evidence {
+  color: var(--badge-evidence-ink);
+  background: var(--badge-evidence-bg);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
 }
 
 .badge-reopen {

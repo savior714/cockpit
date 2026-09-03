@@ -99,10 +99,13 @@ export interface ParsedMap {
   rawTokens?: Token[];
 }
 
+export type SemanticTone = "neutral" | "active" | "danger" | "evidence";
+
 export interface AreaDetailSubsection {
   subheading: string;
   html: string;
   rawText: string;
+  tone?: SemanticTone;
 }
 
 export interface AreaDetail {
@@ -130,6 +133,7 @@ export interface SemanticSubsection {
   subheading: string;
   html: string;
   rawText: string;
+  tone?: SemanticTone;
 }
 
 export interface ProjectHorizon {
@@ -504,6 +508,7 @@ export function parseAreaDetails(tokens: Token[]): Map<string, AreaDetail> {
         subheading: currentSubsection.subheading,
         html,
         rawText,
+        tone: classifySubsectionTone(currentSubsection.subheading, rawText),
       });
       currentSubsection = null;
     }
@@ -552,6 +557,192 @@ export function findAreaDetail(
 ): AreaDetail | undefined {
   const title = typeof item === "string" ? item : item.title;
   return areaDetails.get(normalizeTitle(title));
+}
+
+/**
+ * Conservative veto for evidence promotion.
+ * Returns true only when the ENTIRE subsection content clearly states that no
+ * verifiable evidence exists yet (absent / unverified / planned-only).
+ * Phrase-level anchored matching only: the whole normalized line must be a
+ * placeholder phrase. A single concrete evidence clause anywhere keeps the
+ * subsection at evidence, so mixed "concrete evidence + future plan" content
+ * is never demoted by a broad substring rule.
+ */
+function isClearlyUnverifiedOrPlannedEvidence(cleanText: string): boolean {
+  if (cleanText === "") return true;
+  const lines = cleanText
+    .split(/\r?\n/)
+    .map((l) => l.replace(/^\s*(?:[-*+]\s+|\d+[.)]\s+)/, "").trim())
+    .filter(Boolean);
+  if (lines.length === 0) return true;
+  return lines.every((line) => {
+    const withoutLabel = line
+      .replace(/^(?:근거|증거|evidence|proof)\s*[:：]\s*/i, "")
+      .trim();
+    const core = withoutLabel.replace(/[.．。;；!！]+$/, "").trim();
+    if (!core) return true;
+    // Korean absent / unverified — whole-line anchored only.
+    if (
+      /^(?:없음|해당\s*없음|아직\s*없음|아직\s*근거\s*없음|근거\s*없음|증거\s*없음|근거\s*미확보|미확인|미검증|미작성|미수립|예정|향후\s*과제|추후\s*과제|향후\s*작업|추후\s*작업)$/.test(
+        core
+      )
+    ) {
+      return true;
+    }
+    // Korean planned-only — whole-line anchored only.
+    if (
+      /^(?:아직\s*|추가\s*|추후\s*|향후\s*)?(?:테스트|검증|확인|작성|수립|확보|측정)\s*예정(?:입니다|임)?$/.test(
+        core
+      )
+    ) {
+      return true;
+    }
+    if (/^추후\s*(?:테스트|검증|확인|작성|수립|확보|측정)(?:\s*예정)?$/.test(core)) {
+      return true;
+    }
+    if (
+      /^(?:아직\s*|추가\s*|추후\s*)?(?:테스트|검증|확인|작성)\s*(?:필요|요망|요구)(?:함|입니다|임)?$/.test(
+        core
+      )
+    ) {
+      return true;
+    }
+    // English absent / unverified — whole-line anchored only.
+    if (
+      /^(?:none|no\s*evidence|not\s*verified|not\s*proven|unverified|unconfirmed|unknown|tbd|n\/a|planned|future\s*work|future-work)$/i.test(
+        core
+      )
+    ) {
+      return true;
+    }
+    // English planned / required — whole-line anchored only.
+    if (
+      /^(?:verification|confirmation|test(?:s|ing)?)\s*(?:required|needed|pending|planned)$/i.test(
+        core
+      )
+    ) {
+      return true;
+    }
+    if (
+      /^(?:pending(?:\s*(?:verification|confirmation|test|testing))?|to\s*be\s*(?:verified|confirmed|tested)|awaiting\s*(?:verification|confirmation|test|testing)?)$/i.test(
+        core
+      )
+    ) {
+      return true;
+    }
+    return false;
+  });
+}
+
+/**
+ * Canonical semantic tone classifier for Universal Inspector subsections.
+ * Resolves deterministic visual tone based on semantic role and concrete content state.
+ */
+export function classifySubsectionTone(
+  subheading: string,
+  rawText?: string,
+  contextState?: string
+): SemanticTone {
+  const normKey = normalizeKey(subheading);
+  const cleanText = (rawText || "").trim();
+  const firstLine = cleanText
+    .split(/\r?\n/)
+    .map((l) => l.replace(/^\s*[-*+]\s+/, "").trim())
+    .filter(Boolean)[0] ?? "";
+
+  // 1. Explicitly closed, resolved, empty, or 'none' states:
+  // Must NOT be classified as danger even if subheading is "남은 문제" / "remaining issues"
+  const isExplicitlyClosedOrNone =
+    cleanText === "" ||
+    /^(?:없음|해당\s*없음|해결됨|완료됨|닫힘|특이\s*사항\s*없음|none|n\/a|closed|resolved|all\s+resolved|no\s+remaining\s+issues?|no\s+issues?)\.?$/i.test(
+      firstLine
+    ) ||
+    /^(?:남은\s*문제|remaining\s*issues?)\s*[:：]\s*(?:없음|해당\s*없음|none|n\/a|closed|해결됨)\.?$/i.test(
+      firstLine
+    );
+
+  // 2. Evidence / Proof verification:
+  // Must NOT claim positive/evidence state without actual supporting content.
+  // UNKNOWN, unverified, or empty evidence remains neutral.
+  const isEvidenceHeading =
+    normKey.includes("근거") ||
+    normKey.includes("증거") ||
+    normKey.includes("evidence") ||
+    normKey.includes("proof");
+
+  if (isEvidenceHeading) {
+    if (isClearlyUnverifiedOrPlannedEvidence(cleanText)) {
+      return "neutral";
+    }
+    return "evidence";
+  }
+
+  // 3. Unresolved issues / blockers (Danger):
+  const isIssueHeading =
+    normKey.includes("남은문제") ||
+    normKey.includes("직면한문제") ||
+    normKey.includes("막힌것") ||
+    normKey.includes("remainingissues") ||
+    normKey.includes("remaining") ||
+    normKey.includes("blocker") ||
+    normKey.includes("issues") ||
+    normKey.includes("남은과제");
+
+  if (isIssueHeading) {
+    if (isExplicitlyClosedOrNone) {
+      return "neutral";
+    }
+    return "danger";
+  }
+
+  // 4. Transitions / Entry conditions / In-progress conditions (Active):
+  const isActiveHeading =
+    normKey.includes("진입조건") ||
+    normKey.includes("개시조건") ||
+    normKey.includes("entrycondition") ||
+    normKey.includes("openswhen") ||
+    normKey.includes("다음전환") ||
+    normKey.includes("nexttransition") ||
+    normKey.includes("전환") ||
+    normKey.includes("transition") ||
+    normKey.includes("왜지금") ||
+    normKey.includes("whynow") ||
+    normKey.includes("단계영향") ||
+    normKey.includes("stageimpact") ||
+    normKey === "before" ||
+    normKey === "materialchange" ||
+    normKey === "after" ||
+    normKey.includes("변경");
+
+  if (isActiveHeading) {
+    return "active";
+  }
+
+  // Context-level active state if entity is explicitly in-progress
+  if (contextState) {
+    const normState = normalizeKey(contextState);
+    if (
+      normState.includes("inproof") ||
+      normState.includes("inreview") ||
+      normState.includes("partial")
+    ) {
+      if (normKey.includes("조건") || normKey.includes("condition")) {
+        return "active";
+      }
+    }
+  }
+
+  // 5. Explicitly closed boundaries:
+  if (
+    normKey.includes("이미닫힌") ||
+    normKey.includes("closedboundaries") ||
+    normKey.includes("closed")
+  ) {
+    return "neutral";
+  }
+
+  // 6. Neutral fallback (Meaning, Current Level, Info, Custom subsections)
+  return "neutral";
 }
 
 interface HeadingBlock {
@@ -630,10 +821,12 @@ function splitSemanticContent(tokens: Token[]): SemanticContent {
   const flushSubsection = () => {
     if (!currentSubsection) return;
     const html = withMermaidPlaceholders(renderTokens(currentSubsection.tokens));
+    const rawText = extractSectionRawText(currentSubsection.tokens);
     subsections.push({
       subheading: currentSubsection.subheading,
       html,
-      rawText: extractSectionRawText(currentSubsection.tokens),
+      rawText,
+      tone: classifySubsectionTone(currentSubsection.subheading, rawText),
     });
     currentSubsection = null;
   };

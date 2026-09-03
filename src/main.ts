@@ -10,6 +10,8 @@ import {
   type AreaCompleteness,
   type SemanticRelation,
   type SemanticSubsection,
+  type SemanticTone,
+  classifySubsectionTone,
   type ProjectHorizon,
   type StageJourney,
   type StageGate,
@@ -109,7 +111,12 @@ function subsection(
   rawText: string,
   html = renderRawMarkdown(rawText)
 ): SemanticSubsection {
-  return { subheading: title, rawText, html };
+  return {
+    subheading: title,
+    rawText,
+    html,
+    tone: classifySubsectionTone(title, rawText),
+  };
 }
 
 function getSubsection(
@@ -540,13 +547,18 @@ function renderInspector(entity: InspectorEntity): void {
   const sections = document.getElementById("inspector-sections");
   if (sections) {
     sections.innerHTML = entity.subsections.length > 0
-      ? entity.subsections.map((item, index) => `
+      ? entity.subsections.map((item, index) => {
+          const tone = item.tone ?? classifySubsectionTone(item.subheading, item.rawText, entity.state);
+          const toneClass = `tone-${tone}`;
+          const isEvidence = tone === "evidence" || /evidence|근거/i.test(item.subheading);
+          return `
           <section class="inspector-sub-card">
-            <div class="sub-header"><span class="sub-badge">${escapeHtml(item.subheading)}</span></div>
+            <div class="sub-header"><span class="sub-badge ${toneClass}">${escapeHtml(item.subheading)}</span></div>
             <div class="sub-body">${item.html}</div>
-            ${/evidence|근거/i.test(item.subheading) ? `<button type="button" class="inspector-evidence-link" data-subsection-index="${index}">근거를 더 깊게 보기 →</button>` : ""}
+            ${isEvidence ? `<button type="button" class="inspector-evidence-link" data-subsection-index="${index}">근거를 더 깊게 보기 →</button>` : ""}
           </section>
-        `).join("")
+        `;
+        }).join("")
       : (entity.html ? `<section class="inspector-sub-card"><div class="sub-body">${entity.html}</div></section>` : `<p class="muted">추가 세부 기록이 없습니다.</p>`);
   }
 
