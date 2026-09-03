@@ -43,11 +43,24 @@ test("Distribution artifact smoke: pack, install into isolated prefix, and verif
   const hasParserJs = files.includes("package/dist/parser.js");
   assert.ok(hasParserJs, "Packaged tarball must include package/dist/parser.js");
 
+  assert.ok(files.includes("package/scripts/cockpit.mjs"), "Packaged tarball must include package/scripts/cockpit.mjs");
+  assert.ok(files.includes("package/scripts/freshness.mjs"), "Packaged tarball must include package/scripts/freshness.mjs");
+  assert.ok(files.includes("package/scripts/serve.mjs"), "Packaged tarball must include package/scripts/serve.mjs");
+
   // 2. Install tarball into isolated npm prefix
   execSync(`npm install -g --prefix "${tmpDir}" "${tarballPath}"`, {
     cwd: tmpDir,
     encoding: "utf-8",
   });
+
+  const installedPkg = path.join(tmpDir, "lib", "node_modules", "cockpit");
+  let hasGit = true;
+  try {
+    await fs.stat(path.join(installedPkg, ".git"));
+  } catch {
+    hasGit = false;
+  }
+  assert.equal(hasGit, false, "Packaged installation must not contain .git");
 
   const binPath = path.join(tmpDir, "bin", "cockpit");
 

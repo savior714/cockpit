@@ -8,17 +8,18 @@
     "scripts"
   ],
   "bin": {
-    "cockpit": "./scripts/serve.mjs"
+    "cockpit": "./scripts/cockpit.mjs"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && tsc src/parser.ts --target ES2022 --module ESNext --moduleResolution bundler --skipLibCheck --outDir dist",
+    "build:core": "tsc --noEmit && vite build && tsc src/parser.ts --target ES2022 --module ESNext --moduleResolution bundler --skipLibCheck --outDir dist",
+    "build": "npm run build:core && node scripts/freshness.mjs --stamp",
     "prepack": "npm run build",
     "preview": "vite preview",
-    "cockpit": "node scripts/serve.mjs",
+    "cockpit": "node scripts/cockpit.mjs",
     "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
