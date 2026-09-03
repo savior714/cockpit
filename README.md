@@ -78,12 +78,16 @@ cockpit
         ↓
 2. 선택한 경로의 model admission/reconciliation 완료
         ↓
-3. `cockpit check` 실행하여 구조적 완전성(PASS) 확인
+3. RECONSTRUCT 또는 full rebuild라면 최종 project-model synthesis와 reader-facing semantic acceptance 완료
         ↓
-4. `cockpit` 실행 (뷰어 론칭)
+4. `cockpit check` 실행하여 구조적 완전성(PASS) 확인
+        ↓
+5. `cockpit` 실행 (뷰어 론칭)
 ```
 
 > **핵심 원칙**: REFRESH는 신뢰할 수 있는 baseline에 대한 보수적 delta 경로이고, RECONSTRUCT는 baseline 신뢰성이 없는 경우의 독립 재구성 경로입니다. RECONSTRUCT를 모든 실행의 기본 절차로 만들지는 않되, 기존 문서를 truth로 먼저 읽어 생길 수 있는 anchoring을 허용하지 않습니다. 어느 경로든 파일 수정은 실질적인 멘탈 모델 변화가 있을 때만 수행하며, 새 material transition을 넣을 때는 Recent Progress가 최신순 rolling semantic window로 남아 있는지도 함께 확인합니다.
+
+RECONSTRUCT에서 evidence collection, repository exploration, 또는 subagent 보고서의 충실성은 **입력이지 완료 판정이 아닙니다**. 최종 synthesis/semantic acceptance가 끝나지 않은 문서는 `cockpit check`가 PASS해도 satisfactory RECONSTRUCT 결과가 아닙니다.
 
 ### 다른 경로의 파일 지정하기
 
@@ -194,6 +198,12 @@ repo / runtime / 관련 SSOT (최신 실제 증거)
      downstream effect, authority/intent source, 직접적인 implementation/proof evidence, relevant
      history가 현재 의미를 바꾸는지, 최종 model에서 represented / intentionally omitted / UNKNOWN
      중 무엇인지 설명할 수 있어야 한다.
+   - 특히 Product Goal / Project Frame, Settled Direction, major project trajectories / Project Horizon,
+     Current Stage / Current Frontier, Recent Material Movement(그런 evidence가 있을 때)를 subsystem/Area
+     surface와 함께 명시적으로 accounting한다.
+   - 권위/evidence가 surface를 뒷받침하는데 최종 문서에서 비워 두면 acceptance failure다. surface가
+     genuinely unknowable하거나 durable direction이 없다면 빈 heading/placeholder 대신 `UNKNOWN` 또는
+     `none-with-boundary`처럼 모르는 범위와 경계를 독자에게 명시한다.
    - 모든 파일/함수 전수 inventory나 coverage %를 만들라는 뜻이 아니다. 이 closure는 agent 내부의
      transient completeness test이며, persistent table/registry/schema/DB/score를 만들거나 PROGRESS에
      저장하지 않는다. 설명되지 않은 material surface가 남아 있으면 synthesis를 완료한 것으로
@@ -222,11 +232,22 @@ repo / runtime / 관련 SSOT (최신 실제 증거)
      다른 곳에 있다는 direct evidence가 있으면 기존 Area에 억지로 끼워 넣지 말고 map decomposition을
      재검토하며 필요한 범위의 RECONSTRUCT/wider re-entry를 수행한다.
 
-9. PASS 9 — 독자 중심 종합 및 구조 사전 검사 (Reader Reconstruction & Structural Preflight):
-   - 외부인 관점의 6대 독자 테스트(WHAT, STRUCTURE, RELATION, WHERE, FOCUS, PATH)를 통과하는지 점검한다.
-   - `cockpit check`를 실행하여 지도-상세 1:1 일치, 고아/중복 없음(PASS)을 기계적으로 확인한다.
-   - 독립 재구성이 끝난 마지막 단계에서만 기존 PROGRESS.md를 읽고 새 model과 비교하여 stale/false/missing
-     semantics를 판별하고 필요한 replacement를 결정한다.
+9. PASS 9 — 최종 프로젝트 모델 합성 및 독자 중심 시맨틱 수용 (Final Project-Model Synthesis & Semantic Acceptance):
+   - evidence collection/subagent exploration을 completion으로 취급하지 말고, coverage closure 뒤에 admitted evidence를
+     Project Horizon 수준까지 투영하는 별도의 최종 synthesis pass를 수행한다.
+   - Product Goal / Project Frame, Settled Direction, major project trajectories / Horizon, Current Stage / Frontier,
+     evidence가 뒷받침하는 Recent Material Movement와 subsystem/Area를 함께 닫는다. 권위/evidence가 뒷받침하는
+     surface를 blank/placeholder로 남기면 acceptance failure다. 정말 알 수 없거나 durable direction이 없으면
+     `UNKNOWN` 또는 `none-with-boundary`로 그 경계를 명시한다.
+   - cold reader가 이 문서만 읽고 (1) 프로젝트가 무엇인지/왜 존재하는지, (2) 전체 여정의 어디에 있는지,
+     (3) 무엇이 다음 상위 전환인지, (4) major trajectory가 무엇인지, (5) 어떤 durable decision이 제약하는지를
+     답할 수 있어야 한다. 답하지 못하면 RECONSTRUCT를 완료했다고 부르지 말고 synthesis를 계속하거나
+     `COLD_READ_JUDGE_REQUIRED`로 남긴다.
+   - 위 semantic acceptance가 끝난 뒤에만 외부인 관점의 6대 독자 테스트(WHAT, STRUCTURE, RELATION, WHERE, FOCUS, PATH)와
+     `cockpit check`를 실행한다. `cockpit check` PASS는 구조적 사전 검사일 뿐 semantic acceptance가 아니다.
+   - 독립 재구성이 끝난 뒤에만 기존 PROGRESS.md를 읽고 새 model과 비교하여 stale/false/missing semantics를 판별하고
+     필요한 replacement를 결정한다. 비교는 독립 synthesis를 대체하지 않으며, replacement로 최종 후보가 바뀌면
+     실제 저장할 후보 문서에 대해 최종 semantic acceptance와 `cockpit check`를 다시 수행한다.
 
 [마크다운 구조 및 작성 규칙]
 아래 마크다운 구조에 맞춰 사실 기반으로 작성해줘:
@@ -293,10 +314,12 @@ Project Horizon — "방향과 다음 전환을 실제로 제한하는 것은 �
 
 ## 제품 목표
 이 프로젝트가 실제로 가능하게 만들고자 하는 핵심 목적, 해결하는 실질적 필요, 성공의 정의와 책임 경계를 간결하고 정보 밀도 높게 서술.
+(RECONSTRUCT/full rebuild에서는 근거 있는 project frame을 작성하고, 정말 알 수 없으면 빈칸 대신 `UNKNOWN`과 그 경계를 명시한다.)
 
 ## 확정된 방향
 - [영속적 제약 결정 1]: 제품 경계, 아키텍처 방향, 권위/소유권 등 향후 작업에 실질적 제약을 가하는 합의 (일자 표기는 선택적 메타데이터).
 - [영속적 제약 결정 2]: ...
+(durable direction이 없거나 근거가 없으면 빈 목록/placeholder 대신 `none-with-boundary` 또는 `UNKNOWN`으로 그 사실을 명시한다.)
 
 [작성 및 진입 핵심 원칙]
 1. 다중 증거 축 독립성 (Independent Evidence Axes):
@@ -308,9 +331,10 @@ Project Horizon — "방향과 다음 전환을 실제로 제한하는 것은 �
    - 축 간의 충돌(문서와 코드의 불일치, 진부화된 로드맵 등)을 먼저 식별하고 사실 기반으로 조정한다.
    - 기존 open/negative claim도 예전에 admitted 되었다는 이유로 유지하지 않으며, closure/counterevidence를 찾는 재입장 심사를 통과한 것만 현재 문맥에 남긴다.
 
-3. 미확인 주장의 엄격한 배제 (Omission Over Fabrication):
+3. 미확인 주장의 엄격한 배제 및 BLANK != UNKNOWN (Omission Over Fabrication & Explicit Boundary):
    - 불확실하거나 증거가 없는 영역은 억지로 지어내지 않고 UNKNOWN으로 두거나 생략한다.
    - `남은 문제`, `직면한 문제`, `확정된 방향`, `다시 열리는 조건`은 현재 긍정적 증거가 있을 때만 작성하며, 없으면 섹션 자체를 완전히 생략한다.
+   - 반면 RECONSTRUCT에서 Product Goal / Settled Direction과 같이 recoverable authority가 있는 stable context 표면을 묵묵히 빈칸(blank)으로 남겨두는 것은 acceptance failure다. 정말 알 수 없거나 durable direction이 없는 경우에만 `UNKNOWN` 또는 `none-with-boundary`로 그 부재와 경계를 명시한다 (`BLANK != UNKNOWN`).
    - `UNKNOWN != PROBLEM`, `ABSENCE OF PROOF != PROOF OF DEFECT`이며, 정확한 acceptance contract가 그 proof를 요구하고 그 부재가 현재 blocker인 경우에만 예외로 다룬다.
 
 4. Current Focus와 Current Stage의 분리 (Separation of Current Focus & Current Stage):
@@ -430,7 +454,17 @@ escalate하되, 기본 bounded review를 무관한 repository-wide audit으로 �
 - `cockpit check`의 통과(PASS, exit 0)는 마크다운 문서가 파싱 가능한 구조적 규약(지도 항목과 영역 상세의 1:1 매칭, 고아/중복 없음)을 만족함을 증명할 뿐, 내용이 실제 저장소의 진실임을 증명하지 않습니다.
 - 시맨틱 진실성(Semantic Truth)과 증거 기반 무결성은 외부 역량 에이전트가 다중 패스 동화(Multi-Pass Assimilation) 절차를 통해 독립적으로 확보해야 합니다.
 
-#### 6. 닫힘 시점 정합성 검토 패스 (Closure-Time Coherence Pass)
+#### 6. RECONSTRUCT 시맨틱 완료 게이트 (RECONSTRUCT Semantic Acceptance Gate)
+
+RECONSTRUCT 또는 full rebuild에서만 적용하는 최종 authoring gate입니다. REFRESH의 보수적 targeted update를 이 gate 때문에 전체 재작성으로 바꾸지 않습니다.
+
+- **수집은 입력이다**: repository 탐색, subagent 조사, Area/Map coverage 확장은 admitted evidence를 만드는 과정일 뿐 completion이 아닙니다. coverage closure 뒤에 별도의 project-model synthesis를 수행합니다.
+- **stable context를 닫는다**: Product Goal / Project Frame, Settled Direction, major project trajectories / Project Horizon, Current Stage / Current Frontier를 subsystem/Area surface와 함께 최종 문서에 투영합니다. Recent Material Movement는 이를 뒷받침하는 material history가 있을 때 포함합니다.
+- **빈칸은 수용 결과가 아니다**: authority/evidence가 surface를 뒷받침하면 blank heading·placeholder로 남긴 초안은 acceptance failure입니다. 정말 unknowable하거나 durable direction이 없을 때만 `UNKNOWN` 또는 `none-with-boundary`처럼 독자가 알 수 있는 경계를 작성합니다.
+- **cold reader 확인**: repository와 대화 맥락을 모르는 실제 대상 독자가 문서만 읽고 “무엇을 만드는가, 지금 어디인가, 무엇이 다음인가, major trajectory는 무엇인가, 어떤 durable decision이 제약하는가”를 답할 수 있어야 합니다. 독립 reader를 사용할 수 없으면 keyword 검색으로 대체하지 말고 `COLD_READ_JUDGE_REQUIRED`로 남깁니다.
+- **구조 검사와 분리**: 이 gate를 통과한 뒤 `cockpit check`를 실행합니다. `cockpit check`의 structural PASS는 map/detail 및 선언된 canonical guardrail의 결정론적 확인일 뿐, 위 semantic acceptance나 authored claim의 진실성을 증명하지 않습니다.
+
+#### 7. 닫힘 시점 정합성 검토 패스 (Closure-Time Coherence Pass)
 
 유계 태스크를 종료하고 `PROGRESS.md` 변경을 확정하기 전, 외부 역량 에이전트는 다음 단계를 거칩니다:
 
@@ -447,7 +481,7 @@ escalate하되, 기본 bounded review를 무관한 repository-wide audit으로 �
 
 실제 구현 및 증명 완료 후, 최종 발행 직전에 실제 최종 후보 문서에 대해 이 점검을 다시 실행합니다.
 
-#### 7. 태스크 누수 방지 및 증거 비례적 주장 (Task Leakage Prevention & Proportional Claims)
+#### 8. 태스크 누수 방지 및 증거 비례적 주장 (Task Leakage Prevention & Proportional Claims)
 
 - **`CURRENT FOCUS != CURRENT STAGE != CURRENT EXECUTOR TASK`** 및 **`RECENT TASK != CURRENT STAGE`**: 일회성 executor 태스크는 일시적 실행 상태일 뿐 영속적 프로젝트 단계가 아닙니다.
 - **주장 강도와 증거의 비례성**: '완벽', '완전히', '보장', '무중단', 'fully', 'guarantees'와 같은 절대적 수식어를 지양하고, 실제 테스트/코드/런타임 증거가 입증하는 구체적 경계와 관찰 사실에 맞춰 기술합니다.
@@ -651,9 +685,9 @@ Universal Inspector는 Posture, Stage Gate, Frontier, Strategic Thread, Material
 
 ### Acceptance boundary
 
-`cockpit check`는 headings, axis 수/상태, Primary Frontier cardinality, relation target, movement transition, Map ↔ Area Detail integrity와 Horizon의 명백한 telemetry 누출만 검사합니다. `PASS`는 문서 구조와 고신뢰 presentation guardrail의 통과이지, authored claim의 사실성이나 semantic truth를 보증하지 않습니다. 구조 변경 시에는 서로 다른 두 real-project-shaped fixture(복잡한 EMR testbed snapshot과 Cockpit 자체 vocabulary)를 parse/render하고, 가능한 환경에서는 실제 viewer에서 Horizon→Stage/Posture→Frontier→Movement→Map→Inspector→Evidence를 관찰합니다.
+`cockpit check`는 headings, axis 수/상태, Primary Frontier cardinality, relation target, movement transition, Map ↔ Area Detail integrity와 Horizon의 명백한 telemetry 누출만 검사합니다. Product Goal / Project Frame이나 Settled Direction이 비어 있는지, stable context가 독자에게 충분한지, authored claim이 사실인지, RECONSTRUCT synthesis가 완료되었는지는 검사하지 않습니다. `PASS`는 문서 구조와 고신뢰 presentation guardrail의 통과이지, authored claim의 사실성이나 semantic truth를 보증하지 않습니다. 구조 변경 시에는 서로 다른 두 real-project-shaped fixture(복잡한 EMR testbed snapshot과 Cockpit 자체 vocabulary)를 parse/render하고, 가능한 환경에서는 실제 viewer에서 Horizon→Stage/Posture→Frontier→Movement→Map→Inspector→Evidence를 관찰합니다.
 
-Cold-read acceptance는 repository와 이 설명을 보지 않은 실제 대상 독자에게 reader-visible output만 주고 다음을 묻는 별도 단계입니다: 무엇을 만드는가, 전체 여정의 어디인가, 무엇이 강한가/partial인가, Primary Frontier는 무엇인가, 왜 다음 Stage가 열리지 않는가, 무엇을 다시 열지 않아야 하는가, 어디서 evidence를 볼 수 있는가. 독립 reader가 없으면 이를 keyword 검사로 대체하지 말고 `COLD_READ_JUDGE_REQUIRED`로 남깁니다.
+RECONSTRUCT/full rebuild의 cold-read semantic acceptance는 구조 검사와 별도의 필수 단계입니다. repository와 이 설명을 보지 않은 실제 대상 독자에게 reader-visible output만 주고 다음을 묻습니다: 무엇을 만드는가/왜 존재하는가, 전체 여정의 어디인가, 무엇이 다음 상위 전환인가, major trajectory는 무엇인가, 어떤 durable decision이 제약하는가, 무엇이 강한가/partial인가, 왜 다음 Stage가 열리지 않는가, 무엇을 다시 열지 않아야 하는가, 어디서 evidence를 볼 수 있는가. 독립 reader가 없으면 이를 keyword 검사로 대체하지 말고 `COLD_READ_JUDGE_REQUIRED`로 남깁니다. 이 단계가 닫히지 않으면 `cockpit check` structural PASS만으로 RECONSTRUCT를 완료로 판정하지 않습니다.
 
 ---
 
@@ -665,11 +699,13 @@ Cold-read acceptance는 repository와 이 설명을 보지 않은 실제 대상 
 - **목적**: 저장소 이력을 모르는 외부인도 **"이 프로젝트가 왜 존재하고 무엇을 가능하게 하려는가?"**, **"어떤 사용자/시스템 필요를 충족하며 무엇이 성공의 경계인가?"**를 즉시 이해할 수 있도록 간결하고 정보 밀도 높게 설명합니다.
 - **지양**: 단순 홍보 슬로건, 막연한 미션 선언문, 아키텍처 나열, 태스크 목록, 히스토리 로그.
 - **원칙**: 소수의 정보 밀도 높은 문장이나 글머리 기호로 작성하며, 인위적인 파서 줄 수 제한을 두지 않습니다.
+- **RECONSTRUCT 수용**: 권위/evidence가 project frame을 뒷받침하면 빈 heading으로 남기지 않습니다. 정말 목표를 알 수 없을 때만 `UNKNOWN`과 그 경계를 명시하며, evidence-rich Area Detail만으로 이 표면의 답을 생략할 수 없습니다.
 
 #### 2. 확정된 방향 (Settled Direction)
 - **목적**: 현재 프로젝트의 해석 방식이나 향후 작업 진행을 **실질적으로 제약하는 영속적(durable) 결정**만 선별 기록합니다 (예: 제품 경계, 핵심 아키텍처 방향, 권위/소유권 결정, 작업 방식 합의 등).
 - **지양**: 모든 사소한 결정 목록, 시간순 ADR 색인, 완료된 작업/커밋 나열, 불확실한 미래 추측 정책.
 - **원칙**: 높은 레버리지를 갖는 영속적 약속들을 간결하게 작성합니다 (일자 표기는 선택적 메타데이터).
+- **RECONSTRUCT 수용**: durable direction이 실제로 있으면 채우고, 없거나 current evidence로 알 수 없으면 빈 목록/placeholder 대신 `none-with-boundary` 또는 `UNKNOWN`과 그 범위를 명시합니다.
 
 #### 3. 최근 진척 (Recent Progress)
 - **목적**: 새로운 독자나 재진입한 독자가 **"이 프로젝트가 이전 상태에서 현재 상태로 어떻게 실질적으로 도달했는가?"**를 온전히 재구성할 수 있도록 돕는 시맨틱 전환 이력입니다.

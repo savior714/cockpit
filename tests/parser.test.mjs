@@ -2773,3 +2773,84 @@ test("Authoring discoverability: canonical minimal example stays PASS and covers
   assert.equal(result.guardrailErrors.length, 0);
 });
 
+test("RECONSTRUCT regression: evidence-rich map/details with blank stable context is structural PASS, not semantic acceptance", () => {
+  const filePath = path.join(__dirname, "fixtures", "reconstruct-incomplete-stable-context.md");
+  const content = fs.readFileSync(filePath, "utf-8");
+  const result = checkProgressStructure(content);
+
+  // The fixture intentionally proves the boundary: structural validation sees
+  // complete map/detail correspondence even though the RECONSTRUCT model is
+  // not reader-complete.
+  assert.equal(result.ok, true, result.errors.join("; "));
+  assert.equal(result.totalMapItems, 3);
+  assert.equal(result.matchedDetails, 3);
+  assert.equal(result.missingDetails, 0);
+  assert.equal(result.orphanDetails, 0);
+
+  const report = formatStructuralCheckReport(result);
+  assert.match(report, /^PROGRESS structural check: PASS/m);
+
+  const { sections } = splitSections(md.parse(content, {}));
+  for (const key of ["project frame", "settled direction", "recently completed"]) {
+    assert.equal(
+      extractSectionRawText(sections.get(key) ?? []).trim(),
+      "",
+      `${key} must be blank in the intentional regression fixture`
+    );
+  }
+
+  // These are legacy Horizon headings in the fixture; their empty bodies are
+  // also part of the incomplete reader-facing model shape.
+  for (const key of ["current situation", "next transition"]) {
+    assert.equal(
+      extractSectionRawText(sections.get(key) ?? []).trim(),
+      "",
+      `${key} must be blank in the intentional regression fixture`
+    );
+  }
+});
+
+test("RECONSTRUCT regression control: complete fixture populates stable context unlike incomplete fixture", () => {
+  // Negative / control inspection:
+  // Both fixtures pass structural check, but only the complete fixture satisfies
+  // the semantic condition that stable context surfaces are populated rather than silently blank.
+  const incompletePath = path.join(__dirname, "fixtures", "reconstruct-incomplete-stable-context.md");
+  const completePath = path.join(__dirname, "fixtures", "operational-system.md");
+
+  const incompleteContent = fs.readFileSync(incompletePath, "utf-8");
+  const completeContent = fs.readFileSync(completePath, "utf-8");
+
+  const incompleteCheck = checkProgressStructure(incompleteContent);
+  const completeCheck = checkProgressStructure(completeContent);
+
+  assert.equal(incompleteCheck.ok, true);
+  assert.equal(completeCheck.ok, true);
+
+  const incompleteSections = splitSections(md.parse(incompleteContent, {})).sections;
+  const completeSections = splitSections(md.parse(completeContent, {})).sections;
+
+  // Incomplete fixture has blank stable context
+  const incompleteGoal = extractSectionRawText(incompleteSections.get("project frame") ?? []).trim();
+  const incompleteDirection = extractSectionRawText(incompleteSections.get("settled direction") ?? []).trim();
+  assert.equal(incompleteGoal, "");
+  assert.equal(incompleteDirection, "");
+
+  // Complete fixture has populated stable context (or non-blank explicit boundary)
+  const completeGoal = extractSectionRawText(completeSections.get("project frame") ?? []).trim();
+  const completeDirection = extractSectionRawText(completeSections.get("settled direction") ?? []).trim();
+  assert.ok(completeGoal.length > 0, "Complete fixture must populate project frame");
+  assert.ok(completeDirection.length > 0, "Complete fixture must populate settled direction");
+});
+
+test("README RECONSTRUCT contract requires final synthesis beyond cockpit check", () => {
+  const readme = fs.readFileSync(path.join(__dirname, "..", "README.md"), "utf-8");
+
+  assert.ok(readme.includes("RECONSTRUCT 또는 full rebuild라면 최종 project-model synthesis와 reader-facing semantic acceptance 완료"));
+  assert.ok(readme.includes("evidence collection/subagent exploration을 completion으로 취급하지 말고"));
+  assert.ok(readme.includes("Product Goal / Project Frame, Settled Direction"));
+  assert.ok(readme.includes("blank/placeholder로 남기면 acceptance failure"));
+  assert.ok(readme.includes("`cockpit check` PASS는 구조적 사전 검사일 뿐 semantic acceptance가 아니다."));
+  assert.ok(readme.includes("`COLD_READ_JUDGE_REQUIRED`"));
+  assert.ok(readme.includes("BLANK != UNKNOWN"));
+});
+
