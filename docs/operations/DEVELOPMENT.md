@@ -54,6 +54,13 @@ Prompts are disposable execution artifacts, not canonical project state. Investi
 
 Before publication, fetch fresh `origin/main` and classify intervening movement on three independent axes. Judge each axis separately; movement on one axis does not by itself invalidate the others.
 
+Before the three-axis classification, resolve identity and containment first, in this order. Identity decides before topology.
+
+- Fresh `origin/main` equals the candidate: the intended change is already `COMPLETE / PUBLISHED`. Do not republish, rematerialize, or rerun proof.
+- Fresh `origin/main` equals the candidate's expected base: no topology advance yet. Continue to the three-axis eligibility evaluation below.
+- Fresh is neither the expected base nor the candidate, and neither contains the other: real intervening movement exists. Classify with the existing topology / semantic-overlap / proof-boundary rules as `CONTINUABLE` or `BLOCKED`.
+- The candidate is a strict ancestor of fresh `origin/main`: do not stop at merely published and do not rematerialize on topology alone. Confirm under the existing semantic-overlap judgment whether the candidate's meaning stands incorporated in later history or was reverted, superseded, or overlapped, then close within the existing `COMPLETE / PUBLISHED`, `CONTINUABLE`, `BLOCKED` vocabulary.
+
 - **Topological staleness** — whether the candidate is still a direct fast-forward descendant of current `origin/main`. A newer `origin/main` normally makes an old-parent candidate no longer directly publishable. That is normal Git cost, not a defect and not a semantic verdict.
 - **Semantic overlap** — whether intervening changes alter the task's meaning, mutation ownership, or bounded outcome (same source hunks, same contract/test surface meaning, superseded fix). `dist/*` hashed-asset churn alone and same-file disjoint-hunk changes are not semantic overlap.
 - **Proof boundary** — whether the criterion inputs and the identity-bearing proof owner (parser contract, fixture, build output) relevant to the claimed evidence materially moved. If only topology moved, prior semantic proof is preserved under its original run identity; rerun only the affected proof layer and candidate integrity checks bound to the new candidate.
