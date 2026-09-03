@@ -1590,10 +1590,12 @@ test("Focus handoff context assembly: complete context and Problem Framer instru
   assert.ok(context.includes("A. NOW / INDEPENDENT:"));
   assert.ok(context.includes("NOW task가 여러 개라면 같은 응답에서 각각 별도의 독립 executor-neutral local-agent prompt를 모두 제공한다."));
   assert.ok(context.includes("B. SERIAL NOW:"));
-  assert.ok(context.includes("동일 semantic owner / mutation surface / shared state로 인해 병렬 실행 시 충돌 위험이 높은 작업."));
-  assert.ok(context.includes("WAIT로 미루지 않는다."));
-  assert.ok(context.includes("같은 응답에서 실행 순서를 명확히 하고 각 단계의 executor-neutral local-agent prompt를 모두 제공한다."));
+  assert.ok(context.includes("동일 semantic owner / mutation surface / proof boundary / publication-sensitive surface를 공유하여 병렬 admission 시 한 후보의 publication이 다른 READY candidate를 불필요하게 stale화할 위험이 높은 작업."));
+  assert.ok(context.includes("WAIT로 미루지 않는다"));
+  assert.ok(context.includes("같은 응답에서 실행 순서를 명확히 하고, 선행 task를 먼저 closure/publication boundary까지 진행한 뒤 다음 task를 fresh evidence에서 시작하도록 안내한다."));
   assert.ok(context.includes("C. WAIT FOR EVIDENCE:"));
+  assert.ok(context.includes("11. [Admission & Publication Discipline — Executor Prompt Contract]:"));
+  assert.ok(context.includes("Mutation-intended executor prompt에는 fresh BASE admission 조건을 명확히 전달한다"));
   assert.ok(context.includes("Execution Wave는 일회성 transient framing 결과다. Cockpit/PROGRESS.md에 task registry, backlog, queue, task status, agent assignment, dependency persistence를 저장하거나 추가하지 않는다."));
   assert.ok(context.includes("executor-neutral prompt로 작성한다."));
 
@@ -1695,10 +1697,12 @@ test("Area review handoff context assembly: complete context and Problem Framer 
   assert.ok(context.includes("A. NOW / INDEPENDENT:"));
   assert.ok(context.includes("NOW task가 여러 개라면 같은 응답에서 각각 별도의 독립 executor-neutral local-agent prompt를 모두 제공한다."));
   assert.ok(context.includes("B. SERIAL NOW:"));
-  assert.ok(context.includes("동일 semantic owner / mutation surface / shared state로 인해 병렬 실행 시 충돌 위험이 높은 작업."));
-  assert.ok(context.includes("WAIT로 미루지 않는다."));
-  assert.ok(context.includes("같은 응답에서 실행 순서를 명확히 하고 각 단계의 executor-neutral local-agent prompt를 모두 제공한다."));
+  assert.ok(context.includes("동일 semantic owner / mutation surface / proof boundary / publication-sensitive surface를 공유하여 병렬 admission 시 한 후보의 publication이 다른 READY candidate를 불필요하게 stale화할 위험이 높은 작업."));
+  assert.ok(context.includes("WAIT로 미루지 않는다"));
+  assert.ok(context.includes("같은 응답에서 실행 순서를 명확히 하고, 선행 task를 먼저 closure/publication boundary까지 진행한 뒤 다음 task를 fresh evidence에서 시작하도록 안내한다."));
   assert.ok(context.includes("C. WAIT FOR EVIDENCE:"));
+  assert.ok(context.includes("11. [Admission & Publication Discipline — Executor Prompt Contract]:"));
+  assert.ok(context.includes("Mutation-intended executor prompt에는 fresh BASE admission 조건을 명확히 전달한다"));
   assert.ok(context.includes("Execution Wave는 일회성 transient framing 결과다. Cockpit/PROGRESS.md에 task registry, backlog, queue, task status, agent assignment, dependency persistence를 저장하거나 추가하지 않는다."));
   assert.ok(context.includes("executor-neutral prompt로 작성한다."));
 
@@ -2854,3 +2858,57 @@ test("README RECONSTRUCT contract requires final synthesis beyond cockpit check"
   assert.ok(readme.includes("BLANK != UNKNOWN"));
 });
 
+test("Problem Framer Execution Wave contract: admission freshness, scheduling boundaries, and 3-axis reconciliation discipline", () => {
+  const focusContext = buildFocusHandoffContext({
+    projectTitle: "Cockpit",
+    focusText: "Problem Framer Scheduling Enforcement",
+    situationText: "Repeated rematerialization churn investigation completed",
+    nextTransitionText: "Scheduling enforcement contracts proven and active",
+  });
+
+  const areaContext = buildAreaHandoffContext({
+    projectTitle: "Cockpit",
+    areaTitle: "Execution Boundary",
+    railTitle: "Core Engine",
+    groupTitle: "Runtime",
+    areaDescription: "Execution wave framing and handoff transport",
+  });
+
+  for (const context of [focusContext, areaContext]) {
+    // A. Existing semantics preserved
+    assert.ok(context.includes("A. NOW / INDEPENDENT:"));
+    assert.ok(context.includes("B. SERIAL NOW:"));
+    assert.ok(context.includes("C. WAIT FOR EVIDENCE:"));
+    assert.ok(context.includes("Execution Wave는 일회성 transient framing 결과다. Cockpit/PROGRESS.md에 task registry, backlog, queue, task status, agent assignment, dependency persistence를 저장하거나 추가하지 않는다."));
+
+    // B. Scheduling regression case 1:
+    // 두 task 모두 target이 확정됐지만 shared semantic/proof/publication surface를 가짐 => SERIAL NOW
+    assert.ok(context.includes("bounded target과 성공조건은 지금 확정 가능하지만, 동일 semantic owner / mutation surface / proof boundary / publication-sensitive surface를 공유하여 병렬 admission 시 한 후보의 publication이 다른 READY candidate를 불필요하게 stale화할 위험이 높은 작업."));
+    assert.ok(context.includes("선행 task를 먼저 closure/publication boundary까지 진행한 뒤 다음 task를 fresh evidence에서 시작하도록 안내한다."));
+    assert.ok(context.includes("READY candidate가 존재한다는 이유만으로 WAIT로 미루지 않는다."));
+
+    // B. Scheduling regression case 2:
+    // 선행 task 결과가 후속 target/necessity를 바꿈 => WAIT FOR EVIDENCE
+    assert.ok(context.includes("선행 task 결과에 따라 필요 여부나 semantic target/success criterion이 달라지는 경우(선행 task 결과가 후속 target/necessity/ownership을 바꿀 때만 사용하며, READY candidate 존재만으로 WAIT 판정 금지)"));
+
+    // B. Scheduling regression case 3 & 4:
+    // 실제 mutation/evidence/publication boundary가 독립적 => NOW / INDEPENDENT
+    // 단순 same-file disjoint semantic/proof boundary => 파일명만으로 무조건 WAIT/BLOCK하지 않음
+    assert.ok(context.includes("mutation owner, semantic surface, proof boundary, publication interaction이 실질적으로 독립적일 때만 병렬 실행 가능."));
+    assert.ok(context.includes("단순히 동일 파일이나 디렉토리를 참조한다는 이유만으로 직렬화하지 않으며, 실제 mutation/evidence/publication boundary가 독립적이면 병렬로 분류한다."));
+
+    // B. Scheduling regression case 5:
+    // mutation-intended handoff => fresh BASE admission 요구가 discoverable
+    assert.ok(context.includes("11. [Admission & Publication Discipline — Executor Prompt Contract]:"));
+    assert.ok(context.includes("execution 직전에 `origin/main`을 fresh fetch하고 실제 시작 BASE SHA를 기록한다."));
+    assert.ok(context.includes("task-owned workspace(worktree/branch)가 그 fresh BASE에서 시작하는지 확인하며, stale worktree HEAD나 canonical checkout의 dirty state를 BASE로 상속하지 않는다."));
+    assert.ok(context.includes("이미 만들어진 candidate의 BASE freshness check와, 아직 시작하지 않은 후속 task를 SERIAL NOW / WAIT FOR EVIDENCE로 framing하는 scheduling 판단을 서로 다른 단계로 명확히 구분한다."));
+
+    // B. Scheduling regression case 6:
+    // origin advance를 만난 already-built candidate => blind retry loop가 아니라 3-axis reconciliation + CONTINUABLE/BLOCKED semantics가 discoverable
+    assert.ok(context.includes("Publication은 short serialization boundary다."));
+    assert.ok(context.includes("두 번째 writer가 origin advance를 발견하면 blind retry/rematerialization loop를 돌지 않고 3축(Topological staleness / Semantic overlap / Proof boundary movement)을 독립 판정한다"));
+    assert.ok(context.includes("Topological staleness: topology만 stale하고 semantic/proof boundary 이동이 없으면 CONTINUABLE이며 fresh main 위에 동일 delta를 reapply하는 exact resume point를 제시한다."));
+    assert.ok(context.includes("Semantic overlap / Proof boundary movement: semantic overlap, supersession, ownership ambiguity가 있으면 BLOCKED이며 blind reapply하지 않는다."));
+  }
+});

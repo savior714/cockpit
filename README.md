@@ -521,7 +521,9 @@ PROGRESS.md 보수적 갱신
   - 문제가 없으면 무리하게 작업을 제조하지 않고 `NO_ACTION`으로 종료합니다.
   - 전달된 문제가 모두 닫혔거나 추가 조치가 불필요하면 `NO_ACTION / NO_CHANGE`를 유지합니다.
   - 전달된 Area 또는 Project Map의 의미·semantic owner·boundary가 fresh evidence와 맞지 않으면 기존 map에 강제로 맞추지 않고 필요한 범위의 RECONSTRUCT 또는 wider re-entry로 escalate합니다. direct evidence 없는 임의 확장은 하지 않습니다.
-  - 문제가 있으면 지금 확정 가능한 최대 범위에서 `NOW` (병렬 독립 작업), `SERIAL NOW` (동일 표면/상태 공유로 순차 실행이 필요한 작업), `WAIT FOR EVIDENCE` (결과 대기)로 분류하고, 실행 가능한 모든 작업에 대해 executor-neutral 로컬 에이전트 프롬프트를 같은 응답에서 산출합니다.
+  - 문제가 있으면 지금 확정 가능한 최대 범위에서 `NOW` (mutation owner·semantic surface·proof boundary·publication interaction이 실질적으로 독립적인 병렬 작업), `SERIAL NOW` (각 작업의 bounded target과 성공조건은 확정되었으나 동일 semantic/proof/publication 표면 공유로 병렬 admission 시 충돌/연쇄 staleness 위험이 높아 선행 작업의 publication 후 fresh evidence에서 시작하는 순차 작업; WAIT로 미루지 않음), `WAIT FOR EVIDENCE` (선행 결과가 후속 작업의 필요 여부나 semantic target/ownership/success criterion을 바꿀 때만 대기; READY candidate 존재만으로 WAIT 판정 금지)로 분류하고, 실행 가능한 모든 작업에 대해 executor-neutral 로컬 에이전트 프롬프트를 같은 응답에서 산출합니다.
+  - Mutation-intended executor prompt에는 fresh BASE admission 조건(execution 직전 `origin/main` fresh fetch, 시작 BASE SHA 기록, task-owned workspace 시작, stale worktree HEAD/canonical dirty state 상속 금지)을 명시합니다. 이미 만들어진 candidate의 BASE freshness 검사와 아직 시작하지 않은 후속 작업의 scheduling 판단은 서로 다른 단계로 구분합니다.
+  - Publication은 short serialization boundary입니다. 두 번째 writer가 origin advance를 발견하면 blind retry loop를 돌지 않고 3축(Topological staleness / Semantic overlap / Proof boundary movement)을 독립 판정하여, topology만 stale하면 CONTINUABLE(fresh main 위 delta reapply의 exact resume point 제시), semantic overlap/supersession/ambiguity가 있으면 BLOCKED로 다룹니다.
 - **PROGRESS.md 갱신 시점**: Execution Wave가 생성되었다는 이유만으로 `PROGRESS.md`를 갱신하지 않습니다. Bounded tasks가 실제로 완료되어 프로젝트의 객관적 상태나 사용자 관심사(Current Focus)가 실질적으로 달라졌을 때만 해당 멘탈 모델 표면을 갱신합니다.
 - **판단 소유권**: claim의 closure/falsification/re-admission은 외부 capable agent가 수행하며, Cockpit binary는 이 판단을 자동화하지 않고 읽기 전용 deterministic presentation/context transport만 제공합니다.
 
