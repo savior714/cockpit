@@ -56,10 +56,17 @@ Before publication, fetch fresh `origin/main` and classify intervening movement 
 
 Before the three-axis classification, resolve identity and containment first, in this order. Identity decides before topology.
 
+Resolve the publication relation from direct Git identity/containment authority (`rev-parse` plus `merge-base --is-ancestor`) over the candidate and fresh `origin/main`. `EXPECTED_BASE` is descriptive task context, not an authority input; its mismatch alone is never a reason to block, invalidate proof, or rematerialize.
+
 - Fresh `origin/main` equals the candidate: the intended change is already `COMPLETE / PUBLISHED`. Do not republish, rematerialize, or rerun proof.
 - Fresh `origin/main` equals the candidate's expected base: no topology advance yet. Continue to the three-axis eligibility evaluation below.
+- Fresh `origin/main` is a strict ancestor of the candidate: the candidate remains a direct fast-forward descendant and is `PUBLISHABLE` once candidate-bound integrity/direct-impact proof passes. Do not block or rematerialize because `EXPECTED_BASE` is stale; perform the final fresh-authority check, ordinary non-force push, and remote read-back.
 - Fresh is neither the expected base nor the candidate, and neither contains the other: real intervening movement exists. Classify with the existing topology / semantic-overlap / proof-boundary rules as `CONTINUABLE` or `BLOCKED`.
 - The candidate is a strict ancestor of fresh `origin/main`: do not stop at merely published and do not rematerialize on topology alone. Confirm under the existing semantic-overlap judgment whether the candidate's meaning stands incorporated in later history or was reverted, superseded, or overlapped, then close within the existing `COMPLETE / PUBLISHED`, `CONTINUABLE`, `BLOCKED` vocabulary.
+
+`SEMANTIC_READY` means the bounded semantic delta, admitted-base context, proof owner/criterion, and proof result are known in the transient handoff; it does not create durable task state or by itself authorize publication. `PUBLISHABLE` additionally requires fresh remote authority proving the candidate is a fast-forward descendant of current `origin/main`, candidate integrity/direct-impact proof, and an immediate ordinary non-force publication path.
+
+Bind publication-intended candidate identity as late as practical, after fresh remote authority is known. For topology-only movement, preserve the semantic delta and reusable proof and materialize only the minimum final child needed on fresh main, ideally once per successful publication attempt; if fresh `origin/main` is already a strict ancestor of the candidate, publish that existing candidate instead of rematerializing it. Semantic overlap or proof-owner/criterion movement still requires `READMIT` / `BLOCKED` under the existing rules rather than blind salvage.
 
 - **Topological staleness** — whether the candidate is still a direct fast-forward descendant of current `origin/main`. A newer `origin/main` normally makes an old-parent candidate no longer directly publishable. That is normal Git cost, not a defect and not a semantic verdict.
 - **Semantic overlap** — whether intervening changes alter the task's meaning, mutation ownership, or bounded outcome (same source hunks, same contract/test surface meaning, superseded fix). `dist/*` hashed-asset churn alone and same-file disjoint-hunk changes are not semantic overlap.
