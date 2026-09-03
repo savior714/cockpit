@@ -32,6 +32,15 @@ Use the simplest safe workspace. The current checkout is fine when ownership and
 - The canonical checkout is a user-owned reading/publishing point, not a task BASE. A task worktree that is behind `origin/main` is a stale base, not a publication candidate: re-base the work by reapplying the bounded semantic delta onto fresh main (see §6), not by publishing the stale candidate.
 - `dist/` is regenerated build output (`npm run build`). Never hand-merge `dist/*` hashed-asset churn across candidates; stale `dist/*` differences alone are mechanical staleness, never semantic overlap.
 
+### Worktree dependencies
+
+- Fresh linked worktrees do not contain `node_modules`; this absence is normal because dependencies are untracked.
+- When dependency manifests are identical between the task worktree and an already-prepared trusted workspace (such as the canonical checkout), temporary reuse of `node_modules` (e.g. via a local symlink) is permitted for bounded build, check, and test verification without running a redundant install.
+- The baseline equality criterion requires that `package.json` and `package-lock.json` match identically between the task worktree and the reuse source (e.g. `cmp -s package.json <source>/package.json && cmp -s package-lock.json <source>/package-lock.json`).
+- If manifests differ or dependency changes fall within the task's scope, never reuse dependencies; run `npm ci` directly in the task worktree.
+- A temporary `node_modules` symlink is a disposable execution aid, never a repository artifact or publication candidate. Remove the symlink upon completing verification, or explicitly verify during final candidate integrity checks that it is neither tracked nor present in the untracked publication delta.
+- Dependency reuse must never modify, clean, stash, or reset unrelated dirty state in the canonical checkout or reuse source.
+
 ## 4. Prompts and artifacts
 
 Prompts are disposable execution artifacts, not canonical project state. Investigation scratch work stays temporary; promote only durable verified conclusions to their actual authority owner. Do not store task queues, receipts, or execution progress in repository documentation.
