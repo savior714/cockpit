@@ -141,7 +141,6 @@ export function writeBuildStamp(pkgRoot) {
   const stampPath = path.join(distDir, ".build-stamp.json");
   const data = {
     fingerprint,
-    builtAt: new Date().toISOString(),
   };
   fs.writeFileSync(stampPath, JSON.stringify(data, null, 2) + "\n", "utf-8");
   return data;

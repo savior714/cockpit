@@ -23,6 +23,69 @@ test("Fingerprint determinism and build input boundary", async () => {
   assert.match(fp1, /^[a-f0-9]{64}$/, "Fingerprint must be a 64-char sha256 hex string");
 });
 
+test("Build stamp determinism: identical input yields byte-identical stamp without builtAt", async (t) => {
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "cockpit-stamp-determinism-"));
+  t.after(async () => {
+    try {
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    } catch {}
+  });
+
+  await fs.mkdir(path.join(tmpDir, "src"), { recursive: true });
+  await fs.writeFile(path.join(tmpDir, "src", "input.ts"), "export const value = 1;\n");
+  await fs.writeFile(path.join(tmpDir, "index.html"), "<!doctype html><html></html>\n");
+
+  writeBuildStamp(tmpDir);
+  const bytes1 = await fs.readFile(path.join(tmpDir, "dist", ".build-stamp.json"), "utf-8");
+  writeBuildStamp(tmpDir);
+  const bytes2 = await fs.readFile(path.join(tmpDir, "dist", ".build-stamp.json"), "utf-8");
+
+  assert.equal(bytes2, bytes1, "Same build input must produce byte-identical stamp");
+
+  const stamp = JSON.parse(bytes1);
+  assert.match(stamp.fingerprint, /^[a-f0-9]{64}$/, "Stamp must carry a valid fingerprint");
+  assert.equal(stamp.fingerprint, computeBuildFingerprint(tmpDir));
+  assert.ok(!("builtAt" in stamp), "Stamp must not contain nonsemantic builtAt");
+});
+
+test("Build stamp semantic change: build-affecting input change propagates via fingerprint", async (t) => {
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "cockpit-stamp-semantic-"));
+  t.after(async () => {
+    try {
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    } catch {}
+  });
+
+  await fs.mkdir(path.join(tmpDir, "src"), { recursive: true });
+  await fs.writeFile(path.join(tmpDir, "src", "input.ts"), "export const value = 1;\n");
+  await fs.writeFile(path.join(tmpDir, "index.html"), "<!doctype html><html></html>\n");
+
+  writeBuildStamp(tmpDir);
+  const bytes1 = await fs.readFile(path.join(tmpDir, "dist", ".build-stamp.json"), "utf-8");
+  const fp1 = JSON.parse(bytes1).fingerprint;
+
+  // checkBuildFreshness requires all artifacts; provide dummy siblings for the isolated fixture.
+  await fs.writeFile(path.join(tmpDir, "dist", "index.html"), "<html></html>\n");
+  await fs.writeFile(path.join(tmpDir, "dist", "parser.js"), "export {};\n");
+  assert.equal(checkBuildFreshness(tmpDir).fresh, true);
+
+  // Change a build-affecting input.
+  await fs.writeFile(path.join(tmpDir, "src", "input.ts"), "export const value = 2;\n");
+
+  const stale = checkBuildFreshness(tmpDir);
+  assert.equal(stale.fresh, false);
+  assert.equal(stale.reason, "fingerprint_mismatch");
+
+  writeBuildStamp(tmpDir);
+  const bytes2 = await fs.readFile(path.join(tmpDir, "dist", ".build-stamp.json"), "utf-8");
+  const stamp2 = JSON.parse(bytes2);
+
+  assert.notEqual(stamp2.fingerprint, fp1, "Fingerprint must change when build input changes");
+  assert.notEqual(bytes2, bytes1, "Stamp bytes must change when build input changes");
+  assert.ok(!("builtAt" in stamp2), "Stamp must not contain nonsemantic builtAt");
+  assert.equal(checkBuildFreshness(tmpDir).fresh, true);
+});
+
 test("isLocalDevCheckout boundary detection", async (t) => {
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "cockpit-devcheck-"));
   t.after(async () => {
