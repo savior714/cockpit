@@ -2905,11 +2905,14 @@ test("Problem Framer Execution Wave contract: admission freshness, scheduling bo
     assert.ok(context.includes("이미 만들어진 candidate의 BASE freshness check와, 아직 시작하지 않은 후속 task를 SERIAL NOW / WAIT FOR EVIDENCE로 framing하는 scheduling 판단을 서로 다른 단계로 명확히 구분한다."));
 
     // B. Scheduling regression case 6:
-    // origin advance를 만난 already-built candidate => blind retry loop가 아니라 3-axis reconciliation + CONTINUABLE/BLOCKED semantics가 discoverable
+    // remote advance를 만난 already-built candidate => blind retry loop가 아니라 independent freshness axes reconciliation semantics가 discoverable
     assert.ok(context.includes("Publication은 short serialization boundary다."));
-    assert.ok(context.includes("두 번째 writer가 origin advance를 발견하면 blind retry/rematerialization loop를 돌지 않고 3축(Topological staleness / Semantic overlap / Proof boundary movement)을 독립 판정한다"));
-    assert.ok(context.includes("Topological staleness: topology만 stale하고 semantic/proof boundary 이동이 없으면 CONTINUABLE이며 fresh main 위에 동일 delta를 reapply하는 exact resume point를 제시한다."));
-    assert.ok(context.includes("Semantic overlap / Proof boundary movement: semantic overlap, supersession, ownership ambiguity가 있으면 BLOCKED이며 blind reapply하지 않는다."));
+    assert.ok(context.includes("blind retry/rematerialization loop를 돌지 않고 freshness를 3개의 독립 축으로 판정한다: topology freshness / semantic freshness / proof freshness"));
+    assert.ok(context.includes("Topology-only movement (SEMANTIC_OWNERS·PROOF_OWNERS unaffected): semantic result preserve, completed/reusable proof preserve, candidate/reference preserve."));
+    assert.ok(context.includes("Semantic-owner movement"));
+    assert.ok(context.includes("`READMIT`한다."));
+    assert.ok(context.includes("Proof-owner-only movement"));
+    assert.ok(!context.includes("Semantic overlap / Proof boundary movement"));
   }
 });
 
