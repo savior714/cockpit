@@ -608,7 +608,7 @@ Project Horizon은 프로젝트 전체의 위치·핵심 기반·검증/readines
 | Canonical heading | 작성 규칙 |
 |---|---|
 | `## 프로젝트 지평` / `## Project Horizon` | project-level 현재 상태와 dominant direction. 실행 chronology가 아닌 orientation. |
-| `## 단계 여정` / `## Stage Journey` | `### 현재 — Stage ...`, `### 다음 — Stage ...` 아래에 material gate만 기록. Stage는 maturity가 아님. |
+| `## 단계 여정` / `## Stage Journey` | `### 현재 — Stage ...`, `### 다음 — Stage ...` 아래에 material gate만 기록. Stage는 maturity가 아님. gate나 `NOT OPEN` 단계 block에 `진입 조건:` / `Entry condition:` (또는 `개시 조건:`, `opens when:`) 라인으로 그 단계를 열기 위한 명시적 entry condition을 한 줄로 선언할 수 있다. |
 | `## 프로젝트 상태` / `## Project Posture` | 보통 5–8개의 cross-cutting axis. 각 `### Axis — STRONG/PARTIAL/WEAK/UNKNOWN`에는 한 줄 의미를 둠. |
 | `## 현재 최전선` / `## Current Frontier` | 기본 Primary Frontier 하나. `현재: A`, `목표: B` 또는 `A → B` 형태의 state transition. |
 | `## 전략적 흐름` / `## Strategic Threads` | 현재 Primary가 아닌 durable parallel direction만 기록. task backlog가 아님. |

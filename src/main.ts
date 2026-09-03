@@ -62,6 +62,7 @@ interface InspectorEntity {
   subsections: SemanticSubsection[];
   relations: SemanticRelation[];
   isStageBlocker?: boolean;
+  stageContext?: string;
   areaItem?: MapItem;
   evidenceParent?: InspectorEntity;
 }
@@ -152,6 +153,10 @@ function areaEntity(item: MapItem): InspectorEntity {
 }
 
 function stageEntity(gate: StageGate, segment: StageSegment): InspectorEntity {
+  const subsections = gate.subsections.slice();
+  if (gate.entryCondition) {
+    subsections.unshift(subsection("진입 조건", gate.entryCondition));
+  }
   return {
     key: entityKey("stage", gate.title),
     kind: "stage",
@@ -160,21 +165,28 @@ function stageEntity(gate: StageGate, segment: StageSegment): InspectorEntity {
     summaryText: gate.summaryText || segment.title,
     html: gate.html,
     rawText: gate.rawText,
-    subsections: gate.subsections,
+    subsections,
     relations: gate.relations,
     isStageBlocker: gate.isStageBlocker,
+    stageContext: segment.title,
   };
 }
 
 function stageSegmentEntity(segment: StageSegment): InspectorEntity {
+  const fallbackGate = segment.gates.find((gate) => gate.entryCondition);
+  const subsections: SemanticSubsection[] = [];
+  if (fallbackGate?.entryCondition) {
+    subsections.push(subsection("진입 조건", fallbackGate.entryCondition));
+  }
   return {
     key: entityKey("stage", segment.title),
     kind: "stage",
     title: segment.title,
+    state: segment.gates.length === 1 ? segment.gates[0].state || undefined : undefined,
     summaryText: segment.role === "current" ? "현재 프로젝트가 서 있는 단계" : "여정에서 선언된 다음 단계",
     html: segment.html,
     rawText: segment.rawText,
-    subsections: [],
+    subsections,
     relations: [],
   };
 }
@@ -336,6 +348,7 @@ function renderStageJourney(journey: StageJourney): string {
               </span>
               <strong>${escapeHtml(gate.title)}</strong>
               ${gate.summaryText ? `<span>${escapeHtml(gate.summaryText)}</span>` : ""}
+              ${gate.entryCondition ? `<span class="stage-gate-entry">진입 조건: ${escapeHtml(gate.entryCondition)}</span>` : ""}
             </button>
           `).join("")}
         </div>
@@ -364,7 +377,7 @@ function renderFrontiers(frontiers: Frontier[]): string {
     ${frontiers.map((frontier) => `
       <button type="button" class="semantic-card frontier-card ${frontier.isPrimary ? "frontier-primary" : "frontier-secondary"}" ${semanticCardAttributes("frontier", frontier.title)}>
         <span class="semantic-card-top">
-          <span class="frontier-role">${frontier.isCoPrimary ? "CO-PRIMARY" : frontier.isPrimary ? "PRIMARY" : "STRATEGIC"}</span>
+          <span class="frontier-role">${frontier.isCoPrimary ? "CO-PRIMARY TRANSITION" : frontier.isPrimary ? "PRIMARY TRANSITION" : "STRATEGIC DIRECTION"}</span>
           <span class="frontier-transition">${escapeHtml(frontier.currentState || "UNDECLARED")} <b>→</b> ${escapeHtml(frontier.targetState || "UNDECLARED")}</span>
         </span>
         <strong>${escapeHtml(frontier.title)}</strong>
@@ -474,6 +487,13 @@ function renderInspector(entity: InspectorEntity): void {
     state.className = `inspector-state state-${stateClass(entity.state)}`;
     state.hidden = !entity.state;
   }
+  const stageContextEl = document.getElementById("inspector-stage-context");
+  if (stageContextEl) {
+    stageContextEl.innerHTML = entity.stageContext
+      ? `소속 단계: <button type="button" class="stage-context-link" data-related-kind="stage" data-related-title="${escapeHtml(entity.stageContext)}">${escapeHtml(entity.stageContext)}</button>`
+      : "";
+    stageContextEl.hidden = !entity.stageContext;
+  }
   const title = document.getElementById("inspector-title");
   if (title) title.textContent = entity.title;
   const summary = document.getElementById("inspector-summary");
@@ -508,6 +528,8 @@ function renderInspector(entity: InspectorEntity): void {
 
   const copyButton = document.getElementById("inspector-copy-btn") as HTMLButtonElement | null;
   const copyToast = document.getElementById("copy-toast");
+  const handoffHint = document.getElementById("handoff-hint");
+  if (handoffHint) handoffHint.hidden = entity.kind !== "area";
   if (copyButton) {
     copyButton.hidden = entity.kind !== "area";
     copyButton.onclick = async () => {
@@ -539,8 +561,13 @@ function renderInspector(entity: InspectorEntity): void {
 function openInspector(entity: InspectorEntity, replace = false): void {
   if (replace) {
     inspectorHistory = [entity];
-  } else if (inspectorHistory[inspectorHistory.length - 1]?.key !== entity.key) {
-    inspectorHistory.push(entity);
+  } else {
+    const existingIndex = inspectorHistory.findIndex((item) => item.key === entity.key);
+    if (existingIndex >= 0) {
+      inspectorHistory = inspectorHistory.slice(0, existingIndex + 1);
+    } else {
+      inspectorHistory.push(entity);
+    }
   }
   selectedAreaId = entity.areaItem?.id ?? null;
   document.querySelectorAll(".map-card.selected").forEach((card) => {
@@ -779,7 +806,12 @@ async function renderDoc(source: string): Promise<void> {
   const mapPanel = document.getElementById("slot-map");
   const mapBody = mapPanel?.querySelector<HTMLElement>(".map-body");
   if (mapBody && currentParsedMap.isNativeMap) {
-    mapBody.innerHTML = renderNativeMap(currentParsedMap, selectedAreaId, currentAreaDetails);
+    mapBody.innerHTML = renderNativeMap(
+      currentParsedMap,
+      selectedAreaId,
+      currentAreaDetails,
+      currentModel.stageJourney?.currentStage
+    );
     mapBody.querySelectorAll<HTMLButtonElement>(".map-card").forEach((button) => {
       button.addEventListener("click", () => {
         const item = findMapItemById(button.dataset.itemId ?? "");

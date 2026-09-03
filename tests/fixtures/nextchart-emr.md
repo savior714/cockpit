@@ -16,6 +16,7 @@ NextChart is beyond prototype work: representative primary-care delivery is esta
 
 ### 다음 — Stage 1B
 NOT OPEN
+진입 조건: Stage 1A cannot be promoted until the exact release proof is admitted at the required boundary.
 
 ## 프로젝트 상태
 

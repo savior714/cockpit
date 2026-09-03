@@ -56,6 +56,7 @@ export const HEADING_ALIAS = {
     "recently completed": "recently completed",
     "recent progress": "recently completed",
 };
+const STAGE_ENTRY_CONDITION_LABELS = ["진입 조건", "개시 조건", "entry condition", "opens when"];
 export function normalizeHeading(tokens) {
     const raw = tokens
         .filter((t) => t.type === "inline")
@@ -448,7 +449,7 @@ function firstSemanticSentence(value) {
     return lines[0] ?? "";
 }
 function isSemanticMetadataLine(line) {
-    return /^(?:역할|role|관련\s*(?:영역|단계|상태|축|최전선|변화)|related\s+(?:areas?|stage|posture|frontier|movements?)|현재|목표|이전|이후|변경|before|after|change|target|from|to)\s*:/i.test(line) || /^(?:STRONG|PARTIAL|WEAK|UNKNOWN|BLOCKED|CLOSED|IN PROOF|NOT OPEN|OPEN)$/i.test(line);
+    return /^(?:역할|role|관련\s*(?:영역|단계|상태|축|최전선|변화)|related\s+(?:areas?|stage|posture|frontier|movements?)|진입\s*조건|개시\s*조건|entry\s+condition|opens\s+when|현재|목표|이전|이후|변경|before|after|change|target|from|to)\s*:/i.test(line) || /^(?:STRONG|PARTIAL|WEAK|UNKNOWN|BLOCKED|CLOSED|IN PROOF|NOT OPEN|OPEN)$/i.test(line);
 }
 function parseRelations(rawText) {
     const relations = [];
@@ -542,7 +543,9 @@ function parseStageStateLine(rawText) {
     return "";
 }
 function extractLabeledValue(rawText, labels) {
-    const labelPattern = labels.map((label) => label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+    const labelPattern = labels
+        .map((label) => label.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s*"))
+        .join("|");
     const pattern = new RegExp(`^(?:[-*+]\\s*)?(?:${labelPattern})\\s*[:：]\\s*(.+)$`, "i");
     for (const rawLine of rawText.split(/\r?\n/)) {
         const line = stripInlineMarkup(rawLine).trim();
@@ -631,6 +634,7 @@ function parseStageGateList(tokens, segmentTitle) {
             title: parsed.title,
             state: parsed.state,
             summaryText: firstSemanticSentence(rawText),
+            entryCondition: extractLabeledValue(rawText, STAGE_ENTRY_CONDITION_LABELS) || undefined,
             html: withMermaidPlaceholders(renderTokens(tokens.slice(i + 1, end))),
             rawText,
             subsections: [],
@@ -668,6 +672,7 @@ export function parseStageJourney(tokens) {
                     title: segmentInfo.title,
                     state: stageState || stateLine.declaredState,
                     summaryText: content.summaryText,
+                    entryCondition: extractLabeledValue(content.rawText, STAGE_ENTRY_CONDITION_LABELS) || undefined,
                     html: content.html,
                     rawText: content.rawText,
                     subsections: content.subsections,
@@ -1239,8 +1244,12 @@ export function getAreaCompleteness(parsedMap, areaDetails) {
     };
 }
 /** Render Native HTML Map */
-export function renderNativeMap(parsedMap, selectedAreaId = null, areaDetails) {
+export function renderNativeMap(parsedMap, selectedAreaId = null, areaDetails, currentStageLabel) {
     let html = `<div class="native-project-map">`;
+    const currentStageGroupCount = parsedMap.rails
+        .filter((rail) => rail.railType === "trajectory")
+        .reduce((count, rail) => count + rail.groups.filter((group) => isCurrentStageHeading(group.title)).length, 0);
+    const showCurrentStageLabel = Boolean(currentStageLabel) && currentStageGroupCount === 1;
     for (const rail of parsedMap.rails) {
         const isTrajectory = rail.railType === "trajectory";
         html += `<section class="map-rail map-rail-${rail.railType}">`;
@@ -1288,6 +1297,7 @@ export function renderNativeMap(parsedMap, selectedAreaId = null, areaDetails) {
             <div class="trajectory-group group-current-stage">
               <div class="group-header">
                 <span class="stage-tag">NOW · 현재 단계</span>
+                ${showCurrentStageLabel ? `<span class="stage-id-tag">${escapeHtml(currentStageLabel ?? "")}</span>` : ""}
                 <h4 class="group-name visually-hidden">${escapeHtml(group.title)}</h4>
               </div>
               <div class="group-items-grid">

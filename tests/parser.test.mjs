@@ -2438,3 +2438,98 @@ test("Reader-visible DOM follows Horizon → Stage/Posture → Frontier → Move
     assert.ok(css.includes(selector), `${selector} must have a presentation rule`);
   }
 });
+
+test("Stage entry conditions are parsed from labeled lines in declared fixtures", () => {
+  const cockpit = readFixtureModel("cockpit-self.md");
+  assert.equal(
+    cockpit.model.stageJourney?.nextGates[0]?.entryCondition,
+    "Reader-level comprehension is independently accepted at the Primary Frontier."
+  );
+
+  const emr = readFixtureModel("nextchart-emr.md");
+  assert.equal(
+    emr.model.stageJourney?.nextGates[0]?.entryCondition,
+    "Stage 1A cannot be promoted until the exact release proof is admitted at the required boundary."
+  );
+});
+
+test("Entry condition labels are semantic metadata and never contaminate summaries", () => {
+  const markdown = `
+# Entry Condition System
+
+## 단계 여정
+
+### 다음 — Stage 2
+NOT OPEN
+진입조건: Core reliability reaches STRONG.
+`;
+
+  const tokens = md.parse(markdown, {});
+  const { sections } = splitSections(tokens);
+  const journey = parseStageJourney(sections.get("stage journey"));
+  const gate = journey?.nextGates[0];
+
+  assert.equal(gate?.state, "NOT OPEN");
+  assert.equal(gate?.entryCondition, "Core reliability reaches STRONG.");
+  assert.ok(!gate?.summaryText.includes("진입"));
+});
+
+test("'Opens when' alias extracts entry condition from material gate blocks", () => {
+  const markdown = `
+# Entry Condition System
+
+## Stage Journey
+
+### Next — Stage 2
+- **NOT OPEN — Adoption gate**
+  Opens when: a fresh reader accepts the rendered cockpit.
+`;
+
+  const tokens = md.parse(markdown, {});
+  const { sections } = splitSections(tokens);
+  const journey = parseStageJourney(sections.get("stage journey"));
+
+  assert.equal(journey?.nextGates[0]?.entryCondition, "a fresh reader accepts the rendered cockpit.");
+});
+
+test("Native map links its single current-stage group to the declared current stage", () => {
+  const markdown = `
+# Stage Linked Map
+
+## 프로젝트 지도
+
+### Product trajectory
+#### 현재 단계
+- **Release proof** — Exact release-level convergence
+`;
+
+  const tokens = md.parse(markdown, {});
+  const { sections } = splitSections(tokens);
+  const parsedMap = parseProjectMap(sections.get("project map"));
+
+  const linked = renderNativeMap(parsedMap, null, undefined, "Stage 1A: Primary Care Baseline RC");
+  assert.ok(linked.includes("stage-id-tag"));
+  assert.ok(linked.includes("Stage 1A: Primary Care Baseline RC"));
+
+  const unlinked = renderNativeMap(parsedMap);
+  assert.ok(!unlinked.includes("stage-id-tag"));
+
+  const ambiguousMarkdown = `
+# Two Current Stages
+
+## 프로젝트 지도
+
+### Product trajectory
+#### 현재 단계
+- **Release proof** — One
+
+### Delivery trajectory
+#### 현재 단계
+- **Ops readiness** — Two
+`;
+
+  const ambiguousTokens = md.parse(ambiguousMarkdown, {});
+  const ambiguousMap = parseProjectMap(splitSections(ambiguousTokens).sections.get("project map"));
+  const ambiguousHtml = renderNativeMap(ambiguousMap, null, undefined, "Stage 1A: Primary Care Baseline RC");
+  assert.ok(!ambiguousHtml.includes("stage-id-tag"));
+});

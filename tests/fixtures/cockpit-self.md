@@ -15,6 +15,7 @@ Cockpit is a deterministic, read-only viewer that has established project-model 
 
 ### Next — Stage 0.4: Portable adoption
 NOT OPEN
+Entry condition: Reader-level comprehension is independently accepted at the Primary Frontier.
 
 ## Project Posture
 

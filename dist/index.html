@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cockpit</title>
-    <script type="module" crossorigin src="/assets/index-DP48AEKK.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-BhEBLoo4.css">
+    <script type="module" crossorigin src="/assets/index-CbBTwfAv.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DdbQo_1j.css">
   </head>
   <body>
     <main id="cockpit" class="cockpit">
@@ -107,15 +107,18 @@
               <span id="inspector-group-tag" class="group-tag"></span>
               <span id="inspector-state" class="inspector-state" hidden></span>
             </div>
+            <div id="inspector-stage-context" class="inspector-stage-context" hidden></div>
             <h2 id="inspector-title" class="inspector-title"></h2>
             <div id="inspector-summary" class="inspector-summary"></div>
             <div id="inspector-sections" class="inspector-subsections"></div>
             <div id="inspector-related" class="inspector-related" hidden></div>
             <div class="inspector-actions">
-              <button id="inspector-copy-btn" class="btn-handoff" type="button" hidden>
+              <button id="inspector-copy-btn" class="btn-handoff" type="button" hidden
+                title="클릭하면 이 영역의 검토 컨텍스트가 Problem Framer용 handoff 텍스트로 클립보드에 복사됩니다">
                 이 영역 검토하기
               </button>
               <span id="copy-toast" class="copy-toast" hidden>✓ 검토 요청이 복사되었습니다</span>
+              <p id="handoff-hint" class="handoff-hint" hidden>클릭하면 Problem Framer에게 전달할 검토 요청 컨텍스트가 클립보드에 복사됩니다</p>
             </div>
           </div>
         </aside>

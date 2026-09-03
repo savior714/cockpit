@@ -144,12 +144,15 @@ export interface StageGate {
   title: string;
   state: string;
   summaryText: string;
+  entryCondition?: string;
   html: string;
   rawText: string;
   subsections: SemanticSubsection[];
   relations: SemanticRelation[];
   isStageBlocker: boolean;
 }
+
+const STAGE_ENTRY_CONDITION_LABELS = ["진입 조건", "개시 조건", "entry condition", "opens when"];
 
 export interface StageSegment {
   role: "current" | "next" | "other";
@@ -687,7 +690,7 @@ function firstSemanticSentence(value: string): string {
 }
 
 function isSemanticMetadataLine(line: string): boolean {
-  return /^(?:역할|role|관련\s*(?:영역|단계|상태|축|최전선|변화)|related\s+(?:areas?|stage|posture|frontier|movements?)|현재|목표|이전|이후|변경|before|after|change|target|from|to)\s*:/i.test(
+  return /^(?:역할|role|관련\s*(?:영역|단계|상태|축|최전선|변화)|related\s+(?:areas?|stage|posture|frontier|movements?)|진입\s*조건|개시\s*조건|entry\s+condition|opens\s+when|현재|목표|이전|이후|변경|before|after|change|target|from|to)\s*:/i.test(
     line
   ) || /^(?:STRONG|PARTIAL|WEAK|UNKNOWN|BLOCKED|CLOSED|IN PROOF|NOT OPEN|OPEN)$/i.test(line);
 }
@@ -787,7 +790,9 @@ function parseStageStateLine(rawText: string): string {
 }
 
 function extractLabeledValue(rawText: string, labels: string[]): string {
-  const labelPattern = labels.map((label) => label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  const labelPattern = labels
+    .map((label) => label.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s*"))
+    .join("|");
   const pattern = new RegExp(`^(?:[-*+]\\s*)?(?:${labelPattern})\\s*[:：]\\s*(.+)$`, "i");
   for (const rawLine of rawText.split(/\r?\n/)) {
     const line = stripInlineMarkup(rawLine).trim();
@@ -877,6 +882,7 @@ function parseStageGateList(tokens: Token[], segmentTitle: string): StageGate[] 
       title: parsed.title,
       state: parsed.state,
       summaryText: firstSemanticSentence(rawText),
+      entryCondition: extractLabeledValue(rawText, STAGE_ENTRY_CONDITION_LABELS) || undefined,
       html: withMermaidPlaceholders(renderTokens(tokens.slice(i + 1, end))),
       rawText,
       subsections: [],
@@ -917,6 +923,7 @@ export function parseStageJourney(tokens?: Token[]): StageJourney | undefined {
           title: segmentInfo.title,
           state: stageState || stateLine.declaredState,
           summaryText: content.summaryText,
+          entryCondition: extractLabeledValue(content.rawText, STAGE_ENTRY_CONDITION_LABELS) || undefined,
           html: content.html,
           rawText: content.rawText,
           subsections: content.subsections,
@@ -1638,9 +1645,17 @@ export function getAreaCompleteness(
 export function renderNativeMap(
   parsedMap: ParsedMap,
   selectedAreaId: string | null = null,
-  areaDetails?: Map<string, AreaDetail>
+  areaDetails?: Map<string, AreaDetail>,
+  currentStageLabel?: string
 ): string {
   let html = `<div class="native-project-map">`;
+  const currentStageGroupCount = parsedMap.rails
+    .filter((rail) => rail.railType === "trajectory")
+    .reduce(
+      (count, rail) => count + rail.groups.filter((group) => isCurrentStageHeading(group.title)).length,
+      0
+    );
+  const showCurrentStageLabel = Boolean(currentStageLabel) && currentStageGroupCount === 1;
 
   for (const rail of parsedMap.rails) {
     const isTrajectory = rail.railType === "trajectory";
@@ -1693,6 +1708,7 @@ export function renderNativeMap(
             <div class="trajectory-group group-current-stage">
               <div class="group-header">
                 <span class="stage-tag">NOW · 현재 단계</span>
+                ${showCurrentStageLabel ? `<span class="stage-id-tag">${escapeHtml(currentStageLabel ?? "")}</span>` : ""}
                 <h4 class="group-name visually-hidden">${escapeHtml(group.title)}</h4>
               </div>
               <div class="group-items-grid">
