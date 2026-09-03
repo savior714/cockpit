@@ -1821,6 +1821,49 @@ test("Focus and Area handoffs distinguish REFRESH from RECONSTRUCT and close mod
   }
 });
 
+test("Repository handoffs keep canonical authority and worktree proposals distinct without a global ceremony", () => {
+  const contexts = [
+    buildFocusHandoffContext({
+      projectTitle: "Authority Boundary Project",
+      focusText: "Publication relation investigation",
+      situationText: "A dirty working-tree candidate proposes targeted proof refresh.",
+    }),
+    buildAreaHandoffContext({
+      projectTitle: "Authority Boundary Project",
+      areaTitle: "Publication relation",
+      areaDetail: {
+        title: "Publication relation",
+        normalizedKey: "publication relation",
+        subsections: [{
+          subheading: "Current Level",
+          html: "<p>A dirty working-tree candidate proposes targeted proof refresh.</p>",
+          rawText: "A dirty working-tree candidate proposes targeted proof refresh.",
+        }],
+      },
+    }),
+  ];
+
+  for (const context of contexts) {
+    assert.equal(
+      (context.match(/\[Canonical vs Proposed Authority — repository tasks only\]/g) ?? []).length,
+      1,
+      "the authority guard should be emitted once as a shared compact contract"
+    );
+    assert.ok(context.includes("`CANONICAL_AUTHORITY`는 fresh published/tracked authoritative ref"));
+    assert.ok(context.includes("`LOCAL_TRACKED_SNAPSHOT`은 현재 `HEAD`와 tracked files"));
+    assert.ok(context.includes("`PROPOSED_WORKTREE_SEMANTICS`는 dirty/untracked working-tree candidate"));
+    assert.ok(context.includes("investigation evidence로는 사용할 수 있지만 canonical authority로 부르거나 승격하지 않으며"));
+    assert.ok(context.includes("canonical과 충돌하면 그 mismatch 자체를 조사하라."));
+
+    // The proposal remains input evidence; no persistent authority/provenance
+    // block or task-state ceremony is added to the ordinary handoff.
+    assert.ok(context.includes("dirty working-tree candidate proposes targeted proof refresh."));
+    assert.ok(!context.includes("## CANONICAL_AUTHORITY"));
+    assert.ok(!context.includes("## PROPOSED_WORKTREE_SEMANTICS"));
+    assert.ok(!context.includes("authority registry"));
+  }
+});
+
 test("Focus and Area handoffs carry the Project Horizon reader-level projection contract", () => {
   const contexts = [
     buildFocusHandoffContext({
@@ -3097,10 +3140,10 @@ test("Fresh-supersession case replay: builtAt finding requires semantic root-cau
   assert.ok(readme.includes("root cause를 이미 완결적으로 해결하고 필요한 proof까지 포함하면"));
   assert.ok(readme.includes("CLOSED / SUPERSEDED_BY_PUBLISHED_FIX"));
 });
-test("Handoff contract extraction: baseline-identical observable output across facade", () => {
-  // Behavior-preserving bounded refactor proof: same probe inputs yield
-  // byte-identical handoff outputs before/after extraction.
-  // Hashes pin the fresh BASE (2f1116c) semantics; any wording edit fails here.
+test("Handoff contract output remains pinned after authority-boundary wording", () => {
+  // Exact output probes protect the extracted shared contract and facade.
+  // Hashes pin the fresh BASE plus this intentional authority-boundary change;
+  // any unrelated wording or extraction edit fails here.
   const sha256 = (value) => createHash("sha256").update(value, "utf8").digest("hex");
   const focusParams = {
     projectTitle: "Handoff Exact Probe",
@@ -3128,8 +3171,8 @@ test("Handoff contract extraction: baseline-identical observable output across f
   };
   assert.equal(sha256(formatExecutionWaveContractLines().join("\n")), "56549841422cecbc6be8428ed455148317c415c7431b4566cc5bdf29413bd4f9");
   assert.equal(sha256(formatAdmissionPublicationContractLines().join("\n")), "6b6778e87c2f7a536f5cacd86a6f627e19b44f0493e32e990e064545b787f31f");
-  assert.equal(sha256(formatFocusHandoffInstruction()), "30a2cbcf7a5a3e3839f9844d9d4eb9cdc3d8eb056cb0f792e4c4c4a3050a2349");
-  assert.equal(sha256(formatAreaHandoffInstruction()), "c220cfead0a2734b69f463d798445f5c7c1c53707575a962098c75bb0888df8e");
-  assert.equal(sha256(buildFocusHandoffContext(focusParams)), "e0a333214761d9b34d1283b2106d022220149e5abaef4a0e38a13920e93c5072");
-  assert.equal(sha256(buildAreaHandoffContext(areaParams)), "9d0d61cc2798bb36f2d72b74d41e777de8e51270236dad95ed02c1e9928d7f34");
+  assert.equal(sha256(formatFocusHandoffInstruction()), "68dd8a3ae3bf002294a3d3d8fb3073d2d96514bbd323c4d2f48d2546b2d06075");
+  assert.equal(sha256(formatAreaHandoffInstruction()), "42a6d04b093f3f5f943e56bcb2f6d6a4e5741a2877e2ebdcbd82ab74efe8080d");
+  assert.equal(sha256(buildFocusHandoffContext(focusParams)), "cd4023527e7d946dbb2965ace7f81d9a7a33cbea325118a9989e95ef85491ccf");
+  assert.equal(sha256(buildAreaHandoffContext(areaParams)), "c40ae0af996d5bc85310a25292a4f039afb460020ee181bc10dc50ada15a016a");
 });
