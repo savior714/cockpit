@@ -1594,7 +1594,7 @@ test("Focus handoff context assembly: complete context and Problem Framer instru
   assert.ok(context.includes("WAIT로 미루지 않는다"));
   assert.ok(context.includes("같은 응답에서 실행 순서를 명확히 하고, 선행 task를 먼저 closure/publication boundary까지 진행한 뒤 다음 task를 fresh evidence에서 시작하도록 안내한다."));
   assert.ok(context.includes("C. WAIT FOR EVIDENCE:"));
-  assert.ok(context.includes("11. [Admission & Publication Discipline — Executor Prompt Contract]:"));
+  assert.ok(context.includes("12. [Admission & Publication Discipline — Executor Prompt Contract]:"));
   assert.ok(context.includes("Mutation-intended executor prompt에는 fresh BASE admission 조건을 명확히 전달한다"));
   assert.ok(context.includes("Execution Wave는 일회성 transient framing 결과다. Cockpit/PROGRESS.md에 task registry, backlog, queue, task status, agent assignment, dependency persistence를 저장하거나 추가하지 않는다."));
   assert.ok(context.includes("executor-neutral prompt로 작성한다."));
@@ -1701,7 +1701,7 @@ test("Area review handoff context assembly: complete context and Problem Framer 
   assert.ok(context.includes("WAIT로 미루지 않는다"));
   assert.ok(context.includes("같은 응답에서 실행 순서를 명확히 하고, 선행 task를 먼저 closure/publication boundary까지 진행한 뒤 다음 task를 fresh evidence에서 시작하도록 안내한다."));
   assert.ok(context.includes("C. WAIT FOR EVIDENCE:"));
-  assert.ok(context.includes("11. [Admission & Publication Discipline — Executor Prompt Contract]:"));
+  assert.ok(context.includes("12. [Admission & Publication Discipline — Executor Prompt Contract]:"));
   assert.ok(context.includes("Mutation-intended executor prompt에는 fresh BASE admission 조건을 명확히 전달한다"));
   assert.ok(context.includes("Execution Wave는 일회성 transient framing 결과다. Cockpit/PROGRESS.md에 task registry, backlog, queue, task status, agent assignment, dependency persistence를 저장하거나 추가하지 않는다."));
   assert.ok(context.includes("executor-neutral prompt로 작성한다."));
@@ -2899,7 +2899,7 @@ test("Problem Framer Execution Wave contract: admission freshness, scheduling bo
 
     // B. Scheduling regression case 5:
     // mutation-intended handoff => fresh BASE admission 요구가 discoverable
-    assert.ok(context.includes("11. [Admission & Publication Discipline — Executor Prompt Contract]:"));
+    assert.ok(context.includes("12. [Admission & Publication Discipline — Executor Prompt Contract]:"));
     assert.ok(context.includes("execution 직전에 `origin/main`을 fresh fetch하고 실제 시작 BASE SHA를 기록한다."));
     assert.ok(context.includes("task-owned workspace(worktree/branch)가 그 fresh BASE에서 시작하는지 확인하며, stale worktree HEAD나 canonical checkout의 dirty state를 BASE로 상속하지 않는다."));
     assert.ok(context.includes("이미 만들어진 candidate의 BASE freshness check와, 아직 시작하지 않은 후속 task를 SERIAL NOW / WAIT FOR EVIDENCE로 framing하는 scheduling 판단을 서로 다른 단계로 명확히 구분한다."));
@@ -2911,4 +2911,184 @@ test("Problem Framer Execution Wave contract: admission freshness, scheduling bo
     assert.ok(context.includes("Topological staleness: topology만 stale하고 semantic/proof boundary 이동이 없으면 CONTINUABLE이며 fresh main 위에 동일 delta를 reapply하는 exact resume point를 제시한다."));
     assert.ok(context.includes("Semantic overlap / Proof boundary movement: semantic overlap, supersession, ownership ambiguity가 있으면 BLOCKED이며 blind reapply하지 않는다."));
   }
+});
+
+test("Fresh-supersession gate: handoffs require fresh authority identity/containment and same-scope check", () => {
+  const contexts = [
+    buildFocusHandoffContext({
+      projectTitle: "Supersession Gate Project",
+      focusText: "Current focus",
+    }),
+    buildAreaHandoffContext({
+      projectTitle: "Supersession Gate Project",
+      areaTitle: "Some area",
+    }),
+  ];
+
+  for (const context of contexts) {
+    assert.ok(context.includes("[Fresh-Supersession Gate"));
+    assert.ok(context.includes("investigator's newly derived finding against fresh authority"));
+    assert.ok(context.includes("only when read-only investigation is about to recommend a new mutation/repair"));
+    assert.ok(context.includes("fetch fresh `origin/main`"));
+    assert.ok(context.includes("explicitly record its SHA via `rev-parse`"));
+    assert.ok(context.includes("identity/containment"));
+    assert.ok(context.includes("investigation baseline/finding provenance"));
+    assert.ok(context.includes("`rev-parse`"));
+    assert.ok(context.includes("`merge-base --is-ancestor`"));
+    assert.ok(context.includes("Topology movement alone never discards or retains a finding."));
+    assert.ok(context.includes("semantic overlap"));
+    assert.ok(context.includes("same/directly-related source hunk"));
+    assert.ok(context.includes("same contract or behavior"));
+    assert.ok(context.includes("same proof/test surface"));
+    assert.ok(context.includes("superseded fix"));
+  }
+});
+
+test("Fresh-supersession gate: root-cause-complete published fix closes finding without repair handoff", () => {
+  const contexts = [
+    formatFocusHandoffInstruction(),
+    formatAreaHandoffInstruction(),
+    buildFocusHandoffContext({ projectTitle: "Gate", focusText: "Focus" }),
+    buildAreaHandoffContext({ projectTitle: "Gate", areaTitle: "Area" }),
+  ];
+
+  for (const context of contexts) {
+    assert.ok(context.includes("already closes the defect's root cause completely with required proof"));
+    assert.ok(context.includes("CLOSED / SUPERSEDED_BY_PUBLISHED_FIX"));
+    assert.ok(context.includes("do not create a mutation task to reimplement or re-verify the already-published fix"));
+    assert.ok(context.includes("do not emit `NEXT_REPAIR` or a repair handoff"));
+  }
+});
+
+test("Fresh-supersession gate: unrelated advance stays information; partial/revert/proof-gap never auto-close", () => {
+  const contexts = [
+    buildFocusHandoffContext({
+      projectTitle: "Supersession Distinction Project",
+      focusText: "Current focus",
+    }),
+    buildAreaHandoffContext({
+      projectTitle: "Supersession Distinction Project",
+      areaTitle: "Some area",
+    }),
+  ];
+
+  for (const context of contexts) {
+    // Unrelated origin advance → finding remains retainable: information, not invalidation.
+    assert.ok(context.includes("Unrelated upstream movement is information, not investigation invalidation."));
+    // Same-scope root-cause-complete fix → CLOSED / SUPERSEDED_BY_PUBLISHED_FIX with no repair handoff.
+    assert.ok(context.includes("CLOSED / SUPERSEDED_BY_PUBLISHED_FIX"));
+    assert.ok(context.includes("do not emit `NEXT_REPAIR` or a repair handoff"));
+    // Partial / different-meaning / revert / proof-gap branch never auto-closes.
+    assert.ok(context.includes("Partial fix, different-meaning fix, revert, or proof gap never auto-close;"));
+    assert.ok(context.includes("apply the existing semantic/proof judgment."));
+    // No new machinery.
+    assert.ok(context.includes("No new state machine, registry, queue, daemon, task DB, or scheduler."));
+  }
+});
+
+test("Fresh-supersession gate: ordering and separation from transmitted open claims", () => {
+  const contexts = [
+    buildFocusHandoffContext({
+      projectTitle: "Gate Ordering Project",
+      focusText: "Current focus",
+    }),
+    buildAreaHandoffContext({
+      projectTitle: "Gate Ordering Project",
+      areaTitle: "Some area",
+    }),
+  ];
+
+  for (const context of contexts) {
+    // Existing transmitted-claim contract is preserved.
+    assert.ok(context.includes("[Open-Claim Re-admission]"));
+    assert.ok(context.includes("[Fresh Evidence"));
+    // Gate explicitly distinguishes itself from transmitted open claims.
+    assert.ok(context.includes("not the transmitted-claim Open-Claim Re-admission above"));
+    assert.ok(context.includes("investigator's newly derived finding against fresh authority"));
+
+    const openClaimIdx = context.indexOf("[Open-Claim Re-admission]");
+    const gateIdx = context.indexOf("[Fresh-Supersession Gate");
+    const projectionIdx = context.indexOf("[Reader-Level Projection]");
+    const framingIdx = context.indexOf("[Framing Objective]");
+    assert.notEqual(openClaimIdx, -1);
+    assert.notEqual(gateIdx, -1);
+    assert.notEqual(projectionIdx, -1);
+    assert.notEqual(framingIdx, -1);
+    assert.ok(openClaimIdx < gateIdx, "gate must come after transmitted-claim re-admission");
+    assert.ok(projectionIdx < gateIdx, "gate must come after reader-level projection");
+    assert.ok(gateIdx < framingIdx, "gate must come before framing objective");
+  }
+});
+
+test("Fresh-supersession gate: README authoring contract matches generated handoff semantics", () => {
+  const readme = fs.readFileSync(path.join(__dirname, "..", "README.md"), "utf-8");
+  assert.ok(readme.includes("Fresh-supersession gate"));
+  assert.ok(readme.includes("mutation/repair recommendation을 emit하기 전에만"));
+  assert.ok(readme.includes("fresh `origin/main`"));
+  assert.ok(readme.includes("fresh SHA를 명시적으로 확보"));
+  assert.ok(readme.includes("`rev-parse`"));
+  assert.ok(readme.includes("`merge-base --is-ancestor`"));
+  assert.ok(readme.includes("identity/containment"));
+  assert.ok(readme.includes("topology movement 자체만으로 finding을 폐기하거나 유지하지 않는다"));
+  assert.ok(readme.includes("semantic-overlap"));
+  assert.ok(readme.includes("source hunk"));
+  assert.ok(readme.includes("contract 또는 behavior"));
+  assert.ok(readme.includes("proof/test surface"));
+  assert.ok(readme.includes("superseded fix 여부"));
+  assert.ok(readme.includes("CLOSED / SUPERSEDED_BY_PUBLISHED_FIX"));
+  assert.ok(readme.includes("`NEXT_REPAIR`"));
+  assert.ok(readme.includes("repair handoff를 출력하지 않는다"));
+  assert.ok(readme.includes("unrelated upstream movement는"));
+  assert.ok(readme.includes("information이며 investigation invalidation 사유가 아니다"));
+  assert.ok(readme.includes("부분 fix"));
+  assert.ok(readme.includes("revert"));
+  assert.ok(readme.includes("proof gap"));
+  assert.ok(readme.includes("자동 CLOSED 처리하지 말고 기존 semantic/proof 판단을 적용"));
+  assert.ok(readme.includes("새로운 state machine, registry, queue, daemon, task DB, scheduler를 만들지 않고"));
+  assert.ok(readme.includes("transmitted open claim의 Fresh Evidence/Open-Claim Re-admission과 다르며"));
+  assert.ok(readme.includes("investigator가 새로 도출한 finding과 fresh authority 사이의 판정이다"));
+  assert.ok(readme.includes("모든 read-only 작업에 publication workflow를 강제하지 않는다"));
+
+  // Generated handoffs carry the same meaning with the same Git authority vocabulary.
+  for (const context of [formatFocusHandoffInstruction(), formatAreaHandoffInstruction()]) {
+    assert.ok(context.includes("fetch fresh `origin/main`"));
+    assert.ok(context.includes("`rev-parse`"));
+    assert.ok(context.includes("`merge-base --is-ancestor`"));
+    assert.ok(context.includes("CLOSED / SUPERSEDED_BY_PUBLISHED_FIX"));
+    assert.ok(context.includes("`NEXT_REPAIR`"));
+  }
+});
+
+test("Fresh-supersession case replay: builtAt finding requires semantic root-cause closure, not topology alone", () => {
+  // Baseline (stale): build stamp records nonsemantic `builtAt` wall-clock churn.
+  // Fresh authority (c42b863): `builtAt` removed, fingerprint-only deterministic
+  // payload with byte-identical rebuild and fingerprint propagation proof.
+  // The gate must not emit DEFECT + NEXT_REPAIR on topology movement alone;
+  // it closes only on same-scope root-cause-complete fix with required proof.
+  const contexts = [
+    formatFocusHandoffInstruction(),
+    formatAreaHandoffInstruction(),
+  ];
+
+  for (const context of contexts) {
+    assert.ok(
+      context.includes("Topology movement alone never discards or retains a finding."),
+      "topology movement alone must never decide SUPERSEDED"
+    );
+    assert.ok(
+      context.includes("same/directly-related source hunk"),
+      "same-scope hunk comparison is required (e.g. freshness stamp payload)"
+    );
+    assert.ok(
+      context.includes("already closes the defect's root cause completely with required proof"),
+      "root-cause-complete fix plus required proof is the only auto-close branch"
+    );
+    assert.ok(context.includes("CLOSED / SUPERSEDED_BY_PUBLISHED_FIX"));
+    assert.ok(context.includes("do not emit `NEXT_REPAIR` or a repair handoff"));
+  }
+
+  const readme = fs.readFileSync(path.join(__dirname, "..", "README.md"), "utf-8");
+  assert.ok(readme.includes("topology movement 자체만으로 finding을 폐기하거나 유지하지 않는다"));
+  assert.ok(readme.includes("root cause를 이미 완결적으로 해결하고 필요한 proof까지 포함하면"));
+  assert.ok(readme.includes("CLOSED / SUPERSEDED_BY_PUBLISHED_FIX"));
 });

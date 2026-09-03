@@ -2249,7 +2249,7 @@ export function formatExecutionWaveContractLines(): string[] {
 /** Shared admission freshness and publication reconciliation contract lines across all Problem Framer handoffs */
 export function formatAdmissionPublicationContractLines(): string[] {
   return [
-    "11. [Admission & Publication Discipline — Executor Prompt Contract]:",
+    "12. [Admission & Publication Discipline — Executor Prompt Contract]:",
     "   - [Fresh BASE Admission] Mutation-intended executor prompt에는 fresh BASE admission 조건을 명확히 전달한다: execution 직전에 `origin/main`을 fresh fetch하고 실제 시작 BASE SHA를 기록한다. task-owned workspace(worktree/branch)가 그 fresh BASE에서 시작하는지 확인하며, stale worktree HEAD나 canonical checkout의 dirty state를 BASE로 상속하지 않는다.",
     "   - [Admission vs Scheduling Boundary] 이미 만들어진 candidate의 BASE freshness check와, 아직 시작하지 않은 후속 task를 SERIAL NOW / WAIT FOR EVIDENCE로 framing하는 scheduling 판단을 서로 다른 단계로 명확히 구분한다.",
     "   - [Publication & 3-Axis Reconciliation] Publication은 short serialization boundary다. 두 번째 writer가 origin advance를 발견하면 blind retry/rematerialization loop를 돌지 않고 3축(Topological staleness / Semantic overlap / Proof boundary movement)을 독립 판정한다:",
@@ -2276,6 +2276,7 @@ function formatProjectModelAdmissionLines(scope: "focus" | "area" = "focus"): st
     "5. [Coverage Closure — transient] RECONSTRUCT synthesis 전에 각 material semantic surface를 가능한 범위에서 설명하라: 실제 역할, semantic owner, 실제 entry/runtime path, consequential consumer/downstream effect, authority/intent source, 직접적인 implementation/proof evidence, relevant history가 현재 의미를 바꾸는지, 최종 model에서 represented / intentionally omitted / UNKNOWN 중 무엇인지. 모든 파일/함수 전수 inventory, coverage %, persistent table/registry/schema/DB/score는 요구하거나 만들지 않는다. 설명되지 않은 material surface가 남아 있으면 synthesis를 완료한 것으로 간주하지 않는다.",
     "6. [Project Map Escape Hatch] Focus/Area를 검토하다가 전달된 Area 또는 Project Map의 의미가 틀렸거나, semantic owner가 다른 곳에 있거나, Project Map decomposition이 실제 architecture/workflow를 왜곡하거나, root cause가 기존 boundary를 넘는다는 direct evidence가 나오면 기존 map에 억지로 맞추지 말고 RECONSTRUCT 또는 필요한 wider re-entry로 escalate하라. 기본 bounded review는 유지하되 자동으로 repository-wide audit으로 확대하지 않는다.",
     "7. [Reader-Level Projection] evidence assimilation과 reader-level projection을 분리하라. 위 단계에서 수집·재입장한 high-resolution evidence를 발견했다는 이유만으로 Project Horizon overview(`현재 상황`/`다음 전환`/`직면한 문제`)에 그대로 투사하지 않는다. `현재 상황`은 project-wide 상태(성과/범위, 핵심 기반, 검증/준비도 등 material category 2~4개로 압축), `다음 전환`은 project-level state transition(A 상태 → B 상태와 완료 조건; executor command 아님), `직면한 문제는` 방향을 실제로 제한하는 Blocker/Material Uncertainty/Constraint만 admitted한다. commit SHA·개별 파일/route·test 개수·command·CI run·bug chronology 같은 low-level evidence는 Recent Progress(material semantic transition), Area Detail(subsystem 상태/근거), Handoff(exact execution context)의 적절한 zoom level에 두고 Overview에 중복 복사하지 않는다. 분석 정확도는 유지하되 표면별 표현 해상도만 분리한다.",
+    "8. [Fresh-Supersession Gate — investigator finding vs fresh authority] This gate is not the transmitted-claim Open-Claim Re-admission above; it judges the investigator's newly derived finding against fresh authority, and it applies only when read-only investigation is about to recommend a new mutation/repair. Immediately before closure, fetch fresh `origin/main`, explicitly record its SHA via `rev-parse`, and judge identity/containment between the investigation baseline/finding provenance and fresh authority directly with Git authority (`rev-parse`, `merge-base --is-ancestor`). Topology movement alone never discards or retains a finding. Compare the investigated defect with intervening history for semantic overlap — same/directly-related source hunk, same contract or behavior, same proof/test surface, whether a superseded fix exists. When fresh authority already closes the defect's root cause completely with required proof, reclassify the finding as `CLOSED / SUPERSEDED_BY_PUBLISHED_FIX`, do not create a mutation task to reimplement or re-verify the already-published fix, and do not emit `NEXT_REPAIR` or a repair handoff. Unrelated upstream movement is information, not investigation invalidation. Partial fix, different-meaning fix, revert, or proof gap never auto-close; apply the existing semantic/proof judgment. No new state machine, registry, queue, daemon, task DB, or scheduler.",
   ];
 }
 
@@ -2286,13 +2287,13 @@ export function formatFocusHandoffInstruction(): string {
     "[PROBLEM FRAMER HANDOFF INSTRUCTION]",
     "1. [Fresh Evidence 대조] 외부 capable agent는 위 전달받은 context를 최종 truth로 신뢰하지 말고, 반드시 현재 repo/runtime/SSOT의 fresh evidence와 대조하여 실제 문제를 검증하라.",
     ...formatProjectModelAdmissionLines(),
-    "8. [Framing Objective] Current Focus를 Next Transition까지 전진시키기 위해 현재 시점에서 의미와 성공조건을 확정할 수 있는 bounded work를 찾는다. Focus가 있어도 Next Transition을 command/task 수준으로 축소하지 않고 focus advancement를 project-level state transition으로 표현한다. 현재 Focus와 무관한 작업을 단순히 task 수를 늘리기 위해 끌어오지 않는다.",
-    "9. [No Problem → No Task] 현재 Focus scope에서 실제 문제가 없거나 추가 작업이 불필요하다면 무리하게 task를 제조하지 말고 NO_ACTION / NO_CHANGE 결론을 낸다.",
-    "10. [Execution Wave 분류 & Local-Agent Prompts]:",
+    "9. [Framing Objective] Current Focus를 Next Transition까지 전진시키기 위해 현재 시점에서 의미와 성공조건을 확정할 수 있는 bounded work를 찾는다. Focus가 있어도 Next Transition을 command/task 수준으로 축소하지 않고 focus advancement를 project-level state transition으로 표현한다. 현재 Focus와 무관한 작업을 단순히 task 수를 늘리기 위해 끌어오지 않는다.",
+    "10. [No Problem → No Task] 현재 Focus scope에서 실제 문제가 없거나 추가 작업이 불필요하다면 무리하게 task를 제조하지 말고 NO_ACTION / NO_CHANGE 결론을 낸다.",
+    "11. [Execution Wave 분류 & Local-Agent Prompts]:",
     ...formatExecutionWaveContractLines().map((l) => "   " + l),
     ...formatAdmissionPublicationContractLines(),
-    "12. [No Persistence] Execution Wave는 일회성 transient framing 결과다. Cockpit/PROGRESS.md에 task registry, backlog, queue, task status, agent assignment, dependency persistence를 저장하거나 추가하지 않는다. Model admission 분류 역시 일회성 transient reasoning이며 claim registry를 저장하지 않는다.",
-    "13. [Executor Neutrality] 모든 prompt는 특정 도구/에이전트 이름이나 사용자 개인 설정/메모리에 종속되지 않는 executor-neutral prompt로 작성한다.",
+    "13. [No Persistence] Execution Wave는 일회성 transient framing 결과다. Cockpit/PROGRESS.md에 task registry, backlog, queue, task status, agent assignment, dependency persistence를 저장하거나 추가하지 않는다. Model admission 분류 역시 일회성 transient reasoning이며 claim registry를 저장하지 않는다.",
+    "14. [Executor Neutrality] 모든 prompt는 특정 도구/에이전트 이름이나 사용자 개인 설정/메모리에 종속되지 않는 executor-neutral prompt로 작성한다.",
   ];
   return lines.join("\n");
 }
@@ -2304,14 +2305,14 @@ export function formatAreaHandoffInstruction(): string {
     "[PROBLEM FRAMER HANDOFF INSTRUCTION]",
     "1. [Fresh Evidence 대조] 외부 capable agent는 위 전달받은 context를 최종 truth로 신뢰하지 말고, 반드시 현재 repo/runtime/SSOT의 fresh evidence와 대조하여 선택된 영역의 실제 상태/취약점/미해결 문제를 검증하라.",
     ...formatProjectModelAdmissionLines("area"),
-    "8. [Framing Objective] 선택된 Area의 실제 상태/취약점/미해결 문제를 fresh evidence로 깊게 검토하는 것이 objective다. root cause나 proof가 인접 Area를 실제로 통과한다면 필요한 범위까지 조사할 수 있으나, 임의로 프로젝트 전체 review로 확장하지 않는다.",
-    "9. [No Problem → No Task] 검토 결과 해당 영역에 실제 문제가 없거나 추가 조치가 불필요하다면 무리하게 task/Wave를 제조하지 말고 NO_ACTION / NO_CHANGE 결론을 낸다.",
-    "10. [Execution Wave 분류 & Local-Agent Prompts]:",
+    "9. [Framing Objective] 선택된 Area의 실제 상태/취약점/미해결 문제를 fresh evidence로 깊게 검토하는 것이 objective다. root cause나 proof가 인접 Area를 실제로 통과한다면 필요한 범위까지 조사할 수 있으나, 임의로 프로젝트 전체 review로 확장하지 않는다.",
+    "10. [No Problem → No Task] 검토 결과 해당 영역에 실제 문제가 없거나 추가 조치가 불필요하다면 무리하게 task/Wave를 제조하지 말고 NO_ACTION / NO_CHANGE 결론을 낸다.",
+    "11. [Execution Wave 분류 & Local-Agent Prompts]:",
     "   - 문제가 확인되면 해당 문제를 해결하는 데 지금 확정 가능한 최대 범위까지만 Execution Wave를 구성한다.",
     ...formatExecutionWaveContractLines().map((l) => "   " + l),
     ...formatAdmissionPublicationContractLines(),
-    "12. [No Persistence] Execution Wave는 일회성 transient framing 결과다. Cockpit/PROGRESS.md에 task registry, backlog, queue, task status, agent assignment, dependency persistence를 저장하거나 추가하지 않는다. Model admission 분류 역시 일회성 transient reasoning이며 claim registry를 저장하지 않는다.",
-    "13. [Executor Neutrality] 모든 prompt는 특정 도구/에이전트 이름이나 사용자 개인 설정/메모리에 종속되지 않는 executor-neutral prompt로 작성한다.",
+    "13. [No Persistence] Execution Wave는 일회성 transient framing 결과다. Cockpit/PROGRESS.md에 task registry, backlog, queue, task status, agent assignment, dependency persistence를 저장하거나 추가하지 않는다. Model admission 분류 역시 일회성 transient reasoning이며 claim registry를 저장하지 않는다.",
+    "14. [Executor Neutrality] 모든 prompt는 특정 도구/에이전트 이름이나 사용자 개인 설정/메모리에 종속되지 않는 executor-neutral prompt로 작성한다.",
   ];
   return lines.join("\n");
 }
