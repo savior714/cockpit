@@ -2727,3 +2727,49 @@ test("Semantic Tone Repair: incidental keywords never promote custom subsections
   assert.equal(classifySubsectionTone("남은 문제", "대용량 동시 요청 시 쿼리 타임아웃 발생"), "danger");
 });
 
+test("Authoring discoverability: canonical minimal example stays PASS and covers the documented grammar", () => {
+  const { source, model } = readFixtureModel("canonical-minimal.md");
+  const result = checkProgressStructure(source);
+  assert.equal(result.ok, true, result.errors.join("; "));
+
+  // Map ↔ Area Detail integrity (documented exact-title rule).
+  assert.equal(result.totalMapItems, 5);
+  assert.equal(result.matchedDetails, 5);
+  assert.equal(result.currentStageCount, 1);
+
+  // Documented slots are all recognizable without parser-source archaeology.
+  assert.equal(result.hasProjectHorizon, true);
+  assert.equal(result.hasStageJourney, true);
+  assert.equal(model.stageJourney?.currentStage, "Stage 0.1: 당일 운영 RC");
+  assert.equal(model.stageJourney?.nextStage, "Stage 0.2: 예약 운영");
+  assert.deepEqual(
+    model.stageJourney?.currentGates.map((gate) => gate.state),
+    ["CLOSED", "IN PROOF"]
+  );
+  assert.equal(model.stageJourney?.nextGates[0]?.state, "NOT OPEN");
+  assert.ok((model.stageJourney?.nextGates[0]?.entryCondition ?? "").length > 0);
+
+  // Posture: documented 5–8 axes, four-state vocabulary, both roles.
+  assert.equal(result.postureAxisCount, 5);
+  assert.equal(result.postureCoreCapabilityCount, 1);
+  assert.equal(result.postureDeliveryReadinessCount, 1);
+  for (const axis of model.posture?.axes ?? []) {
+    assert.ok(["STRONG", "PARTIAL", "WEAK", "UNKNOWN"].includes(axis.state ?? ""));
+  }
+
+  // Frontier: one primary with a current → target transition.
+  assert.equal(result.primaryFrontierCount, 1);
+  assert.equal(model.frontiers[0]?.currentState, "NOT PROVEN");
+  assert.equal(model.frontiers[0]?.targetState, "PROVEN");
+
+  // Movement: every entry carries a before → after transition.
+  assert.ok(model.movements.length >= 1);
+  for (const movement of model.movements) {
+    assert.equal(movement.hasStateTransition, true);
+  }
+
+  // Relations and guardrails: documented example introduces no FAIL.
+  assert.equal(result.unresolvedRelations.length, 0);
+  assert.equal(result.guardrailErrors.length, 0);
+});
+

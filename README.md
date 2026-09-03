@@ -627,6 +627,28 @@ Current Frontier는 기본적으로 하나만 둡니다. 둘이 같은 다음 pr
 
 Universal Inspector는 Posture, Stage Gate, Frontier, Strategic Thread, Material Movement, Area, Evidence를 하나의 shell에서 표시합니다. 관계 버튼과 breadcrumb/back으로 `Security → Audit → Evidence`처럼 이동하며, entity별로 별도 inspector나 window를 만들지 않습니다. Area Detail의 근거와 optional remaining problem은 그대로 보존하되, Posture에는 cross-cutting synthesis만 둡니다.
 
+#### `cockpit check` 작성 문법 (안정 계약)
+
+`src/parser.ts`를 열지 않고 PASS 문서를 만들기 위한 최소 안정 규칙이다. 아래만 지키면 된다. 정규식·AST·헬퍼 이름·tone 분류 같은 구현 세부사항은 계약이 아니며 문서화하지 않는다. 영문 canonical heading도 위 표와 같이 허용된다.
+
+- **필수 vs 선택**: PASS에 필수인 것은 `## 프로젝트 지도`와 `## 영역 상세`뿐이다. 지평/여정/상태/최전선/흐름/변화는 선택 사항이지만, 쓰면 그 섹션의 guardrail을 모두 만족해야 한다.
+- **헤딩 레벨**: 최상위 슬롯은 정확히 `##`(H2)이다. `##` 아래에서 `###`는 레일/segment/axis/frontier/movement/영역을, `####`는 그룹/하위 섹션을 만든다. 어떤 `##`에도 속하지 않은 `###`는 구조로 인식되지 않는다.
+- **지도**: `###` 레일 → `####` 그룹 → 목록 항목. 항목은 `- **제목** — 한 줄 설명` 형태를 쓴다. 제목은 영역 상세의 `### 제목`과 대소문자/공백 무시 정확히 일치해야 한다. 누락·고아(지도에 없는 상세)·중복 제목은 FAIL이다. `#### 현재 단계`(또는 `Current Stage`)는 정확한 문자열이어야 하며 레일당 최대 1개다. `####` 없는 레일 직속 항목은 인식되지 않는다.
+- **영역 상세**: `###` 영역마다 `#### 의미` / `#### 현재 수준` / `#### 근거`를 권장하고, 증거로 확인된 미해결 문제가 있을 때만 `#### 남은 문제`를 둔다. check가 강제하는 것은 영역의 존재·일치이지 하위 섹션 이름이 아니다.
+- **단계 여정**: 쓰면 `### 현재 — <Stage>`와 `### 다음 — <Stage>`가 둘 다 있어야 한다. gate는 글머리 목록이며 매 줄마다 상태가 필수다: `STATE — 제목` 또는 `제목 — STATE`. STATE는 `CLOSED`, `IN PROOF`, `NOT OPEN`, `OPEN`, `IN REVIEW`, `PROVEN`, `NOT PROVEN`, `UNKNOWN`, `BLOCKED` 중 하나다. 목록이 없는 segment는 본문의 상태 한 줄이 그 segment의 gate가 된다. 진입 조건은 `진입 조건:` / `개시 조건:` / `Entry condition:` / `opens when:` 중 하나로 한 줄 선언한다.
+- **프로젝트 상태**: 쓰면 `### 축 이름 — STATE` 5–8개. STATE는 `STRONG`, `PARTIAL`, `WEAK`, `UNKNOWN` 중 하나(heading 접미사 또는 본문 첫 상태 줄)다. `역할: CORE CAPABILITY` 축과 `역할: DELIVERY READINESS` 축이 각각 최소 1개 있어야 한다. `BLOCKED`를 maturity로 쓰면 FAIL이다.
+- **현재 최전선**: 기본 1개. 각 항목은 `현재: A` + `목표: B`(또는 `A → B`) 둘 다 있어야 한다. 복수 primary는 전부 `[CO-PRIMARY]`일 때만 허용된다.
+- **최근 실질적 변화**: 각 항목은 `이전: A` + `이후: B`(또는 `A → B`) 둘 다 있어야 한다. `변경:` 한 줄을 권장한다. 행위 나열이 아니라 capability를 움직인 전환만 둔다.
+- **관계**: `관련 영역:` / `관련 단계:` / `관련 상태:` / `관련 최전선:` / `관련 변화:`(영문 `Related ...:`도 허용) 뒤의 visible title은 현재 문서의 Map/Stage/Posture/Frontier/Movement 제목과 정확히 맞아야 하며, 못 찾으면 FAIL이다. 복수는 쉼표·`및`·`and`로 구분한다. hidden ID·registry·YAML을 추가하지 않는다.
+- **지평 위생**: 지평(`## 프로젝트 지평`)에 full Git SHA·PID·pytest 노드·절대경로를 두면 FAIL이다. 그런 evidence는 영역 상세·변화·Handoff에 둔다.
+- **현재 집중**: 선택 사항이며 최대 1개다.
+- **계약이 아닌 것**: 위 목록에 없는 heading 별칭 전부, 정규식/tone/AST/파서 내부 이름은 안정 계약이 아니다. 새 문서는 위 canonical heading을 쓰고 legacy 별칭에 의존하지 않는다.
+- **최소 예제**: `tests/fixtures/canonical-minimal.md`가 위 규칙을 모두 보여주는 복사 시작점이다. 다음이 PASS해야 한다:
+
+  ```bash
+  node scripts/serve.mjs check tests/fixtures/canonical-minimal.md
+  ```
+
 ### Acceptance boundary
 
 `cockpit check`는 headings, axis 수/상태, Primary Frontier cardinality, relation target, movement transition, Map ↔ Area Detail integrity와 Horizon의 명백한 telemetry 누출만 검사합니다. `PASS`는 문서 구조와 고신뢰 presentation guardrail의 통과이지, authored claim의 사실성이나 semantic truth를 보증하지 않습니다. 구조 변경 시에는 서로 다른 두 real-project-shaped fixture(복잡한 EMR testbed snapshot과 Cockpit 자체 vocabulary)를 parse/render하고, 가능한 환경에서는 실제 viewer에서 Horizon→Stage/Posture→Frontier→Movement→Map→Inspector→Evidence를 관찰합니다.
