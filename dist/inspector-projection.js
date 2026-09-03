@@ -468,6 +468,80 @@ export function renderMovements(movements) {
     `).join("")}
   </div>`;
 }
+/**
+ * Reader-oriented status synthesis for the compressed `프로젝트 현황` surface.
+ *
+ * Presentation-only selection over the canonical domain model: Horizon text,
+ * the full Stage Journey, salient Posture axes, and Primary Frontier cards
+ * are composed into one flow (현재 위치 / 주목할 상태 / 가장 가까운 핵심
+ * 전환). Canonical distinctions (Stage/Posture/Frontier) are preserved —
+ * every card reuses the same `semantic-card` + `data-entity-kind` markup as
+ * the dedicated renderers, so Inspector drill-down reaches all entities.
+ * No Token traversal, no new semantic interpretation.
+ */
+export function renderStatusSynthesis(model, legacyFrontierHtml = "") {
+    const blocks = [];
+    if (model.horizon) {
+        blocks.push(`<div class="status-horizon">${renderHorizon(model.horizon)}</div>`);
+    }
+    if (model.stageJourney && model.stageJourney.segments.length > 0) {
+        blocks.push(`
+      <section class="status-block status-block-where" aria-label="현재 위치">
+        <h3 class="status-block-title">현재 위치</h3>
+        ${renderStageJourney(model.stageJourney)}
+      </section>
+    `);
+    }
+    if (model.posture && model.posture.axes.length > 0) {
+        const attention = model.posture.axes.filter((axis) => axis.isStageBlocker || (axis.state ?? axis.declaredState) !== "STRONG");
+        const established = model.posture.axes.filter((axis) => !axis.isStageBlocker && (axis.state ?? axis.declaredState) === "STRONG");
+        const attentionHtml = attention.length > 0
+            ? renderPosture({ axes: attention, rawText: model.posture.rawText })
+            : "";
+        const establishedHtml = established.length > 0
+            ? `<p class="status-established">확립됨 ${established.length} · ${established.map((axis) => `
+          <button type="button" class="status-established-link" ${semanticCardAttributes("posture", axis.title)}>${escapeHtml(axis.title)}</button>
+        `).join(" · ")}</p>`
+            : "";
+        blocks.push(`
+      <section class="status-block status-block-state" aria-label="주목할 상태">
+        <h3 class="status-block-title">주목할 상태</h3>
+        ${attentionHtml || `<p class="muted">주목할 상태가 없습니다. 전부 확립됨으로 기록되어 있습니다.</p>`}
+        ${establishedHtml}
+      </section>
+    `);
+    }
+    const frontierHtml = model.frontiers.length > 0
+        ? renderFrontiers(model.frontiers)
+        : legacyFrontierHtml;
+    if (frontierHtml) {
+        blocks.push(`
+      <section class="status-block status-block-next" aria-label="가장 가까운 핵심 전환">
+        <h3 class="status-block-title">가장 가까운 핵심 전환</h3>
+        ${frontierHtml}
+      </section>
+    `);
+    }
+    if (blocks.length === 0)
+        return "";
+    const [first, ...rest] = blocks;
+    if (rest.length === 0)
+        return first;
+    return `${first}<div class="status-flow">${rest.join("")}</div>`;
+}
+/**
+ * Demoted presentation for Strategic Threads inside `최근 변화`.
+ * Same thread cards (same Inspector drill-down), lowered hierarchy via a
+ * collapsed secondary block — never a top-level primary surface.
+ */
+export function renderThreadsSecondary(threads) {
+    if (threads.length === 0)
+        return "";
+    return `<details class="threads-secondary">
+    <summary class="threads-secondary-summary">전략적 흐름 ${threads.length} · 병행 추진 방향 <span class="threads-secondary-hint">펼치기</span></summary>
+    <div class="threads-secondary-body">${renderThreads(threads)}</div>
+  </details>`;
+}
 export function renderLegacyFrontier(nextHtml, issueHtml) {
     return `<div class="legacy-frontier-view">
     <div><span class="surface-kicker">이전 형식: 다음 전환</span>${nextHtml}</div>

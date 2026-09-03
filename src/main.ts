@@ -22,14 +22,11 @@ import {
   evidenceEntity,
   findEntity,
   relatedEntity,
-  renderFrontiers,
-  renderHorizon,
   renderLegacyFrontier,
   renderMovements,
   renderNativeMap,
-  renderPosture,
-  renderStageJourney,
-  renderThreads,
+  renderStatusSynthesis,
+  renderThreadsSecondary,
   stateClass,
   formatAreaDetailsText,
   formatProjectMapText,
@@ -460,59 +457,38 @@ async function renderDoc(source: string): Promise<void> {
   const projectTitle = document.getElementById("project-title");
   if (projectTitle) projectTitle.textContent = title || "이름 없는 프로젝트";
 
-  const horizonPanel = document.getElementById("slot-horizon");
-  if (horizonPanel) {
-    const horizonBody = horizonPanel.querySelector<HTMLElement>(".panel-body");
-    if (horizonBody && currentModel.horizon) horizonBody.innerHTML = renderHorizon(currentModel.horizon);
-    horizonPanel.hidden = !currentModel.horizon;
-    horizonPanel.classList.toggle("legacy-fallback", Boolean(currentModel.horizon?.isLegacyFallback));
-  }
-
-  const stagePanel = document.getElementById("slot-stage");
-  if (stagePanel && currentModel.stageJourney) {
-    const body = stagePanel.querySelector<HTMLElement>(".panel-body");
-    if (body) body.innerHTML = renderStageJourney(currentModel.stageJourney);
-    stagePanel.hidden = currentModel.stageJourney.segments.length === 0;
-    bindSemanticCards(stagePanel);
-  } else if (stagePanel) stagePanel.hidden = true;
-
-  const posturePanel = document.getElementById("slot-posture");
-  if (posturePanel && currentModel.posture) {
-    const body = posturePanel.querySelector<HTMLElement>(".panel-body");
-    if (body) body.innerHTML = renderPosture(currentModel.posture);
-    posturePanel.hidden = currentModel.posture.axes.length === 0;
-    bindSemanticCards(posturePanel);
-  } else if (posturePanel) posturePanel.hidden = true;
-
-  const frontierPanel = document.getElementById("slot-frontier");
-  if (frontierPanel) {
-    const body = frontierPanel.querySelector<HTMLElement>(".panel-body");
+  // Primary 1/3 — 프로젝트 현황: Horizon / Stage / salient Posture /
+  // Primary Frontier synthesis. Card markup is owned by the projection layer;
+  // orchestration only decides panel visibility and legacy fallback input.
+  const statusPanel = document.getElementById("slot-status");
+  if (statusPanel) {
+    const body = statusPanel.querySelector<HTMLElement>(".status-synthesis");
     if (body) {
-      if (currentModel.frontiers.length > 0) {
-        body.innerHTML = renderFrontiers(currentModel.frontiers);
-      } else {
-        const nextHtml = sections.get("next transition") ? withMermaidPlaceholders(renderTokens(sections.get("next transition")!)) : "";
+      let legacyFrontierHtml = "";
+      if (currentModel.frontiers.length === 0 && sections.get("next transition")?.length) {
+        const nextHtml = withMermaidPlaceholders(renderTokens(sections.get("next transition")!));
         const issueHtml = sections.get("facing issues") ? withMermaidPlaceholders(renderTokens(sections.get("facing issues")!)) : "";
-        body.innerHTML = nextHtml ? renderLegacyFrontier(nextHtml, issueHtml) : "";
+        legacyFrontierHtml = renderLegacyFrontier(nextHtml, issueHtml);
       }
+      body.innerHTML = renderStatusSynthesis(currentModel, legacyFrontierHtml);
     }
-    frontierPanel.hidden = currentModel.frontiers.length === 0 && !sections.get("next transition")?.length;
-    bindSemanticCards(frontierPanel);
+    statusPanel.hidden = !body?.innerHTML;
+    statusPanel.classList.toggle("legacy-fallback", Boolean(currentModel.horizon?.isLegacyFallback));
+    bindSemanticCards(statusPanel);
   }
 
-  const threadPanel = document.getElementById("slot-threads");
-  if (threadPanel) {
-    const body = threadPanel.querySelector<HTMLElement>(".panel-body");
-    if (body) body.innerHTML = currentModel.strategicThreads.length ? renderThreads(currentModel.strategicThreads) : "";
-    threadPanel.hidden = currentModel.strategicThreads.length === 0;
-    bindSemanticCards(threadPanel);
-  }
-
+  // Primary 2/3 — 최근 변화: Material Movement 중심. Strategic Threads는
+  // 별도 primary surface가 아니라 내부 secondary로만 둔다.
   const movementPanel = document.getElementById("slot-movement");
   if (movementPanel) {
     const body = movementPanel.querySelector<HTMLElement>(".panel-body");
     if (body) body.innerHTML = currentModel.movements.length ? renderMovements(currentModel.movements) : "";
-    movementPanel.hidden = currentModel.movements.length === 0;
+    const threadsSlot = movementPanel.querySelector<HTMLElement>(".threads-secondary-slot");
+    if (threadsSlot) {
+      threadsSlot.innerHTML = renderThreadsSecondary(currentModel.strategicThreads);
+      threadsSlot.hidden = currentModel.strategicThreads.length === 0;
+    }
+    movementPanel.hidden = currentModel.movements.length === 0 && currentModel.strategicThreads.length === 0;
     bindSemanticCards(movementPanel);
   }
 

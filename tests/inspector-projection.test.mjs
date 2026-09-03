@@ -27,6 +27,9 @@ import {
   formatAreaDetailsText,
   classifySubsectionTone,
   toViewSubsection,
+  findEntity,
+  renderStatusSynthesis,
+  renderThreadsSecondary,
 } from "../dist/inspector-projection.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -324,19 +327,29 @@ test("DOM and CSS containment: focus copy action and toast elements exist inside
   assert.ok(css.includes(".btn-focus-copy"), "CSS must style .btn-focus-copy");
 });
 
-test("Reader-visible DOM follows Horizon → Stage/Posture → Frontier → Movement → Map and exposes one Inspector shell", () => {
+test("Reader-visible DOM compresses overview to 현황 → 변화 → 지도 and exposes one Inspector shell", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf-8");
-  const ids = ["slot-horizon", "slot-stage", "slot-posture", "slot-frontier", "slot-threads", "slot-movement", "slot-map"];
+  // Compressed primary taxonomy: exactly three primary surfaces.
+  const ids = ["slot-status", "slot-movement", "slot-map"];
   const positions = ids.map((id) => html.indexOf(`id="${id}"`));
   assert.ok(positions.every((position) => position !== -1));
   assert.deepEqual([...positions].sort((a, b) => a - b), positions);
+  // Over-differentiated primary panels must not return as top-level surfaces.
+  for (const retired of ["slot-horizon", "slot-stage", "slot-posture", "slot-frontier", "slot-threads"]) {
+    assert.equal(html.indexOf(`id="${retired}"`), -1, `${retired} must not be a primary surface`);
+  }
+  // Reader headings carry one name each: no kicker+heading double naming on primaries.
+  const statusSection = html.slice(html.indexOf('id="slot-status"'), html.indexOf('id="slot-movement"'));
+  const mapSection = html.slice(html.indexOf('id="slot-map"'), html.indexOf('id="inspector-aside"'));
+  assert.equal(statusSection.includes("surface-kicker"), false, "프로젝트 현황 must not duplicate kicker+heading");
+  assert.equal(mapSection.includes("surface-kicker"), false, "프로젝트 지도 must not duplicate kicker+heading");
   assert.ok(html.includes('id="inspector-aside"'));
   assert.ok(html.includes('id="universal-inspector-panel"'));
   assert.ok(html.includes('id="inspector-breadcrumb"'));
   assert.ok(html.includes('id="inspector-related"'));
 
   const css = fs.readFileSync(path.join(__dirname, "..", "src", "style.css"), "utf-8");
-  for (const selector of [".panel-horizon", ".stage-posture-grid", ".panel-frontier", ".panel-threads", ".panel-movement", ".universal-inspector-drawer"]) {
+  for (const selector of [".panel-status", ".status-flow", ".status-block", ".threads-secondary", ".panel-movement", ".universal-inspector-drawer"]) {
     assert.ok(css.includes(selector), `${selector} must have a presentation rule`);
   }
 });
@@ -540,7 +553,8 @@ test("Stage proof disposition: card and inspector surfaces expose reason with FA
   // main.ts is orchestration only: it delegates semantic interpretation to
   // the projection owner and no longer defines its own stage entities.
   assert.ok(mainSource.includes("inspector-projection"));
-  assert.ok(mainSource.includes("renderStageJourney"));
+  assert.ok(mainSource.includes("renderStatusSynthesis"));
+  assert.ok(mainSource.includes("renderThreadsSecondary"));
   assert.equal(mainSource.includes("function stageEntity"), false);
   assert.equal(mainSource.includes("function frontierEntity"), false);
   const projectionSource = fs.readFileSync(path.join(__dirname, "..", "src", "inspector-projection.ts"), "utf-8");
@@ -569,3 +583,77 @@ test("Stage proof disposition: card and inspector surfaces expose reason with FA
   assert.ok(readme.includes("stage-gate-proof-disposition.md"));
 });
 
+
+test("Information compression invariant: semantic richness preserved while primary visual taxonomy shrinks", () => {
+  for (const fixtureName of ["cockpit-self.md", "nextchart-emr.md"]) {
+    const content = fs.readFileSync(path.join(__dirname, "fixtures", fixtureName), "utf-8");
+    const { sections } = splitSections(md.parse(content, {}));
+    const model = parseMentalModel(sections);
+    const map = parseProjectMap(sections.get("project map"));
+    const areaDetails = parseAreaDetails(sections.get("area details"));
+    const lookup = {
+      map,
+      areaDetails,
+      stageJourney: model.stageJourney,
+      posture: model.posture,
+      frontiers: model.frontiers,
+      strategicThreads: model.strategicThreads,
+      movements: model.movements,
+    };
+
+    // 1. Semantic richness: canonical entities exist in the domain model.
+    const gateCount = (model.stageJourney?.segments ?? []).reduce((n, s) => n + s.gates.length, 0);
+    assert.ok(gateCount > 0, `${fixtureName}: stage gates must exist`);
+    assert.ok((model.posture?.axes.length ?? 0) >= 5, `${fixtureName}: posture axes must exist`);
+    assert.ok(model.frontiers.length > 0, `${fixtureName}: frontiers must exist`);
+    assert.ok(model.strategicThreads.length > 0, `${fixtureName}: threads must exist`);
+    assert.ok(model.movements.length > 0, `${fixtureName}: movements must exist`);
+
+    // 2. Every canonical entity stays reachable through Inspector navigation.
+    for (const segment of model.stageJourney?.segments ?? []) {
+      for (const gate of segment.gates) {
+        assert.ok(findEntity("stage", gate.title, lookup), `${fixtureName}: stage gate reachable: ${gate.title}`);
+      }
+    }
+    for (const axis of model.posture?.axes ?? []) {
+      assert.ok(findEntity("posture", axis.title, lookup), `${fixtureName}: posture axis reachable: ${axis.title}`);
+    }
+    for (const frontier of model.frontiers) {
+      assert.ok(findEntity("frontier", frontier.title, lookup), `${fixtureName}: frontier reachable: ${frontier.title}`);
+    }
+    for (const thread of model.strategicThreads) {
+      assert.ok(findEntity("thread", thread.title, lookup), `${fixtureName}: thread reachable: ${thread.title}`);
+    }
+    for (const movement of model.movements) {
+      assert.ok(findEntity("movement", movement.title, lookup), `${fixtureName}: movement reachable: ${movement.title}`);
+    }
+
+    // 3. One synthesis surface reads current position + salient state + nearest transition.
+    const synthesis = renderStatusSynthesis(model);
+    assert.ok(synthesis.includes("현재 위치"), `${fixtureName}: synthesis must read current position`);
+    assert.ok(synthesis.includes("주목할 상태"), `${fixtureName}: synthesis must read salient state`);
+    assert.ok(synthesis.includes("가장 가까운 핵심 전환"), `${fixtureName}: synthesis must read nearest transition`);
+    assert.ok(synthesis.includes(model.stageJourney?.currentStage ?? "") || synthesis.includes("stage-gate-card"), `${fixtureName}: synthesis must carry stage gates`);
+    const salientAxis = (model.posture?.axes ?? []).find((a) => (a.state ?? a.declaredState) !== "STRONG");
+    assert.ok(salientAxis && synthesis.includes(salientAxis.title), `${fixtureName}: salient posture must stay visible`);
+    assert.ok(synthesis.includes(model.frontiers[0].title), `${fixtureName}: primary frontier must stay visible`);
+    // Established STRONG axes are summarized, never deleted: still Inspector-linked.
+    const strongAxis = (model.posture?.axes ?? []).find((a) => (a.state ?? a.declaredState) === "STRONG");
+    if (strongAxis) {
+      assert.ok(synthesis.includes(strongAxis.title), `${fixtureName}: established posture must stay reachable`);
+      assert.ok(synthesis.includes('data-entity-kind="posture"'), `${fixtureName}: posture drill-down must survive`);
+    }
+
+    // 4. Threads are demoted, not deleted: secondary block keeps cards + drill-down.
+    const secondary = renderThreadsSecondary(model.strategicThreads);
+    assert.ok(secondary.includes("threads-secondary"), `${fixtureName}: threads must render as secondary`);
+    assert.ok(secondary.includes(model.strategicThreads[0].title), `${fixtureName}: thread meaning must survive`);
+    assert.ok(secondary.includes('data-entity-kind="thread"'), `${fixtureName}: thread drill-down must survive`);
+  }
+
+  // 5. Primary visual taxonomy is exactly three: 현황 / 변화 / 지도.
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf-8");
+  const overview = html.slice(html.indexOf('id="overview-panel"'), html.indexOf('id="slot-map"'));
+  const primarySections = [...overview.matchAll(/<section[^>]*id="(slot-[^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(primarySections, ["slot-status", "slot-movement"]);
+});

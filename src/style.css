@@ -1870,6 +1870,131 @@ body {
   }
 }
 
+/* Compressed overview: 프로젝트 현황 synthesis + 최근 변화 secondary threads.
+   Canonical semantics unchanged — synthesis only groups existing card markup
+   into one reader flow (현재 위치 / 주목할 상태 / 가장 가까운 핵심 전환). */
+.panel-status {
+  padding: 18px 22px;
+  border-left: 3px solid var(--accent);
+  box-shadow: var(--shadow-xs);
+}
+
+.panel-status .panel-header {
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--line-subtle);
+}
+
+.status-synthesis {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 11px;
+}
+
+.status-horizon .horizon-copy {
+  max-width: 980px;
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.62;
+}
+
+.status-horizon .horizon-copy p {
+  margin: 0 0 0.55em;
+}
+
+.status-horizon .horizon-copy p:last-child {
+  margin-bottom: 0;
+}
+
+.status-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.status-block {
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-elevated);
+}
+
+.status-block-next {
+  border-left: 3px solid var(--frontier-track);
+  background: var(--panel);
+}
+
+.status-block-title {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.status-block .stage-journey-view,
+.status-block .posture-grid,
+.status-block .frontier-list {
+  padding-top: 6px;
+}
+
+.status-established {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.status-established-link {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+.status-established-link:hover {
+  text-decoration: underline;
+}
+
+/* Demoted threads: secondary inside 최근 변화, never a primary surface. */
+.threads-secondary-slot[hidden] {
+  display: none;
+}
+
+.threads-secondary {
+  margin-top: 10px;
+  border-top: 1px dashed var(--line-strong);
+  padding-top: 8px;
+}
+
+.threads-secondary-summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.threads-secondary-summary::marker {
+  color: var(--line-strong);
+}
+
+.threads-secondary-hint {
+  color: var(--line-strong);
+  font-weight: 400;
+}
+
+.threads-secondary-body {
+  padding-top: 8px;
+  opacity: 0.92;
+}
+
 /* Cold-read friction: stage identity, entry condition, handoff affordance */
 .stage-id-tag {
   font-family: var(--font-mono);

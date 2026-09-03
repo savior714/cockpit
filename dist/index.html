@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cockpit</title>
-    <script type="module" crossorigin src="/assets/index-DUyDefRZ.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-BwNHlnJL.css">
+    <script type="module" crossorigin src="/assets/index-Cy-kp5Z6.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DRbYKlzt.css">
   </head>
   <body>
     <main id="cockpit" class="cockpit">
@@ -19,75 +19,36 @@
 
       <div id="primary-workspace" class="primary-workspace">
         <div id="overview-panel" class="overview-panel" aria-label="프로젝트 개요">
-          <section id="slot-horizon" class="panel panel-horizon" aria-label="프로젝트 큰 그림">
+          <!-- Primary 1/3 — 프로젝트 현황: Horizon + Stage + salient Posture +
+               Primary Frontier를 하나의 reader-oriented 흐름으로 합성. 각 카드는
+               기존 semantic-card/Inspector drill-down을 그대로 재사용한다. -->
+          <section id="slot-status" class="panel panel-status" aria-label="프로젝트 현황" hidden>
             <div class="panel-header">
               <div>
-                <span class="surface-kicker">전체 개요</span>
-                <h2>프로젝트 큰 그림</h2>
+                <h2>프로젝트 현황</h2>
               </div>
+              <span class="surface-note">현재 위치 · 주목할 상태 · 가장 가까운 핵심 전환</span>
             </div>
-            <div class="panel-body"></div>
+            <div class="panel-body status-synthesis"></div>
           </section>
 
-          <div class="stage-posture-grid">
-            <section id="slot-stage" class="panel panel-stage" aria-label="진행 단계" hidden>
-              <div class="panel-header">
-                <div>
-                  <span class="surface-kicker">단계별 진행</span>
-                  <h2>진행 단계</h2>
-                </div>
-              </div>
-              <div class="panel-body"></div>
-            </section>
-
-            <section id="slot-posture" class="panel panel-posture" aria-label="프로젝트 상태" hidden>
-              <div class="panel-header">
-                <div>
-                  <span class="surface-kicker">상태 점검</span>
-                  <h2>프로젝트 상태</h2>
-                </div>
-              </div>
-              <div class="panel-body"></div>
-            </section>
-          </div>
-
-          <section id="slot-frontier" class="panel panel-frontier" aria-label="현재 전환 과제" hidden>
+          <!-- Primary 2/3 — 최근 변화: Material Movement 중심. Strategic Threads는
+               별도 primary panel이 아니라 내부 secondary로 낮춰 둔다. -->
+          <section id="slot-movement" class="panel panel-movement" aria-label="최근 변화" hidden>
             <div class="panel-header">
               <div>
-                <span class="surface-kicker">핵심 전환</span>
-                <h2>현재 전환 과제</h2>
-              </div>
-              <span class="surface-note">다음으로 넘어가기 위해 필요한 핵심 변화</span>
-            </div>
-            <div class="panel-body"></div>
-          </section>
-
-          <section id="slot-threads" class="panel panel-threads" aria-label="전략적 흐름" hidden>
-            <div class="panel-header">
-              <div>
-                <span class="surface-kicker">병행 추진</span>
-                <h2>전략적 흐름</h2>
-              </div>
-            </div>
-            <div class="panel-body"></div>
-          </section>
-
-          <section id="slot-movement" class="panel panel-movement" aria-label="최근 중요한 변화" hidden>
-            <div class="panel-header">
-              <div>
-                <span class="surface-kicker">최근 변화</span>
-                <h2>최근 중요한 변화</h2>
+                <h2>최근 변화</h2>
               </div>
               <span class="surface-note">현재 진행 문서 기준 · 단순 작업 나열이 아닌 프로젝트 상태의 핵심 전환</span>
             </div>
             <div class="panel-body"></div>
+            <div class="threads-secondary-slot"></div>
           </section>
         </div>
 
         <section id="slot-map" class="panel panel-map" aria-label="프로젝트 지도">
           <div class="panel-header">
             <div>
-              <span class="surface-kicker">프로젝트 구조</span>
               <h2>프로젝트 지도</h2>
             </div>
             <span id="map-completeness-badge" class="completeness-badge" hidden></span>
