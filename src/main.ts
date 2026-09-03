@@ -442,13 +442,48 @@ async function copyToClipboard(text: string): Promise<boolean> {
     textarea.style.opacity = "0";
     document.body.appendChild(textarea);
     textarea.select();
-    document.execCommand("copy");
-    textarea.remove();
-    return true;
+    try {
+      return document.execCommand("copy");
+    } finally {
+      textarea.remove();
+    }
   } catch (error) {
     console.error("Clipboard copy failed", error);
     return false;
   }
+}
+
+const copyFeedbackTimers = new Map<HTMLElement, number>();
+
+function showCopyFeedback(
+  toast: HTMLElement | null,
+  ok: boolean,
+  successText: string,
+  failureText: string
+): void {
+  if (!toast) return;
+  const pending = copyFeedbackTimers.get(toast);
+  if (pending !== undefined) clearTimeout(pending);
+  toast.textContent = ok ? successText : failureText;
+  toast.dataset.result = ok ? "success" : "failure";
+  toast.hidden = false;
+  const timer = window.setTimeout(() => {
+    if (copyFeedbackTimers.get(toast) === timer) {
+      toast.hidden = true;
+      copyFeedbackTimers.delete(toast);
+    }
+  }, 3000);
+  copyFeedbackTimers.set(toast, timer);
+}
+
+function hideCopyFeedback(toast: HTMLElement | null): void {
+  if (!toast) return;
+  const pending = copyFeedbackTimers.get(toast);
+  if (pending !== undefined) {
+    clearTimeout(pending);
+    copyFeedbackTimers.delete(toast);
+  }
+  toast.hidden = true;
 }
 
 function evidenceEntity(parent: InspectorEntity, section: SemanticSubsection): InspectorEntity {
@@ -549,13 +584,18 @@ function renderInspector(entity: InspectorEntity): void {
         projectFrameText: extractSectionRawText(currentSections.get("project frame")),
         settledDirectionText: extractSectionRawText(currentSections.get("settled direction")),
       });
-      if (await copyToClipboard(text) && copyToast) {
-        copyToast.hidden = false;
-        setTimeout(() => { copyToast.hidden = true; }, 3000);
+      const ok = await copyToClipboard(text);
+      if (copyToast) {
+        showCopyFeedback(
+          copyToast,
+          ok,
+          "✓ 검토 요청이 복사되었습니다",
+          "⚠ 복사에 실패했습니다. 직접 선택해 복사해 주세요"
+        );
       }
     };
   }
-  if (copyToast && entity.kind !== "area") copyToast.hidden = true;
+  if (copyToast && entity.kind !== "area") hideCopyFeedback(copyToast);
 }
 
 function openInspector(entity: InspectorEntity, replace = false): void {
@@ -727,9 +767,14 @@ function setupFocusCopy(sections: Map<string, Token[]>, parsedMap: ParsedMap): v
       projectMapText: formatProjectMapText(parsedMap),
       areaDetailsText: formatAreaDetailsText(currentAreaDetails),
     });
-    if (await copyToClipboard(text) && toast) {
-      toast.hidden = false;
-      setTimeout(() => { toast.hidden = true; }, 3000);
+    const ok = await copyToClipboard(text);
+    if (toast) {
+      showCopyFeedback(
+        toast,
+        ok,
+        "✓ Problem Framer용 컨텍스트가 복사되었습니다",
+        "⚠ 복사에 실패했습니다. 직접 선택해 복사해 주세요"
+      );
     }
   };
 }

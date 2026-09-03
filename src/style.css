@@ -848,6 +848,10 @@ body {
   text-align: center;
 }
 
+.copy-toast[data-result="failure"] {
+  color: var(--badge-remaining-ink);
+}
+
 /* Bottom Context Region (Recent Progress > Stable Framing Context) */
 .context-region {
   display: flex;
