@@ -1,12 +1,11 @@
 /**
  * Deterministic Problem Framer handoff context assembly.
  *
- * Pure string-assembly implementation extracted from src/parser.ts as a
- * behavior-preserving bounded refactor. Canonical instruction wording stays
- * owned by src/handoff-contract.ts; this module only assembles the
- * deterministic context payload and appends the canonical instruction block.
- * src/parser.ts remains the public compatibility facade and re-exports the
- * four public symbols; import from "./parser" preserves existing callers.
+ * Sole owner for Focus/Area handoff context construction. Canonical
+ * instruction wording stays owned by `./handoff-contract.js`; this module
+ * only assembles the deterministic context payload and appends the canonical
+ * instruction block. Consumes the clean domain model (`./domain.js`);
+ * re-exported by the compatibility facade (`./parser.js`).
  */
 import { formatAreaHandoffInstruction, formatFocusHandoffInstruction, } from "./handoff-contract.js";
 /** Build deterministic plain-text context for external Problem Framer handoff (Current Focus) */

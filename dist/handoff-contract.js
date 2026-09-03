@@ -1,9 +1,10 @@
 /**
  * Canonical Problem Framer handoff instruction contract.
  *
- * Pure formatters extracted from src/parser.ts as a behavior-preserving
- * bounded refactor. src/parser.ts remains the public compatibility facade
- * and re-exports the public formatter names; import from "./parser".
+ * Sole owner for canonical handoff wording. Consumed by
+ * `./handoff-context.js` (context assembly) and re-exported by the
+ * compatibility facade (`./parser.js`); internal production code imports
+ * this focused owner directly.
  */
 /** Shared canonical Execution Wave contract lines across all Problem Framer handoffs */
 export function formatExecutionWaveContractLines() {

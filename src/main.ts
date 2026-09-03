@@ -1,48 +1,54 @@
-import type { Token } from "markdown-it";
+import type { Token } from "./markdown-structure.js";
 import mermaid from "mermaid";
 import "./style.css";
+import { HERE_MARKER } from "./authoring-grammar.js";
 import {
-  md,
-  HERE_MARKER,
-  type MapItem,
-  type ParsedMap,
-  type AreaDetail,
-  type AreaCompleteness,
-  type SemanticRelation,
-  type SemanticSubsection,
-  type SemanticTone,
-  classifySubsectionTone,
-  type ProjectHorizon,
-  type StageJourney,
-  type StageGate,
-  type StageSegment,
-  type ProjectPosture,
-  type PostureAxis,
-  type Frontier,
-  type StrategicThread,
-  type MaterialMovement,
-  type ParsedMentalModel,
-  normalizeKey,
-  normalizeTitle,
   escapeHtml,
+  md,
   renderTokens,
   withMermaidPlaceholders,
   splitSections,
-  parseProjectMap,
-  parseAreaDetails,
-  findAreaDetail,
-  getAreaCompleteness,
-  renderNativeMap,
-  isCurrentStageHeading,
-  isFoundationHeading,
-  isFutureHeading,
-  parseMentalModel,
   extractSectionRawText,
-  formatProjectMapText,
+} from "./markdown-structure.js";
+import {
+  findAreaDetail,
+  parseAreaDetails,
+  parseMentalModel,
+  parseProjectMap,
+} from "./semantic-construction.js";
+import {
+  areaEntity,
+  classifySubsectionTone,
+  evidenceEntity,
+  findEntity,
+  relatedEntity,
+  renderFrontiers,
+  renderHorizon,
+  renderLegacyFrontier,
+  renderMovements,
+  renderNativeMap,
+  renderPosture,
+  renderStageJourney,
+  renderThreads,
+  stateClass,
   formatAreaDetailsText,
-  buildFocusHandoffContext,
+  formatProjectMapText,
+  type EntityLookup,
+  type InspectorEntity,
+  type InspectorKind,
+} from "./inspector-projection.js";
+import {
   buildAreaHandoffContext,
-} from "./parser";
+  buildFocusHandoffContext,
+} from "./handoff-context.js";
+import { getAreaCompleteness } from "./structural-check.js";
+import type { AreaCompleteness } from "./structural-check.js";
+import type {
+  AreaDetail,
+  MapItem,
+  ParsedMap,
+  ParsedMentalModel,
+} from "./domain.js";
 
 mermaid.initialize({
   startOnLoad: false,
@@ -51,24 +57,6 @@ mermaid.initialize({
   flowchart: { useMaxWidth: false },
 });
 
-type InspectorKind = "posture" | "stage" | "frontier" | "thread" | "movement" | "area" | "evidence";
-
-interface InspectorEntity {
-  key: string;
-  kind: InspectorKind;
-  title: string;
-  state?: string;
-  summaryText: string;
-  html: string;
-  rawText: string;
-  subsections: SemanticSubsection[];
-  relations: SemanticRelation[];
-  isStageBlocker?: boolean;
-  stageContext?: string;
-  areaItem?: MapItem;
-  evidenceParent?: InspectorEntity;
-}
-
 let activeProjectTitle = "Cockpit";
 let currentSections = new Map<string, Token[]>();
 let currentAreaDetails = new Map<string, AreaDetail>();
@@ -76,6 +64,18 @@ let currentParsedMap: ParsedMap | null = null;
 let currentModel: ParsedMentalModel = { frontiers: [], strategicThreads: [], movements: [] };
 let selectedAreaId: string | null = null;
 let inspectorHistory: InspectorEntity[] = [];
+
+function currentLookup(): EntityLookup {
+  return {
+    map: currentParsedMap,
+    areaDetails: currentAreaDetails,
+    stageJourney: currentModel.stageJourney,
+    posture: currentModel.posture,
+    frontiers: currentModel.frontiers,
+    strategicThreads: currentModel.strategicThreads,
+    movements: currentModel.movements,
+  };
+}
 
 const INSPECTOR_LABELS: Record<InspectorKind, string> = {
   posture: "프로젝트 상태",
@@ -87,8 +87,6 @@ const INSPECTOR_LABELS: Record<InspectorKind, string> = {
   evidence: "근거",
 };
 
-const entityKey = (kind: InspectorKind, title: string) => `${kind}:${normalizeTitle(title)}`;
-
 function findMapItemById(id: string): MapItem | null {
   if (!currentParsedMap) return null;
   for (const rail of currentParsedMap.rails) {
@@ -99,339 +97,6 @@ function findMapItemById(id: string): MapItem | null {
     }
   }
   return null;
-}
-
-function renderRawMarkdown(rawText: string): string {
-  if (!rawText.trim()) return "";
-  return withMermaidPlaceholders(renderTokens(md.parse(rawText, {})));
-}
-
-function subsection(
-  title: string,
-  rawText: string,
-  html = renderRawMarkdown(rawText)
-): SemanticSubsection {
-  return {
-    subheading: title,
-    rawText,
-    html,
-    tone: classifySubsectionTone(title, rawText),
-  };
-}
-
-function getSubsection(
-  subsections: SemanticSubsection[],
-  labels: string[]
-): SemanticSubsection | undefined {
-  return subsections.find((item) =>
-    labels.some((label) => normalizeKey(item.subheading).includes(normalizeKey(label)))
-  );
-}
-
-const FRONTIER_SUBSECTION_ALIASES = [
-  ["왜 지금", "why now"],
-  ["완료 의미", "success meaning", "성공 의미", "success"],
-  ["단계 영향", "stage impact"],
-  ["이미 닫힌", "already closed", "closed boundaries", "closed"],
-  ["근거", "evidence"],
-];
-
-function isFrontierSubsectionAlias(subsectionItem: SemanticSubsection): boolean {
-  return FRONTIER_SUBSECTION_ALIASES.some((labels) =>
-    labels.some((label) => normalizeKey(subsectionItem.subheading).includes(normalizeKey(label)))
-  );
-}
-
-function areaEntity(item: MapItem): InspectorEntity {
-  const detail = findAreaDetail(item, currentAreaDetails);
-  const detailSections = detail?.subsections ?? [];
-  const meaning = getSubsection(detailSections, ["의미", "meaning"]);
-  return {
-    key: entityKey("area", item.title),
-    kind: "area",
-    title: item.title,
-    summaryText: item.description || meaning?.rawText.split(/\r?\n/)[0] || "",
-    html: detailSections.map((section) => section.html).join(""),
-    rawText: detailSections.map((section) => section.rawText).join("\n"),
-    subsections: detailSections,
-    relations: [],
-    areaItem: item,
-  };
-}
-
-function stageEntity(gate: StageGate, segment: StageSegment): InspectorEntity {
-  const subsections = gate.subsections.slice();
-  if (gate.entryCondition) {
-    subsections.unshift(subsection("진입 조건", gate.entryCondition));
-  }
-  if (gate.decisionReason) {
-    subsections.unshift(subsection("판정 이유", gate.decisionReason));
-  }
-  return {
-    key: entityKey("stage", gate.title),
-    kind: "stage",
-    title: gate.title,
-    state: gate.state,
-    summaryText: gate.summaryText || segment.title,
-    html: gate.html,
-    rawText: gate.rawText,
-    subsections,
-    relations: gate.relations,
-    isStageBlocker: gate.isStageBlocker,
-    stageContext: segment.title,
-  };
-}
-
-function stageSegmentEntity(segment: StageSegment): InspectorEntity {
-  const fallbackGate = segment.gates.find((gate) => gate.entryCondition);
-  const subsections: SemanticSubsection[] = [];
-  if (fallbackGate?.entryCondition) {
-    subsections.push(subsection("진입 조건", fallbackGate.entryCondition));
-  }
-  return {
-    key: entityKey("stage", segment.title),
-    kind: "stage",
-    title: segment.title,
-    state: segment.gates.length === 1 ? segment.gates[0].state || undefined : undefined,
-    summaryText: segment.role === "current" ? "현재 진행 중인 단계" : "다음으로 예정된 단계",
-    html: segment.html,
-    rawText: segment.rawText,
-    subsections,
-    relations: [],
-  };
-}
-
-function postureEntity(axis: PostureAxis): InspectorEntity {
-  return {
-    key: entityKey("posture", axis.title),
-    kind: "posture",
-    title: axis.title,
-    state: axis.state ?? axis.declaredState,
-    summaryText: axis.summaryText,
-    html: axis.html,
-    rawText: axis.rawText,
-    subsections: axis.subsections,
-    relations: axis.relations,
-    isStageBlocker: axis.isStageBlocker,
-  };
-}
-
-function frontierSubsections(frontier: Frontier): SemanticSubsection[] {
-  const sections: SemanticSubsection[] = [];
-  if (frontier.whyNow) sections.push(subsection("왜 지금", frontier.whyNow));
-  if (frontier.successMeaning) sections.push(subsection("완료 의미", frontier.successMeaning));
-  if (frontier.stageImpact) sections.push(subsection("단계 영향", frontier.stageImpact));
-  if (frontier.closedBoundaries) sections.push(subsection("이미 닫힌 것", frontier.closedBoundaries));
-  if (frontier.evidence) sections.push(subsection("근거", frontier.evidence));
-  return sections.concat(frontier.subsections.filter((item) => !isFrontierSubsectionAlias(item)));
-}
-
-function frontierEntity(frontier: Frontier): InspectorEntity {
-  const transition = `${frontier.currentState || "UNDECLARED"} → ${frontier.targetState || "UNDECLARED"}`;
-  return {
-    key: entityKey("frontier", frontier.title),
-    kind: "frontier",
-    title: frontier.title,
-    state: transition,
-    summaryText: frontier.summaryText,
-    html: frontier.html,
-    rawText: frontier.rawText,
-    subsections: frontierSubsections(frontier),
-    relations: frontier.relations,
-  };
-}
-
-function threadEntity(thread: StrategicThread): InspectorEntity {
-  return {
-    key: entityKey("thread", thread.title),
-    kind: "thread",
-    title: thread.title,
-    state: thread.state,
-    summaryText: thread.summaryText,
-    html: thread.html,
-    rawText: thread.rawText,
-    subsections: thread.subsections,
-    relations: thread.relations,
-  };
-}
-
-function movementSubsections(movement: MaterialMovement): SemanticSubsection[] {
-  const sections: SemanticSubsection[] = [];
-  if (movement.before) sections.push(subsection("변경 전", movement.before));
-  if (movement.change) sections.push(subsection("주요 변경", movement.change));
-  if (movement.after) sections.push(subsection("변경 후", movement.after));
-  return sections.concat(movement.subsections.filter((item) =>
-    !sections.some((existing) => normalizeKey(existing.subheading) === normalizeKey(item.subheading))
-  ));
-}
-
-function movementEntity(movement: MaterialMovement): InspectorEntity {
-  return {
-    key: entityKey("movement", movement.title),
-    kind: "movement",
-    title: movement.title,
-    state: `${movement.before || "UNDECLARED"} → ${movement.after || "UNDECLARED"}`,
-    summaryText: movement.change || movement.summaryText,
-    html: movement.html,
-    rawText: movement.rawText,
-    subsections: movementSubsections(movement),
-    relations: movement.relations,
-  };
-}
-
-function findEntity(kind: InspectorKind, title: string): InspectorEntity | null {
-  const target = normalizeTitle(title);
-  if (kind === "area") {
-    const item = currentParsedMap?.rails
-      .flatMap((rail) => rail.groups)
-      .flatMap((group) => group.items)
-      .find((candidate) => normalizeTitle(candidate.title) === target);
-    return item ? areaEntity(item) : null;
-  }
-  if (kind === "posture") {
-    const axis = currentModel.posture?.axes.find((candidate) => normalizeTitle(candidate.title) === target);
-    return axis ? postureEntity(axis) : null;
-  }
-  if (kind === "frontier") {
-    const frontier = currentModel.frontiers.find((candidate) => normalizeTitle(candidate.title) === target);
-    return frontier ? frontierEntity(frontier) : null;
-  }
-  if (kind === "thread") {
-    const thread = currentModel.strategicThreads.find((candidate) => normalizeTitle(candidate.title) === target);
-    return thread ? threadEntity(thread) : null;
-  }
-  if (kind === "movement") {
-    const movement = currentModel.movements.find((candidate) => normalizeTitle(candidate.title) === target);
-    return movement ? movementEntity(movement) : null;
-  }
-  if (kind === "stage") {
-    for (const segment of currentModel.stageJourney?.segments ?? []) {
-      const gate = segment.gates.find((candidate) => normalizeTitle(candidate.title) === target);
-      if (gate) return stageEntity(gate, segment);
-      if (normalizeTitle(segment.title) === target) return stageSegmentEntity(segment);
-    }
-  }
-  return null;
-}
-
-function relatedEntity(relation: SemanticRelation): InspectorEntity | null {
-  const kind: InspectorKind = relation.kind === "area"
-    ? "area"
-    : relation.kind === "stage"
-      ? "stage"
-      : relation.kind === "posture"
-        ? "posture"
-        : relation.kind === "frontier"
-          ? "frontier"
-          : "movement";
-  return findEntity(kind, relation.target);
-}
-
-function semanticCardAttributes(kind: InspectorKind, title: string): string {
-  return `data-entity-kind="${escapeHtml(kind)}" data-entity-title="${escapeHtml(title)}"`;
-}
-
-function stateClass(state: string | undefined): string {
-  return normalizeKey(state ?? "").replace(/[^a-z0-9]+/g, "-") || "unknown";
-}
-
-function renderHorizon(horizon: ProjectHorizon): string {
-  return `<div class="horizon-copy ${horizon.isLegacyFallback ? "legacy-fallback" : ""}">
-    ${horizon.html}
-  </div>`;
-}
-
-function renderStageJourney(journey: StageJourney): string {
-  return `<div class="stage-journey-view">
-    ${journey.segments.map((segment) => `
-      <section class="stage-segment stage-segment-${segment.role}">
-        <div class="stage-segment-header">
-          <span class="stage-role">${segment.role === "current" ? "현재 단계" : segment.role === "next" ? "다음 단계" : "단계"}</span>
-          <h3>${escapeHtml(segment.title)}</h3>
-        </div>
-        <div class="stage-gate-list">
-          ${segment.gates.map((gate) => `
-            <button type="button" class="semantic-card stage-gate-card ${gate.isStageBlocker ? "has-stage-blocker" : ""}" ${semanticCardAttributes("stage", gate.title)}>
-              <span class="semantic-card-top">
-                <span class="stage-gate-state state-${stateClass(gate.state)}">${escapeHtml(gate.state || "UNDECLARED")}</span>
-                ${gate.isStageBlocker ? '<span class="stage-blocker-marker">단계 진입 차단</span>' : ""}
-              </span>
-              <strong>${escapeHtml(gate.title)}</strong>
-              ${gate.summaryText ? `<span>${escapeHtml(gate.summaryText)}</span>` : ""}
-              ${gate.decisionReason ? `<span class="stage-gate-reason">${escapeHtml(gate.decisionReason)}</span>` : ""}
-              ${!gate.decisionReason && gate.state === "NOT PROVEN" ? `<span class="stage-gate-fallback">현재 admissible proof가 확인되지 않음 — failure와 동일한 의미는 아님</span>` : ""}
-              ${gate.entryCondition ? `<span class="stage-gate-entry">진입 조건: ${escapeHtml(gate.entryCondition)}</span>` : ""}
-            </button>
-          `).join("")}
-        </div>
-      </section>
-    `).join("")}
-  </div>`;
-}
-
-function renderPosture(posture: ProjectPosture): string {
-  return `<div class="posture-grid">
-    ${posture.axes.map((axis) => `
-      <button type="button" class="semantic-card posture-card posture-${stateClass(axis.state ?? axis.declaredState)}" ${semanticCardAttributes("posture", axis.title)}>
-        <span class="posture-card-top">
-          <strong>${escapeHtml(axis.title)}</strong>
-          <span class="maturity-badge maturity-${stateClass(axis.state ?? axis.declaredState)}">${escapeHtml((axis.state ?? axis.declaredState) || "UNDECLARED")}</span>
-        </span>
-        ${axis.summaryText ? `<span class="posture-summary">${escapeHtml(axis.summaryText)}</span>` : ""}
-        ${axis.isStageBlocker ? '<span class="stage-blocker-marker">단계 진입 차단</span>' : ""}
-      </button>
-    `).join("")}
-  </div>`;
-}
-
-function renderFrontiers(frontiers: Frontier[]): string {
-  return `<div class="frontier-list">
-    ${frontiers.map((frontier) => `
-      <button type="button" class="semantic-card frontier-card ${frontier.isPrimary ? "frontier-primary" : "frontier-secondary"}" ${semanticCardAttributes("frontier", frontier.title)}>
-        <span class="semantic-card-top">
-          <span class="frontier-role">${frontier.isCoPrimary ? "공동 핵심 전환" : frontier.isPrimary ? "핵심 전환" : "전략 방향"}</span>
-          <span class="frontier-transition">${escapeHtml(frontier.currentState || "UNDECLARED")} <b>→</b> ${escapeHtml(frontier.targetState || "UNDECLARED")}</span>
-        </span>
-        <strong>${escapeHtml(frontier.title)}</strong>
-        ${frontier.summaryText ? `<span>${escapeHtml(frontier.summaryText)}</span>` : ""}
-      </button>
-    `).join("")}
-  </div>`;
-}
-
-function renderThreads(threads: StrategicThread[]): string {
-  return `<div class="thread-list">
-    ${threads.map((thread) => `
-      <button type="button" class="semantic-card thread-card" ${semanticCardAttributes("thread", thread.title)}>
-        <span class="semantic-card-top">
-          <strong>${escapeHtml(thread.title)}</strong>
-          ${thread.state ? `<span class="thread-state">${escapeHtml(thread.state)}</span>` : ""}
-        </span>
-        ${thread.summaryText ? `<span>${escapeHtml(thread.summaryText)}</span>` : ""}
-      </button>
-    `).join("")}
-  </div>`;
-}
-
-function renderMovements(movements: MaterialMovement[]): string {
-  return `<div class="movement-list">
-    ${movements.map((movement) => `
-      <button type="button" class="semantic-card movement-card" ${semanticCardAttributes("movement", movement.title)}>
-        <span class="semantic-card-top">
-          <span class="movement-transition">${escapeHtml(movement.before || "UNDECLARED")} <b>→</b> ${escapeHtml(movement.after || "UNDECLARED")}</span>
-        </span>
-        <strong>${escapeHtml(movement.title)}</strong>
-        ${movement.change ? `<span>${escapeHtml(movement.change)}</span>` : ""}
-      </button>
-    `).join("")}
-  </div>`;
-}
-
-function renderLegacyFrontier(nextHtml: string, issueHtml: string): string {
-  return `<div class="legacy-frontier-view">
-    <div><span class="surface-kicker">이전 형식: 다음 전환</span>${nextHtml}</div>
-    ${issueHtml ? `<div class="legacy-frontier-issue"><span class="surface-kicker">이전 형식: 제약 사항</span>${issueHtml}</div>` : ""}
-  </div>`;
 }
 
 function setPanelHtml(panelId: string, html: string, visible: boolean): void {
@@ -498,20 +163,6 @@ function hideCopyFeedback(toast: HTMLElement | null): void {
   toast.hidden = true;
 }
 
-function evidenceEntity(parent: InspectorEntity, section: SemanticSubsection): InspectorEntity {
-  return {
-    key: entityKey("evidence", `${parent.title}:${section.subheading}`),
-    kind: "evidence",
-    title: `${parent.title} · ${section.subheading}`,
-    summaryText: "이 판단을 뒷받침하는 세부 근거",
-    html: section.html,
-    rawText: section.rawText,
-    subsections: [],
-    relations: [],
-    evidenceParent: parent,
-  };
-}
-
 function renderInspector(entity: InspectorEntity): void {
   const aside = document.getElementById("inspector-aside");
   if (!aside) return;
@@ -569,7 +220,7 @@ function renderInspector(entity: InspectorEntity): void {
 
   const related = document.getElementById("inspector-related");
   if (related) {
-    const validRelations = entity.relations.filter((relation) => relatedEntity(relation));
+    const validRelations = entity.relations.filter((relation) => relatedEntity(relation, currentLookup()));
     related.innerHTML = validRelations.length > 0
       ? `<div class="related-title">관련 항목</div><div class="related-links">${validRelations.map((relation) => `
           <button type="button" class="related-link" data-related-kind="${relation.kind}" data-related-title="${escapeHtml(relation.target)}">${escapeHtml(relation.target)}</button>
@@ -679,7 +330,7 @@ function bindInspectorActions(): void {
     const relation = target.closest<HTMLButtonElement>("[data-related-kind]");
     if (relation) {
       const kind = relation.dataset.relatedKind as InspectorKind;
-      const related = findEntity(kind, relation.dataset.relatedTitle ?? "");
+      const related = findEntity(kind, relation.dataset.relatedTitle ?? "", currentLookup());
       if (related) openInspector(related);
       return;
     }
@@ -698,7 +349,7 @@ function bindSemanticCards(container: HTMLElement): void {
     button.addEventListener("click", () => {
       const kind = button.dataset.entityKind as InspectorKind;
       const title = button.dataset.entityTitle ?? "";
-      const entity = findEntity(kind, title);
+      const entity = findEntity(kind, title, currentLookup());
       if (entity) openInspector(entity, false);
     });
   });
@@ -877,7 +528,7 @@ async function renderDoc(source: string): Promise<void> {
     mapBody.querySelectorAll<HTMLButtonElement>(".map-card").forEach((button) => {
       button.addEventListener("click", () => {
         const item = findMapItemById(button.dataset.itemId ?? "");
-        if (item) openInspector(areaEntity(item));
+        if (item) openInspector(areaEntity(item, currentAreaDetails));
       });
     });
   } else if (mapBody) {
@@ -903,7 +554,7 @@ async function renderDoc(source: string): Promise<void> {
 
   if (inspectorHistory.length > 0) {
     const current = inspectorHistory[inspectorHistory.length - 1];
-    const refreshed = findEntity(current.kind, current.title);
+    const refreshed = findEntity(current.kind, current.title, currentLookup());
     if (refreshed) {
       inspectorHistory[inspectorHistory.length - 1] = refreshed;
       renderInspector(refreshed);
@@ -966,16 +617,3 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
   void fetchAndRender();
   initLiveReload();
 }
-
-export {
-  normalizeKey,
-  isCurrentStageHeading,
-  isFoundationHeading,
-  isFutureHeading,
-  parseProjectMap,
-  splitSections,
-  parseAreaDetails,
-  findAreaDetail,
-  getAreaCompleteness,
-  renderNativeMap,
-};

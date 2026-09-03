@@ -802,7 +802,16 @@ npm pack
 cockpit/
 ├── index.html           # 대시보드 HTML 구조 (지도, 개요, 영역 검사기 슬롯)
 ├── src/
-│   ├── main.ts          # 마크다운 파싱, 네이티브 지도 생성, 검사기 상태 제어, SSE 연동
+│   ├── main.ts          # 브라우저 앱 오케스트레이션/DOM 배선/렌더링 셸 (의미 해석은 투영 소유자에게 위임)
+│   ├── domain.ts        # 명시적 Cockpit 의미/도메인 모델 (표현 오염 없음)
+│   ├── authoring-grammar.ts   # README §5의 결정론적 구현 어휘
+│   ├── markdown-structure.ts  # markdown-it 토큰 경계/원시 텍스트/문자열 렌더링
+│   ├── semantic-construction.ts # 의미/도메인 구성 (문자열→문서 모델 진입점 포함)
+│   ├── structural-check.ts    # 구조적 유효성 검사 (의미 진실성 검사 아님)
+│   ├── inspector-projection.ts # 도메인→Universal Inspector/뷰 투영 (tone/HTML 소유)
+│   ├── handoff-context.ts     # Focus/Area handoff 문맥 구성
+│   ├── handoff-contract.ts    # handoff 문구 계약
+│   ├── parser.ts        # 호환/공개 파사드 (재노출만, 정식 구현 아님)
 │   └── style.css        # 지도/검사기 반응형 그리드 및 테마 스타일
 ├── scripts/
 │   └── serve.mjs        # 루프백 HTTP 서버 + SSE 파일 변경 감시 CLI

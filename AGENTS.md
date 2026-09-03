@@ -44,13 +44,13 @@ Cockpit is a read-only local viewer for one `PROGRESS.md`: Vite/TypeScript front
 npm run dev        # Vite dev server (serves /src/main.ts directly)
 npm run build      # tsc --noEmit && vite build && separate tsc emit of dist/parser.js
 npm test           # node --test tests/*.test.mjs (no test framework)
-node --test tests/parser.test.mjs          # fast parser-only suite
+node --test tests/structural-check.test.mjs   # fast structural-check-only suite
 npm run cockpit -- /path/to/PROGRESS.md    # run built viewer from dist/
 node scripts/serve.mjs check [path]        # deterministic structural preflight, exit 0/1
 ```
 
-- `scripts/serve.mjs` imports `../dist/parser.js`, not source. After any change to `src/parser.ts`, run `npm run build` before CLI/smoke verification; otherwise the CLI silently runs stale parser logic.
+- `scripts/serve.mjs` imports `../dist/parser.js`, not source. After any change to `src/*.ts` that affects build output, run `npm run build` before CLI/smoke verification; otherwise the CLI silently runs stale parser logic.
 - `dist/` is committed to git. Regenerate and commit it together with source changes that affect build output.
-- `tests/package-smoke.test.mjs` runs `npm pack` + isolated global install — slow and may need network. Scope tests to `parser.test.mjs` during iteration; run the full suite only as final proof.
-- README §5 (Korean) is the authoring contract for `PROGRESS.md`; `src/parser.ts` is its canonical implementation. Section/heading semantics changes must land together across parser, `tests/fixtures/`, and README §5.
+- `tests/package-smoke.test.mjs` runs `npm pack` + isolated global install — slow and may need network. Scope tests to the directly affected owner suite during iteration; run the full suite only as final proof.
+- README §5 (Korean) owns the human authoring contract for `PROGRESS.md`. Focused implementation modules implement syntax/domain/check/projection responsibilities (`authoring-grammar` / `markdown-structure` / `domain` / `semantic-construction` / `structural-check` / `inspector-projection`); `src/parser.ts` / `dist/parser.js` is a compatibility/public facade. Section/heading semantics changes must land together across implementation, `tests/fixtures/`, owner suites, and README §5.
 - Node engines: `^20.19.0 || >=22.12.0`.
