@@ -164,6 +164,9 @@ function stageEntity(gate: StageGate, segment: StageSegment): InspectorEntity {
   if (gate.entryCondition) {
     subsections.unshift(subsection("진입 조건", gate.entryCondition));
   }
+  if (gate.decisionReason) {
+    subsections.unshift(subsection("판정 이유", gate.decisionReason));
+  }
   return {
     key: entityKey("stage", gate.title),
     kind: "stage",
@@ -355,6 +358,8 @@ function renderStageJourney(journey: StageJourney): string {
               </span>
               <strong>${escapeHtml(gate.title)}</strong>
               ${gate.summaryText ? `<span>${escapeHtml(gate.summaryText)}</span>` : ""}
+              ${gate.decisionReason ? `<span class="stage-gate-reason">${escapeHtml(gate.decisionReason)}</span>` : ""}
+              ${!gate.decisionReason && gate.state === "NOT PROVEN" ? `<span class="stage-gate-fallback">현재 admissible proof가 확인되지 않음 — failure와 동일한 의미는 아님</span>` : ""}
               ${gate.entryCondition ? `<span class="stage-gate-entry">진입 조건: ${escapeHtml(gate.entryCondition)}</span>` : ""}
             </button>
           `).join("")}

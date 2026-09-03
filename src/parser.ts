@@ -156,6 +156,7 @@ export interface StageGate {
   state: string;
   summaryText: string;
   entryCondition?: string;
+  decisionReason?: string;
   html: string;
   rawText: string;
   subsections: SemanticSubsection[];
@@ -164,6 +165,8 @@ export interface StageGate {
 }
 
 const STAGE_ENTRY_CONDITION_LABELS = ["진입 조건", "개시 조건", "entry condition", "opens when"];
+
+const STAGE_DECISION_REASON_LABELS = ["판정 이유", "Decision reason"];
 
 export interface StageSegment {
   role: "current" | "next" | "other";
@@ -789,6 +792,7 @@ const STAGE_GATE_STATES = [
   "IN REVIEW",
   "PROVEN",
   "NOT PROVEN",
+  "FAILED",
   "UNKNOWN",
   "BLOCKED",
 ];
@@ -890,9 +894,9 @@ function firstSemanticSentence(value: string): string {
 }
 
 function isSemanticMetadataLine(line: string): boolean {
-  return /^(?:역할|role|관련\s*(?:영역|단계|상태|축|최전선|변화)|related\s+(?:areas?|stage|posture|frontier|movements?)|진입\s*조건|개시\s*조건|entry\s+condition|opens\s+when|현재|목표|이전|이후|변경|before|after|change|target|from|to)\s*:/i.test(
+  return /^(?:역할|role|관련\s*(?:영역|단계|상태|축|최전선|변화)|related\s+(?:areas?|stage|posture|frontier|movements?)|진입\s*조건|개시\s*조건|entry\s+condition|opens\s+when|판정\s*이유|decision\s+reason|현재|목표|이전|이후|변경|before|after|change|target|from|to)\s*:/i.test(
     line
-  ) || /^(?:STRONG|PARTIAL|WEAK|UNKNOWN|BLOCKED|CLOSED|IN PROOF|NOT OPEN|OPEN)$/i.test(line);
+  ) || /^(?:STRONG|PARTIAL|WEAK|UNKNOWN|BLOCKED|CLOSED|IN PROOF|NOT OPEN|OPEN|IN REVIEW|PROVEN|NOT PROVEN|FAILED)$/i.test(line);
 }
 
 function parseRelations(rawText: string): SemanticRelation[] {
@@ -1069,21 +1073,49 @@ function parseStageGateLine(rawLine: string): { title: string; state: string } {
 
 function parseStageGateList(tokens: Token[], segmentTitle: string): StageGate[] {
   const gates: StageGate[] = [];
+  let listDepth = 0;
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
+    if (token.type === "bullet_list_open" || token.type === "ordered_list_open") {
+      listDepth++;
+      continue;
+    }
+    if (token.type === "bullet_list_close" || token.type === "ordered_list_close") {
+      listDepth = Math.max(0, listDepth - 1);
+      continue;
+    }
     if (token.type !== "list_item_open") continue;
+    // Only outer gate items own a StageGate; nested list items and
+    // continuation paragraphs never become phantom gates.
+    if (listDepth !== 1) continue;
+    let openCount = 1;
     let end = i + 1;
-    while (end < tokens.length && tokens[end].type !== "list_item_close") end++;
-    const inline = tokens.slice(i + 1, end).find((candidate) => candidate.type === "inline");
+    while (end < tokens.length) {
+      if (tokens[end].type === "list_item_open") openCount++;
+      else if (tokens[end].type === "list_item_close") {
+        openCount--;
+        if (openCount === 0) break;
+      }
+      end++;
+    }
+    if (end >= tokens.length) continue;
+    const slice = tokens.slice(i + 1, end);
+    const inline = slice.find((candidate) => candidate.type === "inline");
     if (!inline) continue;
     const parsed = parseStageGateLine(inline.content);
-    const rawText = extractSectionRawText(tokens.slice(i + 1, end));
+    const rawText = extractSectionRawText(slice);
+    const decisionReason =
+      extractLabeledValue(rawText, STAGE_DECISION_REASON_LABELS) || undefined;
     gates.push({
       title: parsed.title,
       state: parsed.state,
-      summaryText: firstSemanticSentence(rawText),
+      // The gate line itself ("Title — STATE") is already rendered as the
+      // card title + state badge; reusing it as summary duplicates the card.
+      // The decision reason owns the third line via its own field.
+      summaryText: "",
       entryCondition: extractLabeledValue(rawText, STAGE_ENTRY_CONDITION_LABELS) || undefined,
-      html: withMermaidPlaceholders(renderTokens(tokens.slice(i + 1, end))),
+      decisionReason,
+      html: withMermaidPlaceholders(renderTokens(slice)),
       rawText,
       subsections: [],
       relations: parseRelations(rawText),
@@ -1124,6 +1156,8 @@ export function parseStageJourney(tokens?: Token[]): StageJourney | undefined {
           state: stageState || stateLine.declaredState,
           summaryText: content.summaryText,
           entryCondition: extractLabeledValue(content.rawText, STAGE_ENTRY_CONDITION_LABELS) || undefined,
+          decisionReason:
+            extractLabeledValue(content.rawText, STAGE_DECISION_REASON_LABELS) || undefined,
           html: content.html,
           rawText: content.rawText,
           subsections: content.subsections,

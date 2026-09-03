@@ -3184,3 +3184,130 @@ test("Handoff context extraction: sibling module owns implementation, parser fac
   assert.equal(buildFocusHandoffContext, sibling.buildFocusHandoffContext);
   assert.equal(buildAreaHandoffContext, sibling.buildAreaHandoffContext);
 });
+
+test("Stage proof disposition: FAILED + decisionReason continuation parses without phantom gates", () => {
+  const markdown = `
+# Proof Disposition Probe
+
+## 단계 여정
+
+### 현재 — Stage X
+- NOT PROVEN — Browser Golden Path first clean PASS
+
+  판정 이유: 과거 clean PASS 주장은 확인되지만 현재 reconstruction에서 재입증할 durable evidence pointer를 찾지 못했다.
+
+  - nested note must not become a gate
+  - second nested note must not become a gate
+
+- FAILED — Exact release backend proof
+
+  판정 이유: canonical verifier가 terminal FAIL에 도달했고 durable failure 기록이 존재한다.
+
+- BLOCKED — Production provider proof
+
+  판정 이유: 실행에 필요한 provider authority가 확보되지 않아 proof 자체를 시작할 수 없다.
+
+- NOT PROVEN — Legacy gate without reason
+`;
+  const tokens = md.parse(markdown, {});
+  const { sections } = splitSections(tokens);
+  const journey = parseStageJourney(sections.get("stage journey"));
+  assert.ok(journey);
+  assert.equal(journey.currentGates.length, 4);
+  assert.deepEqual(
+    journey.currentGates.map((gate) => gate.state),
+    ["NOT PROVEN", "FAILED", "BLOCKED", "NOT PROVEN"]
+  );
+  assert.deepEqual(
+    journey.currentGates.map((gate) => gate.title),
+    [
+      "Browser Golden Path first clean PASS",
+      "Exact release backend proof",
+      "Production provider proof",
+      "Legacy gate without reason",
+    ]
+  );
+  // Reason is extracted to its own field, never mixed into title/state.
+  assert.ok(journey.currentGates[0].decisionReason?.includes("durable evidence pointer"));
+  assert.ok(journey.currentGates[1].decisionReason?.includes("terminal FAIL"));
+  assert.ok(journey.currentGates[2].decisionReason?.includes("provider authority"));
+  assert.equal(journey.currentGates[3].decisionReason, undefined);
+  for (const gate of journey.currentGates) {
+    assert.ok(!gate.title.includes("판정 이유"));
+    assert.ok(!gate.title.includes("Decision reason"));
+    assert.ok(!gate.state.includes("판정"));
+  }
+  // The old duplicate "Title — STATE" summary is gone; reason owns the third line.
+  for (const gate of journey.currentGates) {
+    assert.equal(gate.summaryText, "");
+  }
+  // Continuation paragraphs and nested items never become phantom gates.
+  assert.ok(!journey.currentGates.some((gate) => gate.title.includes("nested note")));
+});
+
+test("Stage proof disposition: existing gates parse unchanged, legacy NOT PROVEN stays valid", () => {
+  const { model } = readFixtureModel("canonical-minimal.md");
+  assert.deepEqual(
+    model.stageJourney?.currentGates.map((gate) => gate.state),
+    ["CLOSED", "IN PROOF"]
+  );
+  for (const gate of model.stageJourney?.currentGates ?? []) {
+    assert.equal(gate.decisionReason, undefined);
+    assert.equal(gate.summaryText, "");
+  }
+  assert.equal(model.stageJourney?.nextGates[0]?.state, "NOT OPEN");
+  assert.ok((model.stageJourney?.nextGates[0]?.entryCondition ?? "").length > 0);
+});
+
+test("Stage proof disposition: FAILED is canonical, fixture PASS, unknown state still guarded", () => {
+  const fixturePath = path.join(__dirname, "fixtures", "stage-gate-proof-disposition.md");
+  const content = fs.readFileSync(fixturePath, "utf-8");
+  const result = checkProgressStructure(content);
+  assert.equal(result.ok, true, result.errors.join("; "));
+  assert.deepEqual(
+    parseStageJourney(splitSections(md.parse(content, {})).sections.get("stage journey"))?.currentGates.map((gate) => gate.state),
+    ["NOT PROVEN", "FAILED", "BLOCKED"]
+  );
+
+  const bogus = `
+# Bogus state probe
+
+## 단계 여정
+
+### 현재 — Stage X
+- BOGUS — Made-up state gate
+
+### 다음 — Stage Y
+NOT OPEN
+`;
+  const bogusResult = checkProgressStructure(bogus);
+  assert.equal(bogusResult.ok, false);
+  assert.ok(
+    bogusResult.guardrailErrors.some((error) => /missing a declared state/.test(error)),
+    "unknown/malformed states must still fail the declared-state guardrail"
+  );
+});
+
+test("Stage proof disposition: card and inspector surfaces expose reason with FAILED danger reuse", () => {
+  const mainSource = fs.readFileSync(path.join(__dirname, "..", "src", "main.ts"), "utf-8");
+  assert.ok(mainSource.includes('subsection("판정 이유"'));
+  assert.ok(mainSource.includes("stage-gate-reason"));
+  assert.ok(mainSource.includes("현재 admissible proof가 확인되지 않음 — failure와 동일한 의미는 아님"));
+  assert.ok(mainSource.includes('gate.state === "NOT PROVEN"'));
+
+  const css = fs.readFileSync(path.join(__dirname, "..", "src", "style.css"), "utf-8");
+  assert.ok(css.includes(".state-failed"));
+  const dangerIdx = css.indexOf(".state-failed");
+  assert.ok(css.slice(Math.max(0, dangerIdx - 200), dangerIdx + 200).includes("#fecaca"));
+
+  const parserSource = fs.readFileSync(path.join(__dirname, "..", "src", "parser.ts"), "utf-8");
+  assert.ok(parserSource.includes('"FAILED"'));
+  assert.ok(parserSource.includes("decisionReason"));
+  assert.ok(parserSource.includes("판정 이유"));
+
+  const readme = fs.readFileSync(path.join(__dirname, "..", "README.md"), "utf-8");
+  assert.ok(readme.includes("FAILED"));
+  assert.ok(readme.includes("판정 이유:"));
+  assert.ok(readme.includes("Decision reason:"));
+  assert.ok(readme.includes("stage-gate-proof-disposition.md"));
+});
