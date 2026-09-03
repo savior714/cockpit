@@ -1328,7 +1328,7 @@ body {
 }
 
 .horizon-copy.legacy-fallback::before {
-  content: "LEGACY HORIZON FALLBACK";
+  content: "이전 형식 개요";
   display: block;
   margin-bottom: 7px;
   color: var(--muted);

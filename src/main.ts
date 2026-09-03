@@ -78,13 +78,13 @@ let selectedAreaId: string | null = null;
 let inspectorHistory: InspectorEntity[] = [];
 
 const INSPECTOR_LABELS: Record<InspectorKind, string> = {
-  posture: "POSTURE",
-  stage: "STAGE GATE",
-  frontier: "FRONTIER",
-  thread: "STRATEGIC THREAD",
-  movement: "MATERIAL MOVEMENT",
-  area: "AREA",
-  evidence: "EVIDENCE",
+  posture: "프로젝트 상태",
+  stage: "진행 단계",
+  frontier: "전환 과제",
+  thread: "전략적 흐름",
+  movement: "중요한 변화",
+  area: "프로젝트 영역",
+  evidence: "근거",
 };
 
 const entityKey = (kind: InspectorKind, title: string) => `${kind}:${normalizeTitle(title)}`;
@@ -190,7 +190,7 @@ function stageSegmentEntity(segment: StageSegment): InspectorEntity {
     kind: "stage",
     title: segment.title,
     state: segment.gates.length === 1 ? segment.gates[0].state || undefined : undefined,
-    summaryText: segment.role === "current" ? "현재 프로젝트가 서 있는 단계" : "여정에서 선언된 다음 단계",
+    summaryText: segment.role === "current" ? "현재 진행 중인 단계" : "다음으로 예정된 단계",
     html: segment.html,
     rawText: segment.rawText,
     subsections,
@@ -254,9 +254,9 @@ function threadEntity(thread: StrategicThread): InspectorEntity {
 
 function movementSubsections(movement: MaterialMovement): SemanticSubsection[] {
   const sections: SemanticSubsection[] = [];
-  if (movement.before) sections.push(subsection("BEFORE", movement.before));
-  if (movement.change) sections.push(subsection("MATERIAL CHANGE", movement.change));
-  if (movement.after) sections.push(subsection("AFTER", movement.after));
+  if (movement.before) sections.push(subsection("변경 전", movement.before));
+  if (movement.change) sections.push(subsection("주요 변경", movement.change));
+  if (movement.after) sections.push(subsection("변경 후", movement.after));
   return sections.concat(movement.subsections.filter((item) =>
     !sections.some((existing) => normalizeKey(existing.subheading) === normalizeKey(item.subheading))
   ));
@@ -343,7 +343,7 @@ function renderStageJourney(journey: StageJourney): string {
     ${journey.segments.map((segment) => `
       <section class="stage-segment stage-segment-${segment.role}">
         <div class="stage-segment-header">
-          <span class="stage-role">${segment.role === "current" ? "CURRENT" : segment.role === "next" ? "NEXT" : "STAGE"}</span>
+          <span class="stage-role">${segment.role === "current" ? "현재 단계" : segment.role === "next" ? "다음 단계" : "단계"}</span>
           <h3>${escapeHtml(segment.title)}</h3>
         </div>
         <div class="stage-gate-list">
@@ -351,7 +351,7 @@ function renderStageJourney(journey: StageJourney): string {
             <button type="button" class="semantic-card stage-gate-card ${gate.isStageBlocker ? "has-stage-blocker" : ""}" ${semanticCardAttributes("stage", gate.title)}>
               <span class="semantic-card-top">
                 <span class="stage-gate-state state-${stateClass(gate.state)}">${escapeHtml(gate.state || "UNDECLARED")}</span>
-                ${gate.isStageBlocker ? '<span class="stage-blocker-marker">STAGE BLOCKER</span>' : ""}
+                ${gate.isStageBlocker ? '<span class="stage-blocker-marker">단계 진입 차단</span>' : ""}
               </span>
               <strong>${escapeHtml(gate.title)}</strong>
               ${gate.summaryText ? `<span>${escapeHtml(gate.summaryText)}</span>` : ""}
@@ -373,7 +373,7 @@ function renderPosture(posture: ProjectPosture): string {
           <span class="maturity-badge maturity-${stateClass(axis.state ?? axis.declaredState)}">${escapeHtml((axis.state ?? axis.declaredState) || "UNDECLARED")}</span>
         </span>
         ${axis.summaryText ? `<span class="posture-summary">${escapeHtml(axis.summaryText)}</span>` : ""}
-        ${axis.isStageBlocker ? '<span class="stage-blocker-marker">STAGE BLOCKER</span>' : ""}
+        ${axis.isStageBlocker ? '<span class="stage-blocker-marker">단계 진입 차단</span>' : ""}
       </button>
     `).join("")}
   </div>`;
@@ -384,7 +384,7 @@ function renderFrontiers(frontiers: Frontier[]): string {
     ${frontiers.map((frontier) => `
       <button type="button" class="semantic-card frontier-card ${frontier.isPrimary ? "frontier-primary" : "frontier-secondary"}" ${semanticCardAttributes("frontier", frontier.title)}>
         <span class="semantic-card-top">
-          <span class="frontier-role">${frontier.isCoPrimary ? "CO-PRIMARY TRANSITION" : frontier.isPrimary ? "PRIMARY TRANSITION" : "STRATEGIC DIRECTION"}</span>
+          <span class="frontier-role">${frontier.isCoPrimary ? "공동 핵심 전환" : frontier.isPrimary ? "핵심 전환" : "전략 방향"}</span>
           <span class="frontier-transition">${escapeHtml(frontier.currentState || "UNDECLARED")} <b>→</b> ${escapeHtml(frontier.targetState || "UNDECLARED")}</span>
         </span>
         <strong>${escapeHtml(frontier.title)}</strong>
@@ -424,8 +424,8 @@ function renderMovements(movements: MaterialMovement[]): string {
 
 function renderLegacyFrontier(nextHtml: string, issueHtml: string): string {
   return `<div class="legacy-frontier-view">
-    <div><span class="surface-kicker">LEGACY NEXT TRANSITION</span>${nextHtml}</div>
-    ${issueHtml ? `<div class="legacy-frontier-issue"><span class="surface-kicker">LEGACY CONSTRAINT</span>${issueHtml}</div>` : ""}
+    <div><span class="surface-kicker">이전 형식: 다음 전환</span>${nextHtml}</div>
+    ${issueHtml ? `<div class="legacy-frontier-issue"><span class="surface-kicker">이전 형식: 제약 사항</span>${issueHtml}</div>` : ""}
   </div>`;
 }
 
@@ -498,7 +498,7 @@ function evidenceEntity(parent: InspectorEntity, section: SemanticSubsection): I
     key: entityKey("evidence", `${parent.title}:${section.subheading}`),
     kind: "evidence",
     title: `${parent.title} · ${section.subheading}`,
-    summaryText: "이 판단을 지지하는 하위 해상도 근거",
+    summaryText: "이 판단을 뒷받침하는 세부 근거",
     html: section.html,
     rawText: section.rawText,
     subsections: [],
@@ -555,7 +555,7 @@ function renderInspector(entity: InspectorEntity): void {
           <section class="inspector-sub-card">
             <div class="sub-header"><span class="sub-badge ${toneClass}">${escapeHtml(item.subheading)}</span></div>
             <div class="sub-body">${item.html}</div>
-            ${isEvidence ? `<button type="button" class="inspector-evidence-link" data-subsection-index="${index}">근거를 더 깊게 보기 →</button>` : ""}
+            ${isEvidence ? `<button type="button" class="inspector-evidence-link" data-subsection-index="${index}">세부 근거 보기 →</button>` : ""}
           </section>
         `;
         }).join("")
@@ -566,7 +566,7 @@ function renderInspector(entity: InspectorEntity): void {
   if (related) {
     const validRelations = entity.relations.filter((relation) => relatedEntity(relation));
     related.innerHTML = validRelations.length > 0
-      ? `<div class="related-title">RELATED</div><div class="related-links">${validRelations.map((relation) => `
+      ? `<div class="related-title">관련 항목</div><div class="related-links">${validRelations.map((relation) => `
           <button type="button" class="related-link" data-related-kind="${relation.kind}" data-related-title="${escapeHtml(relation.target)}">${escapeHtml(relation.target)}</button>
         `).join("")}</div>`
       : "";
@@ -601,7 +601,7 @@ function renderInspector(entity: InspectorEntity): void {
         showCopyFeedback(
           copyToast,
           ok,
-          "✓ 검토 요청이 복사되었습니다",
+          "✓ 에이전트에게 전달할 내용이 복사되었습니다",
           "⚠ 복사에 실패했습니다. 직접 선택해 복사해 주세요"
         );
       }
@@ -784,7 +784,7 @@ function setupFocusCopy(sections: Map<string, Token[]>, parsedMap: ParsedMap): v
       showCopyFeedback(
         toast,
         ok,
-        "✓ Problem Framer용 컨텍스트가 복사되었습니다",
+        "✓ 에이전트에게 전달할 내용이 복사되었습니다",
         "⚠ 복사에 실패했습니다. 직접 선택해 복사해 주세요"
       );
     }
@@ -886,7 +886,7 @@ async function renderDoc(source: string): Promise<void> {
   const badge = document.getElementById("map-completeness-badge");
   if (badge) {
     badge.hidden = completeness.totalItems === 0 || completeness.missingItems === 0;
-    badge.textContent = `${completeness.matchedItems}/${completeness.totalItems} areas with detail`;
+    badge.textContent = `${completeness.matchedItems}/${completeness.totalItems}개 영역 상세 작성됨`;
     badge.className = `completeness-badge ${completeness.missingItems > 0 ? "missing" : "complete"}`;
   }
 

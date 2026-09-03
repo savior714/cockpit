@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cockpit</title>
-    <script type="module" crossorigin src="/assets/index-B9ua0kwx.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DDHgdud6.css">
+    <script type="module" crossorigin src="/assets/index-Dadkg-ai.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BO8jJAlm.css">
   </head>
   <body>
     <main id="cockpit" class="cockpit">
@@ -19,22 +19,22 @@
 
       <div id="primary-workspace" class="primary-workspace">
         <div id="overview-panel" class="overview-panel" aria-label="프로젝트 개요">
-          <section id="slot-horizon" class="panel panel-horizon" aria-label="프로젝트 지평">
+          <section id="slot-horizon" class="panel panel-horizon" aria-label="프로젝트 큰 그림">
             <div class="panel-header">
               <div>
-                <span class="surface-kicker">L0 / ORIENTATION</span>
-                <h2>프로젝트 지평</h2>
+                <span class="surface-kicker">전체 개요</span>
+                <h2>프로젝트 큰 그림</h2>
               </div>
             </div>
             <div class="panel-body"></div>
           </section>
 
           <div class="stage-posture-grid">
-            <section id="slot-stage" class="panel panel-stage" aria-label="단계 여정" hidden>
+            <section id="slot-stage" class="panel panel-stage" aria-label="진행 단계" hidden>
               <div class="panel-header">
                 <div>
-                  <span class="surface-kicker">L1 / JOURNEY</span>
-                  <h2>단계 여정</h2>
+                  <span class="surface-kicker">단계별 진행</span>
+                  <h2>진행 단계</h2>
                 </div>
               </div>
               <div class="panel-body"></div>
@@ -43,7 +43,7 @@
             <section id="slot-posture" class="panel panel-posture" aria-label="프로젝트 상태" hidden>
               <div class="panel-header">
                 <div>
-                  <span class="surface-kicker">L1 / POSTURE</span>
+                  <span class="surface-kicker">상태 점검</span>
                   <h2>프로젝트 상태</h2>
                 </div>
               </div>
@@ -51,13 +51,13 @@
             </section>
           </div>
 
-          <section id="slot-frontier" class="panel panel-frontier" aria-label="현재 최전선" hidden>
+          <section id="slot-frontier" class="panel panel-frontier" aria-label="현재 전환 과제" hidden>
             <div class="panel-header">
               <div>
-                <span class="surface-kicker">L1 / TRANSITION</span>
-                <h2>현재 최전선</h2>
+                <span class="surface-kicker">핵심 전환</span>
+                <h2>현재 전환 과제</h2>
               </div>
-              <span class="surface-note">가장 가까운 consequential state change</span>
+              <span class="surface-note">다음으로 넘어가기 위해 필요한 핵심 변화</span>
             </div>
             <div class="panel-body"></div>
           </section>
@@ -65,20 +65,20 @@
           <section id="slot-threads" class="panel panel-threads" aria-label="전략적 흐름" hidden>
             <div class="panel-header">
               <div>
-                <span class="surface-kicker">L1 / PARALLEL DIRECTIONS</span>
+                <span class="surface-kicker">병행 추진</span>
                 <h2>전략적 흐름</h2>
               </div>
             </div>
             <div class="panel-body"></div>
           </section>
 
-          <section id="slot-movement" class="panel panel-movement" aria-label="최근 실질적 변화" hidden>
+          <section id="slot-movement" class="panel panel-movement" aria-label="최근 중요한 변화" hidden>
             <div class="panel-header">
               <div>
-                <span class="surface-kicker">L1 / MODEL DELTA</span>
-                <h2>최근 실질적 변화</h2>
+                <span class="surface-kicker">최근 변화</span>
+                <h2>최근 중요한 변화</h2>
               </div>
-              <span class="surface-note">현재 PROGRESS.md · 최신 시맨틱 전환 · activity가 아니라 project model의 이동</span>
+              <span class="surface-note">현재 진행 문서 기준 · 단순 작업 나열이 아닌 프로젝트 상태의 핵심 전환</span>
             </div>
             <div class="panel-body"></div>
           </section>
@@ -87,7 +87,7 @@
         <section id="slot-map" class="panel panel-map" aria-label="프로젝트 지도">
           <div class="panel-header">
             <div>
-              <span class="surface-kicker">L2 / STRUCTURE</span>
+              <span class="surface-kicker">프로젝트 구조</span>
               <h2>프로젝트 지도</h2>
             </div>
             <span id="map-completeness-badge" class="completeness-badge" hidden></span>
@@ -95,7 +95,7 @@
           <div class="panel-body map-body"></div>
         </section>
 
-        <aside id="inspector-aside" class="universal-inspector-drawer" aria-label="Universal Inspector" hidden>
+        <aside id="inspector-aside" class="universal-inspector-drawer" aria-label="상세 정보 창" hidden>
           <div id="universal-inspector-panel" class="inspector-card panel">
             <div class="inspector-top-bar">
               <div id="inspector-breadcrumb" class="inspector-breadcrumb">개요</div>
@@ -114,11 +114,11 @@
             <div id="inspector-related" class="inspector-related" hidden></div>
             <div class="inspector-actions">
               <button id="inspector-copy-btn" class="btn-handoff" type="button" hidden
-                title="클릭하면 이 영역의 검토 컨텍스트가 Problem Framer용 handoff 텍스트로 클립보드에 복사됩니다">
+                title="클릭하면 에이전트에게 전달할 검토 내용이 클립보드에 복사됩니다">
                 이 영역 검토하기
               </button>
-              <span id="copy-toast" class="copy-toast" role="status" aria-live="polite" hidden>✓ 검토 요청이 복사되었습니다</span>
-              <p id="handoff-hint" class="handoff-hint" hidden>클릭하면 Problem Framer에게 전달할 검토 요청 컨텍스트가 클립보드에 복사됩니다</p>
+              <span id="copy-toast" class="copy-toast" role="status" aria-live="polite" hidden>✓ 에이전트에게 전달할 내용이 복사되었습니다</span>
+              <p id="handoff-hint" class="handoff-hint" hidden>클릭하면 에이전트에게 전달할 검토 내용이 클립보드에 복사됩니다</p>
             </div>
           </div>
         </aside>
@@ -128,16 +128,16 @@
         <section id="slot-focus" class="panel panel-context panel-focus" aria-label="현재 집중" hidden>
           <div class="panel-header">
             <div>
-              <span class="surface-kicker">USER-OWNED</span>
+              <span class="surface-kicker">작업자 지정</span>
               <h2>현재 집중</h2>
             </div>
           </div>
           <div class="panel-body"></div>
           <div class="focus-actions">
             <button id="focus-copy-btn" class="btn-focus-copy" type="button">
-              현재 집중 컨텍스트 복사
+              현재 집중 내용 복사
             </button>
-            <span id="focus-copy-toast" class="copy-toast" role="status" aria-live="polite" hidden>✓ Problem Framer용 컨텍스트가 복사되었습니다</span>
+            <span id="focus-copy-toast" class="copy-toast" role="status" aria-live="polite" hidden>✓ 에이전트에게 전달할 내용이 복사되었습니다</span>
           </div>
         </section>
 
@@ -145,7 +145,7 @@
         <section id="slot-recent" class="panel panel-context panel-recent" aria-label="최근 진척" hidden>
           <div class="panel-header">
             <div>
-              <span class="surface-kicker">LEGACY FALLBACK</span>
+              <span class="surface-kicker">이전 형식</span>
               <h2>최근 진척</h2>
             </div>
           </div>

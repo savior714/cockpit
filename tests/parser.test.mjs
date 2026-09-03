@@ -677,7 +677,7 @@ test("Recent Material Movement is a bounded semantic transition window, with leg
   const cssPath = path.join(__dirname, "..", "src", "style.css");
   const css = fs.readFileSync(cssPath, "utf-8");
 
-  assert.match(html, /현재 PROGRESS\.md · 최신 시맨틱 전환/);
+  assert.match(html, /현재 진행 문서 기준 · 단순 작업 나열이 아닌 프로젝트 상태의 핵심 전환/);
   const foregroundRule = css.indexOf("li:nth-child(-n + 2)");
   const backgroundRule = css.indexOf("li:nth-child(n + 3)");
   assert.ok(foregroundRule !== -1, "the newest two Recent Progress items need a foreground rule");

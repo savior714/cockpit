@@ -76,7 +76,7 @@ test("Inspector affordance surfaces both success and failure (never silent)", ()
   const main = readSource("src/main.ts");
   const html = readSource("index.html");
   assert.ok(html.includes("이 영역 검토하기"), "inspector button label must be preserved");
-  assert.ok(main.includes("✓ 검토 요청이 복사되었습니다"), "inspector success text must be preserved");
+  assert.ok(main.includes("✓ 에이전트에게 전달할 내용이 복사되었습니다"), "inspector success text must be preserved");
   assert.ok(
     main.includes("⚠ 복사에 실패했습니다. 직접 선택해 복사해 주세요"),
     "inspector failure text must be visible"
@@ -93,15 +93,31 @@ test("Inspector affordance surfaces both success and failure (never silent)", ()
 test("Current Focus affordance surfaces both success and failure (never silent)", () => {
   const main = readSource("src/main.ts");
   const html = readSource("index.html");
-  assert.ok(html.includes("현재 집중 컨텍스트 복사"), "focus button label must be preserved");
+  assert.ok(html.includes("현재 집중 내용 복사"), "focus button label must be preserved");
   assert.ok(
-    main.includes("✓ Problem Framer용 컨텍스트가 복사되었습니다"),
+    main.includes("✓ 에이전트에게 전달할 내용이 복사되었습니다"),
     "focus success text must be preserved"
   );
   assert.match(
     main,
     /const ok = await copyToClipboard\(text\);\s*\n\s*if \(toast\) \{\s*\n\s*showCopyFeedback\(\s*\n?\s*toast,\s*\n?\s*ok,/
   );
+});
+
+test("Ordinary clipboard guidance describes the action without naming the internal handoff component", () => {
+  const main = readSource("src/main.ts");
+  const html = readSource("index.html");
+  assert.ok(
+    html.includes("클릭하면 에이전트에게 전달할 검토 내용이 클립보드에 복사됩니다"),
+    "inspector guidance must explain the user-visible action"
+  );
+  assert.ok(
+    html.includes("✓ 에이전트에게 전달할 내용이 복사되었습니다"),
+    "focus feedback must explain the user-visible result"
+  );
+  assert.doesNotMatch(html, /Problem Framer/, "ordinary HTML UI must not expose the internal component name");
+  assert.doesNotMatch(html, /컨텍스트/, "ordinary HTML UI should describe purpose directly instead of jargon");
+  assert.doesNotMatch(main, /✓ Problem Framer용 컨텍스트가 복사되었습니다/);
 });
 
 test("Feedback lifecycle reuses one common helper with per-toast timer coalescing", () => {
