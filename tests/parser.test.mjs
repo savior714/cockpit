@@ -656,9 +656,9 @@ test("Recent Progress is a newest-first semantic rolling window with visible rec
     .map((token) => token.content.trim());
 
   assert.ok(recentItems.length >= 5 && recentItems.length <= 8, "Recent Progress must stay a bounded rolling window");
-  assert.match(recentItems[0], /^\*\*프로젝트 이해 충실도 acceptance gap/);
-  assert.match(recentItems[1], /^\*\*Recent Progress를 rolling semantic window/);
-  assert.match(recentItems[2], /^\*\*실 프로젝트 수용성 검증/);
+  assert.match(recentItems[0], /^\*\*Overview를 Project Horizon zoom level로 재정의함/);
+  assert.match(recentItems[1], /^\*\*프로젝트 이해 충실도 acceptance gap/);
+  assert.match(recentItems[2], /^\*\*Recent Progress를 rolling semantic window/);
   for (const item of recentItems) {
     assert.match(item, /^\*\*.+\*\* → .+/, "each item must expose material change → consequence");
   }
@@ -1804,6 +1804,121 @@ test("Focus and Area handoffs distinguish REFRESH from RECONSTRUCT and close mod
     assert.ok(index > previousIndex, `reconstruction marker must preserve order: ${marker}`);
     previousIndex = index;
   }
+});
+
+test("Focus and Area handoffs carry the Project Horizon reader-level projection contract", () => {
+  const contexts = [
+    buildFocusHandoffContext({
+      projectTitle: "Projection Test Project",
+      focusText: "Current focus",
+    }),
+    buildAreaHandoffContext({
+      projectTitle: "Projection Test Project",
+      areaTitle: "Some area",
+    }),
+  ];
+
+  for (const context of contexts) {
+    assert.ok(context.includes("[Reader-Level Projection]"));
+    assert.ok(
+      context.includes("evidence assimilation과 reader-level projection을 분리하라"),
+      "handoff must separate evidence assimilation from reader-level projection"
+    );
+    assert.ok(
+      context.includes("high-resolution evidence를 발견했다는 이유만으로 Project Horizon overview"),
+      "handoff must forbid projecting raw high-resolution evidence into Overview"
+    );
+    assert.ok(context.includes("Project Horizon"));
+    assert.ok(
+      context.includes("`현재 상황`은 project-wide 상태"),
+      "Overview current situation must be defined at project horizon zoom"
+    );
+    assert.ok(
+      context.includes("executor command 아님"),
+      "next transition must not be reduced to executor commands"
+    );
+    assert.ok(
+      context.includes("Blocker/Material Uncertainty/Constraint"),
+      "facing issues must be admitted at project-level constraint zoom"
+    );
+    assert.ok(
+      context.includes("commit SHA·개별 파일/route·test 개수·command·CI run·bug chronology"),
+      "handoff must enumerate low-level evidence excluded from Overview"
+    );
+    assert.ok(
+      context.includes("Recent Progress(material semantic transition), Area Detail(subsystem 상태/근거), Handoff(exact execution context)"),
+      "handoff must route low-level evidence to lower-level surfaces"
+    );
+    assert.ok(
+      context.includes("분석 정확도는 유지하되 표면별 표현 해상도만 분리한다"),
+      "handoff must preserve analysis accuracy while separating display resolution"
+    );
+
+    // Projection instruction must not weaken existing assimilation contract: it lands
+    // after coverage closure/escape hatch, before framing objective.
+    const projectionIdx = context.indexOf("[Reader-Level Projection]");
+    assert.notEqual(projectionIdx, -1);
+    assert.ok(context.indexOf("[Coverage Closure — transient]") < projectionIdx);
+    assert.ok(context.indexOf("[Project Map Escape Hatch]") < projectionIdx);
+    assert.ok(projectionIdx < context.indexOf("[Framing Objective]"));
+  }
+
+  // Focus handoff keeps Next Transition at project-level state transition even with a focus.
+  const focusContext = contexts[0];
+  assert.ok(
+    focusContext.includes("Next Transition을 command/task 수준으로 축소하지 않고 focus advancement를 project-level state transition으로 표현한다"),
+    "focus handoff must express focus advancement as project-level state transition"
+  );
+});
+
+test("Project horizon fixture: noisy low-level evidence stays out of Overview surfaces", () => {
+  const filePath = path.join(__dirname, "fixtures", "project-horizon.md");
+  const content = fs.readFileSync(filePath, "utf-8");
+
+  const structure = checkProgressStructure(content);
+  assert.equal(structure.ok, true, "project-horizon fixture should PASS structural check");
+
+  const tokens = md.parse(content, {});
+  const { sections } = splitSections(tokens);
+  const overviewText = ["current situation", "next transition", "facing issues"]
+    .map((key) => {
+      const sectionTokens = sections.get(key);
+      assert.ok(sectionTokens, `fixture must contain ${key} section`);
+      return extractSectionRawText(sectionTokens);
+    })
+    .join("\n");
+
+  const recentProgress = extractSectionRawText(sections.get("recent progress"));
+  const areaDetailsIdx = content.indexOf("## 영역 상세");
+  assert.ok(areaDetailsIdx !== -1);
+  const areaDetailsText = content.slice(areaDetailsIdx, content.indexOf("## 현재 상황"));
+
+  // Low-level evidence must be preserved in lower-level surfaces...
+  const lowLevelMarkers = ["a1b2c3d", "POST /api/orders", "npm run test:integration", "CI run #4102"];
+  for (const marker of lowLevelMarkers) {
+    assert.ok(
+      areaDetailsText.includes(marker) || recentProgress.includes(marker),
+      `lower-level surface must preserve evidence marker: ${marker}`
+    );
+  }
+
+  // ...but must not leak into the project-horizon Overview.
+  for (const marker of lowLevelMarkers) {
+    assert.ok(
+      !overviewText.includes(marker),
+      `Overview must not contain low-level evidence marker: ${marker}`
+    );
+  }
+  assert.ok(!/\b[0-9a-f]{7,40}\b/.test(overviewText), "Overview must not contain commit SHAs");
+  assert.ok(!/npm run/.test(overviewText), "Overview must not contain shell commands");
+
+  // Overview must carry project-horizon semantics: categorized situation,
+  // state transition with completion condition, and material constraint only.
+  assert.ok(overviewText.includes("성과/범위"), "situation must be compressed into material categories");
+  assert.ok(overviewText.includes("검증/준비도"));
+  assert.ok(overviewText.includes("전환") && overviewText.includes("→"), "next transition must be a state transition");
+  assert.ok(overviewText.includes("완료 조건"), "next transition must carry a completion condition");
+  assert.ok(overviewText.includes("Proof Gap"), "facing issues must admit a project-level constraint");
 });
 
 test("Area review handoff context assembly: minimal context without optional details/focus", () => {

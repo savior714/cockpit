@@ -54,7 +54,7 @@ B1.2 Frontier Grid 비주얼 디렉션 구현. 명시적 마크다운 목록 문
 우측 상단 기본 화면에 프로젝트의 현재 상황, 다음 전환, 직면한 문제, 현재 집중을 표시하고, 외부 Problem Framer가 프로젝트 model을 검증·재구성할 수 있도록 표준화된 Handoff 마크다운과 진입 계약을 클립보드로 전송하는 컴포넌트.
 
 #### 현재 수준
-Current Focus 유무에 따른 조건부 렌더링, `buildFocusHandoffContext`를 통한 Execution Wave(NOW/SERIAL NOW/WAIT FOR EVIDENCE) 프레이밍 가이드라인 결합 클립보드 복사 함수 및 DOM 피드백 구조, Focus/Area handoff의 REFRESH·RECONSTRUCT 모드 선택, anti-anchoring, positive-model re-admission, transient Coverage Closure 및 Project Map escape 지침이 구현되어 단위 테스트로 전송 동작을 검증함. 이는 외부 프로젝트 전반의 model fidelity 자체를 증명하는 것은 아님.
+Current Focus 유무에 따른 조건부 렌더링, `buildFocusHandoffContext`를 통한 Execution Wave(NOW/SERIAL NOW/WAIT FOR EVIDENCE) 프레이밍 가이드라인 결합 클립보드 복사 함수 및 DOM 피드백 구조, Focus/Area handoff의 REFRESH·RECONSTRUCT 모드 선택, anti-anchoring, positive-model re-admission, transient Coverage Closure, Project Map escape 및 evidence assimilation과 reader-level projection을 분리하여 Overview를 Project Horizon zoom으로 유지하는 projection 지침이 구현되어 단위 테스트로 전송 동작을 검증함. 이는 외부 프로젝트 전반의 model fidelity 자체를 증명하는 것은 아님.
 
 #### 근거
 - `src/parser.ts:L850-1050`
@@ -139,19 +139,31 @@ Handoff와 authoring contract가 신뢰 가능한 baseline에 대한 REFRESH와 
 - `tests/parser.test.mjs` (양쪽 Handoff contract transport regression)
 
 ## 현재 상황
-Cockpit은 마크다운 파서, 네이티브 맵 렌더러, 영역 검사기, Handoff 컨텍스트 전송, 루프백 서버 및 `cockpit check` 구조 검사기 등 핵심 런타임을 구현하고 단위 및 패키지 격리 스모크 테스트를 통과했습니다. `REAL-PROJECT-RECONSTRUCT-REFRESH-01`에서 fresh published Cockpit을 사용해 EMR의 초기 revision `3c81c0eb0b67c118554824969397ac6937917408`을 testbed로 관찰했고, 이후 fresh clean snapshot에서 현재 원격 revision `1e400deade67006546f39a5ac84e27f926af393c`의 release verifier 범위 변경을 재검증했습니다. 이 후속 변경 뒤에도 exact Stage 1A proof는 `NOT PROVEN`이며 이번 fidelity acceptance의 제품 semantic model은 변하지 않았습니다. Lane A는 기존 EMR `PROGRESS.md`가 공유 working tree의 uncommitted draft이고 일부 provider/release 표현이 현재 proof보다 강하다는 점을 분리하면서도 핵심 project model의 충실도를 확인했습니다. Lane B는 지정된 `40f99322→45832f9`가 consumer 없는 Service07 adapter 추가라 project-level delta가 아님을 확인한 뒤, `6c681323→edbd82843`의 HIRA 단일 sentinel 증거 전이를 bounded material delta로 선택했고 REFRESH와 독립 oracle이 수렴했습니다. 이 acceptance 결과는 한 real project에서의 fidelity를 닫지만, EMR Stage 1A 전체 release나 NHIS/DUR/NIMS/EDI/payment의 live capability를 증명하지 않습니다. 외부 실제 프로젝트 수용성에서는 대상 프로젝트를 evidence로만 취급하고, 필요한 경우 하나의 사전 승인된 자극을 관찰한 뒤 Cockpit의 semantic delta만 추출하고 중단하는 운영 경계를 갖습니다.
+
+- **성과/범위** — 프로토타입을 넘어 한 외부 실 프로젝트(EMR) testbed에서 프로젝트 이해 충실도 acceptance를 통과한 읽기 전용 PM 뷰어로, 파싱·지도·검사기·Handoff·배포 기반의 핵심 런타임이 구축·검증된 상태다.
+- **핵심 기반** — 시각화 런타임과 외부 capable agent 운영 계약(REFRESH/RECONSTRUCT, open claim 재입장, evidence placement)이 상호 정합적으로 확립되어, Cockpit 스스로 자신의 현황 문서를 이 계약으로 유지하는 dogfood가 성립한다.
+- **검증/준비도** — 무게중심은 기능 확장보다 외부 일반성 증명에 있다. 충실도·evidence boundary의 결론은 현재 단일 저장소 사례에 bounded되어 있으며, 다중 저장소 실환경 proof가 열려 있다.
 
 ## 다음 전환
-Cockpit의 GitHub/npm 설치와 여러 외부 저장소에서의 실제 에이전트 운영 루프를 검증하여, 이번 EMR 한 사례에서 확인한 RECONSTRUCT/REFRESH fidelity와 evidence boundary가 다른 프로젝트에서도 유지되는지 확인합니다.
+
+- **전환** — 충실도와 evidence boundary가 한 외부 저장소(EMR) 사례에서 검증된 뷰어 → GitHub/npm 설치와 실제 에이전트 운영 루프가 여러 외부 저장소에서 작동하고 같은 fidelity/evidence boundary가 유지되는 범용 뷰어
+- **완료 조건** — 실제 외부 사용자 저장소에서 배포본 설치·시각화·Handoff 운영 루프가 그 저장소 고유의 semantic 구조에 의존 없이 완결되고, 대상 프로젝트는 evidence로만 취급되는 운영 경계가 실증된 상태
+- **그 이후** — 복수 testbed evidence 축적에 따른 Project Horizon 표현 일반성과 실환경 다중 저장소 운용 궤적이 열린다
+
+## 직면한 문제
+
+- **Proof Gap** — GitHub/npm 설치와 실제 에이전트 운영 루프의 다중 저장소 실환경 proof가 아직 닫히지 않았다. 현재 fidelity·evidence boundary 결론은 EMR 단일 사례에 bounded된 것이므로, 이 proof 부재가 다음 전환의 acceptance를 실제로 제한한다.
 
 ## 최근 진척
+
+## 최근 진척
+- **Overview를 Project Horizon zoom level로 재정의함** → authoring contract, REFRESH/RECONSTRUCT workflow, Problem Framer Handoff에 evidence assimilation과 reader-level projection 분리를 명시하고, low-resolution evidence(commit/test/command/bug chronology)를 Recent Progress·Area Detail·Handoff의 적절한 zoom에 배치하여 메인 Overview가 10초 만에 프로젝트 위치·방향·제약을 전달하는 표면으로 회복됨.
 - **프로젝트 이해 충실도 acceptance gap을 식별하고 진입 모드를 분리함; REAL-PROJECT-RECONSTRUCT-REFRESH-01을 실제 EMR에서 PASS함** → 불신 baseline의 독립 RECONSTRUCT와 HIRA 단일 sentinel의 trusted-baseline REFRESH가 독립 oracle과 수렴했고, unproven provider/release claims는 positive fact로 승격하지 않음. 기존 PROGRESS가 신뢰할 수 있는 baseline인지 먼저 판정하며, 불명확하면 기존 문서에 anchoring하지 않는 RECONSTRUCT, 확립된 baseline에는 보수적인 REFRESH를 적용함.
 - **Recent Progress를 rolling semantic window로 재정렬하고 최신 전환 위계를 강화함** → 기존 9개 누적 목록을 현재 상태를 설명하는 8개 material transition으로 압축하고, 새 문서 갱신 때 stable context가 된 오래된 전환을 제거할 수 있게 했으며, 화면에서 최신 1–2개를 우선 읽도록 함.
 - **실 프로젝트 수용성 검증의 테스트베드 경계를 확립함** → 외부 실제 프로젝트의 결함을 Cockpit 상태 표현·전송·reconciliation을 평가하기 위한 evidence로 한정하고, mutation-bearing acceptance는 하나의 사전 승인된 stimulus 뒤 관찰·Cockpit delta 추출·중단하도록 명시함. 정상적인 `Cockpit → Problem Framer → executor` 사용자 워크플로우는 그대로 유지함.
 - **기존 open claim을 fresh evidence로 재입장시키는 반증 계약을 확립함** → 기존 `남은 문제`·`직면한 문제`·`다음 전환` 선행조건·material limitation을 자동 승계하지 않고, 외부 capable agent가 fresh implementation/runtime/proof의 closure와 counterevidence를 먼저 탐색하도록 하여 닫힌 문제의 잔존 표시와 무근거 remediation task 승격을 방지함.
 - **가상 Orion 상태를 제거하고 사실 기반 프로젝트 상태·다중 패스 동화 계약을 정립함** → 실제 저장소 증거 기반의 PROGRESS를 수립하고, 4대 증거 축 대조·적대적 모순 심사·닫힘 시점 정합성 규칙을 거치는 이식 가능한 외부 agent 운영 계약을 확립함.
 - **B1.2 Frontier Grid와 하단 맥락 계층을 정리함** → 대시보드 클리셰와 AI UI 문법을 제거하고, 상단 지도·프론티어 강조·하단 Recent Progress 중심의 에디토리얼 정보 계층을 확립함.
-- **영역 상세를 evidence-admitted semantics로 정합화함** → `남은 문제`를 증거가 입증한 경우에만 선택적으로 표시하고, 근거 없는 문제·플레이스홀더가 현재 mental model을 오염시키지 않도록 함.
 
 ## 제품 목표
 Cockpit은 프로젝트의 `PROGRESS.md`를 읽어 대화형 프로젝트 지도, 진행 궤적의 객관적 프론티어, 영역별 상세 검사기를 브라우저에 실시간 시각화해 주는 초경량 읽기 전용 PM 대시보드입니다. 외부 역량 에이전트가 신뢰 가능한 경우에는 보수적으로 기존 mental model을 갱신하고, 신뢰할 수 없는 경우에는 현재 repo/runtime/SSOT 증거에서 독립적으로 project model을 재구성한 뒤 단일 현황 문서를 통해 문제를 외부 Problem Framer로 결정론적으로 인계(Handoff)할 수 있도록 지원합니다. Cockpit 바이너리 자체에는 AI, 데이터베이스, 백그라운드 데몬, 파일 쓰기 메커니즘을 일체 포함하지 않습니다.

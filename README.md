@@ -271,13 +271,18 @@ repo / runtime / 관련 SSOT (최신 실제 증거)
 (지도에 나열된 모든 검사 대상 영역마다 동일한 영역 제목(H3)으로 필수 항목(의미, 현재 수준, 근거)을 작성하고, 증거가 있는 경우에만 남은 문제를 선택적으로 작성할 것)
 
 ## 현재 상황
-최근 실질적 변경 이력, 객관적으로 증명된 것 vs 존재하는 것, 핵심 불확실성 및 갭을 포함한 프로젝트 상태 종합 서술.
+Project Horizon — "프로젝트는 전체적으로 지금 어떤 상태인가?"에 대한 답. 최근 작업의 chronology나 evidence dump가 아니라, 재입장·reconciliation이 끝난 admitted project model을 프로젝트 전체 수준의 위치로 압축한 서술 (가능하면 성과/범위, 핵심 기반/capability, 검증/readiness, 제품·운영 단계 같은 material category 2~4개).
+- **[category]** — project-level 상태 claim (예: **검증/준비도** — 현재 무게중심은 기능 확장보다 release readiness의 최종 증명에 있다.)
 
 ## 다음 전환
-Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가까운 전환 (또는 프로젝트 차원의 가장 가까운 다음 전환).
+Project Horizon — "프로젝트가 어떤 상위 상태로 넘어가려 하는가?" Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가까운 전환 (또는 프로젝트 차원의 가장 가까운 다음 전환). executor action/shell command가 아니라 state transition으로 표현한다.
+- **전환** — A 상태 → B 상태
+- **완료 조건** — B라고 부를 수 있는 project-level condition
+- **그 이후** — 이 전환이 닫히면 열리는 다음 trajectory
 
 ## 직면한 문제 (선택 사항)
-- 현재 진행을 가로막고 있거나 집중적인 해결이 필요한 프로젝트 차원의 실질적 장애 요인 (신선한 증거가 있는 경우에만 작성하며, 프로젝트 수준의 직면 문제가 없으면 생략 가능).
+Project Horizon — "방향과 다음 전환을 실제로 제한하는 것은 무엇인가?" bug backlog가 아니라 Blocker / Material Uncertainty / Constraint·Trade-off만 admitted한다.
+- **[category]** — 현재 진행을 가로막거나 다음 전환을 제한하는 프로젝트 차원의 실질적 제약 (신선한 증거가 있는 경우에만 작성하며, 프로젝트 수준의 직면 문제가 없으면 생략 가능). 이미 닫힌 defect나 과거 실패 chronology는 올리지 않는다.
 
 ## 최근 진척
 - **[주요 시맨틱 전환 1]** → 실질적 변경 내용과 프로젝트 상태/역량/방향에 생긴 결과 (최신순 rolling window, 보통 약 5~8개)
@@ -323,6 +328,12 @@ Current Focus가 있을 때 해당 focus가 한 단계 전진하는 가장 가�
 8. 닫힘 시점 정합성 및 증거 비례적 주장 (Closure-Time Coherence & Proportional Claims):
    - 현재 상황과 다음 전환은 작업 완료 및 발행 이후(post-closure)의 상태를 기준으로 기술한다.
    - 주장의 강도는 직접 증거의 입증 범위에 엄격히 비례해야 하며('완벽', '보장', '무중단' 등 과대 표현 배제), 증거가 입증하는 정확한 경계만을 기술한다.
+
+9. evidence assimilation과 reader-level projection의 분리 (Assimilate Deep, Project Shallow):
+   - 증거 수집·재입장·reconciliation은 높은 해상도로 수행하되, 각 surface에는 그 surface의 zoom level에 맞게 투영한다. `evidence → admitted project model → surface별 projection`이며, 분석의 정확도를 낮추지 않고 표현 해상도만 분리한다.
+   - Overview(현재 상황/다음 전환/직면한 문제)는 project-wide orientation, state transition, material constraint만 담는다. commit SHA, 개별 파일/함수/route, test 개수, test command, CI run, 세부 verifier invocation, 저수준 bug chronology, executor가 수행할 shell command는 Overview의 내용이 아니다.
+   - material semantic transition은 최근 진척에, subsystem별 상태/문제/근거는 영역 상세에, exact actionable execution context와 proof identity는 Handoff에 둔다. Overview에서 제거한 세부사항이 이미 적절한 lower-level surface에 존재하면 중복 복사하지 않는다.
+   - 닫힌 defect나 과거 실패의 chronology는 어떤 surface에도 현재 문제로 재투사하지 않는다.
 ```
 
 ### 작업 중 PROGRESS.md 갱신하기
@@ -343,7 +354,10 @@ RECONSTRUCT라면 독립 재구성 → coverage closure → claim admission/unce
   A. PROJECT STATE: repo/runtime/SSOT evidence에서 객관적으로 무엇이 확립되었는가
   B. CURRENT STAGE: 특정 진행 경로(Trajectory Rail)가 객관적으로 어디까지 왔는가 (레일당 최대 1개 그룹, 그룹 내 1개 이상의 객관적 현재 frontier 항목)
   C. CURRENT FOCUS: 사용자가 현재 어떤 product/problem을 중요하게 보고 있는가 (명시적 사용자 방향 증거가 없다면 기존 Focus를 보존하고, 단순 Git 커밋/활동량/현재 task만으로 Focus를 임의 추론하거나 이동하지 마)
-  D. RECENT PROGRESS: 단순 커밋 로그가 아닌 실질적 변경에 따른 시맨틱 전환 이력 기록. 새 material transition을 넣을 때 오래되어 stable context가 된 항목은 제거할 수 있는지 함께 판단
+   D. RECENT PROGRESS: 단순 커밋 로그가 아닌 실질적 변경에 따른 시맨틱 전환 이력 기록. 새 material transition을 넣을 때 오래되어 stable context가 된 항목은 제거할 수 있는지 함께 판단
+EVIDENCE ASSIMILATION(권위/구현/runtime/proof/relevant Git 재입장·모순 제거·coverage closure)과 READER-LEVEL PROJECTION(admitted model을 surface별 zoom level로 투영)을 분리해줘.
+EVIDENCE ASSIMILATION에서 발견한 high-resolution evidence를 `현재 상황`/`다음 전환`/`직면한 문제` Overview에 그대로 투사하지 말고,
+Overview는 project-wide 상태·state transition·material constraint 수준으로 압축하고, subsystem 근거는 영역 상세, material transition은 최근 진척, exact execution context는 Handoff에 둬줘.
 독자 관점의 필수 항목(의미, 현재 수준, 근거)과 명시적 관계 문법을 엄격히 유지하고,
 기존 `남은 문제`, `직면한 문제`, `다음 전환`의 선행조건 및 material한 `현재 수준` limitation을
 모두 open claim으로 재입장시켜, 이미 닫혔거나 현재 defect가 아닌지 closure/counterevidence를 적극적으로 탐색해줘.
@@ -375,6 +389,7 @@ escalate하되, 기본 bounded review를 무관한 repository-wide audit으로 �
 - **RECONSTRUCT**는 기존 mental model의 신뢰성을 전제할 수 없을 때 사용합니다. Cockpit first-use/최초 프로젝트 연결, 사용자가 현재 model 정확성에 의문을 제기한 경우, 여러 stale/false claim이 발견된 경우, 실제 architecture/workflow와 Project Map 구조가 맞지 않는 경우, 장기간 재진입으로 baseline 신뢰성이 불명확한 경우, 기존 `PROGRESS.md`의 provenance/fidelity를 신뢰할 근거가 없는 경우가 대표적인 조건입니다.
 - RECONSTRUCT에서는 `current authority / code / runtime / proof / relevant Git → independent project reconstruction → coverage closure → claim admission/uncertainty handling → synthesis → existing PROGRESS comparison → replacement` 순서를 유지합니다. 기존 `PROGRESS.md`는 마지막 비교 전까지 historical claim/comparison source일 뿐 topology/architecture truth가 아닙니다.
 - RECONSTRUCT에서는 subsystem의 존재·역할, workflow, semantic owner, capability 구현·검증 여부, Project Map decomposition, Current Stage와 같은 material positive model도 current evidence로 다시 admit해야 하며, 기존 문구를 grandfather하지 않습니다. 기존 `남은 문제` 등 negative/open claim의 재입장·반증도 그대로 유지합니다.
+- REFRESH와 RECONSTRUCT 모두 evidence assimilation(증거 수집·재입장·reconciliation)과 reader-level projection(admitted model을 surface별 zoom level로 투영)의 두 단계를 분리합니다. assimilation 중 발견한 high-resolution evidence를 `현재 상황`/`다음 전환`/`직면한 문제` Overview에 그대로 투사하지 않고, Overview는 Project Horizon(project-wide 상태·state transition·material constraint)으로 유지하며 subsystem 근거는 영역 상세, material transition은 최근 진척, exact execution context는 Handoff에 둡니다.
 - RECONSTRUCT synthesis 전에 material semantic surface마다 역할, owner, entry/runtime path, consequential consumer/downstream effect, authority/intent source, 직접 implementation/proof evidence, relevant history 및 represented / intentionally omitted / UNKNOWN 상태를 transient reasoning으로 닫습니다. 전수 inventory, coverage %, persistent registry/schema/DB/score는 만들지 않습니다.
 - Focus/Area review 중 전달된 Area 또는 Project Map의 의미·owner·boundary가 실제 evidence와 맞지 않거나 root cause가 경계를 넘는다는 direct evidence가 나오면 기존 map에 강제 편입하지 않고 필요한 범위에서 RECONSTRUCT 또는 wider re-entry로 escalate합니다. 단순한 가능성만으로 매번 repository-wide audit으로 확대하지 않습니다.
 
@@ -562,9 +577,9 @@ STABLE CONTEXT (영속적 맥락 프레임)
 1. **현재 상태 (Current State — 최우선 독서면)**:
    - **현재 집중 (`## 현재 집중`)**: 사용자가 현재 중요하게 보고 있는 핵심 관심사.
    - **프로젝트 지도 (`## 프로젝트 지도`)**: 프로젝트 고유의 궤적/중립 레일 및 영역 카드.
-   - **현재 상황 (`## 현재 상황`)**: 최근 실질적 변경 및 객관적 상태 종합.
-   - **다음 전환 (`## 다음 전환`)**: 현재 상태/Focus가 전진하는 가장 가까운 다음 마일스톤.
-   - **직면한 문제 (`## 직면한 문제`)**: 해결이 필요한 실질적 블로커.
+    - **현재 상황 (`## 현재 상황`)**: Project Horizon — 프로젝트 전체의 현재 위치 (material category 2~4개로 압축한 project-level 상태). 최근 변경 chronology/evidence dump가 아님.
+    - **다음 전환 (`## 다음 전환`)**: Project Horizon — 현재 상태에서 전진하려는 상위 상태로 transition과 완료 조건 (executor command 아님).
+    - **직면한 문제 (`## 직면한 문제`)**: Project Horizon — 방향과 다음 전환을 실제로 제한하는 Blocker/Material Uncertainty/Constraint. bug backlog가 아님.
    - **영역 상세 (`## 영역 상세`)**: 각 영역의 의미, 현재 수준, 근거 및 (증거 기반 미해결 문제가 있는 경우) 남은 문제.
 2. **최근 시맨틱 전환 (Recent Progress — 하단 주 독서면)**:
    - **최근 진척 (`## 최근 진척` / `## Recent Progress`)**: "이 프로젝트가 바로 전 상태에서 현재 상태로 어떻게 실질적으로 도달했는가?"를 설명하는 최신순 rolling semantic window. 하단 영역에서 가장 넓고 명확한 독서면으로 렌더링되며, 오래된 history archive처럼 끝없이 누적하지 않습니다.
@@ -598,6 +613,14 @@ STABLE CONTEXT (영속적 맥락 프레임)
 
 ---
 
+#### 4. Overview — Project Horizon (현재 상황 / 다음 전환 / 직면한 문제)
+- **목적**: 사용자가 메인 화면을 약 10초 보고 ① 프로젝트가 전체적으로 어디까지 왔는가, ② 어떤 상위 상태로 전환하려 하는가, ③ 그 방향을 실제로 제한하는 핵심 요인은 무엇인가를 이해할 수 있게 하는 프로젝트 방향성 surface.
+- **현재 상황**: 재입장·reconciliation이 끝난 admitted project model을 프로젝트 전체 수준의 위치로 압축한다 (가능하면 material category 2~4개, 예: **성과/범위**, **핵심 기반**, **검증/준비도**). 개별 최근 작업의 chronology가 아니다.
+- **다음 전환**: `A 상태 → B 상태` + 완료 조건 (+ 그 이후 trajectory) 형태의 project-level state transition. Current Focus가 있으면 focus advancement를 project-level 전환으로 표현하되, command/task 수준으로 축소하지 않는다.
+- **직면한 문제**: 방향이나 다음 전환을 실제로 제한하는 Blocker / Material Uncertainty / Constraint·Trade-off만 admitted한다. 과거 실패나 이미 닫힌 defect는 올리지 않는다.
+- **지양 (acceptance failure)**: commit SHA, 개별 파일/함수/route/decorator, 특정 test 개수·command, 개별 CI run, 세부 verifier/gate invocation, 저수준 bug chronology, executor용 shell command가 Overview에 먼저 눈에 들어오는 작성.
+- **projection 규칙**: high-resolution evidence는 수집하되 Overview에 그대로 복사하지 않는다 (`evidence → admitted project model → Project Horizon projection`). material semantic transition은 최근 진척, subsystem 상태/근거는 영역 상세, exact execution context와 proof identity는 Handoff에 두고, 이미 lower-level surface에 있는 내용을 Overview에 중복 복사하지 않는다. category 이름은 mandatory enum이 아니라 semantic guidance다.
+
 ### 컨텍스트 Handoff 액션
 
 - **`현재 집중 컨텍스트 복사`**: `## 현재 집중`이 존재할 때 우측 기본 개요의 현재 집중 카드 하단에 표시되는 버튼입니다. 프로젝트 이름, 현재 집중, 현재 상황, 다음 전환, 직면한 문제, 제품 목표, 확정된 방향, 프로젝트 지도, 영역 상세 전체 맥락과 Problem Framer 가이드라인을 원클릭으로 클립보드에 복사합니다. 외부 Problem Framer가 Current Focus를 Next Transition까지 전진시키기 위한 Execution Wave를 수립하도록 돕습니다. (Focus가 없는 문서에서는 버튼이 표시되지 않습니다.)
@@ -626,9 +649,9 @@ Cockpit은 한국어와 영어 `## h2` 헤딩을 모두 지원합니다:
 | `## 현재 집중` | `## Current Focus` | 우측 기본 개요 최상단: 현재 집중 (사용자 소유의 핵심 관심사) 및 컨텍스트 복사 액션 |
 | `## 프로젝트 지도` | `## Project Map` | 프로젝트 고유의 레일/그룹 구조 및 영역 카드 렌더링 |
 | `## 영역 상세` / `## 영역별 상세` | `## Area Details` / `## Area Detail` | 각 영역의 세부 속성 (필수: 의미, 현재 수준, 근거 / 선택: 남은 문제, 다시 열리는 조건) |
-| `## 현재 상황` / `## 지금` / `## 지금 하는 일` | `## Current Situation` / `## Current Frontier` | 우측 기본 개요: 현재 상황 (최근 실질적 변경 및 객관적 상태 종합) |
-| `## 다음 전환` / `## 다음` | `## Next Transition` / `## Next` | 우측 기본 개요: 다음 전환 |
-| `## 직면한 문제` / `## 막힌 것` | `## Facing Issues` / `## Blocked` | 우측 기본 개요: 직면한 문제 |
+| `## 현재 상황` / `## 지금` / `## 지금 하는 일` | `## Current Situation` / `## Current Frontier` | 우측 기본 개요: 현재 상황 (Project Horizon — material category로 압축한 프로젝트 전체 상태) |
+| `## 다음 전환` / `## 다음` | `## Next Transition` / `## Next` | 우측 기본 개요: 다음 전환 (Project Horizon — state transition + 완료 조건) |
+| `## 직면한 문제` / `## 막힌 것` | `## Facing Issues` / `## Blocked` | 우측 기본 개요: 직면한 문제 (Project Horizon — 방향을 제한하는 blocker/uncertainty/constraint) |
 | `## 최근 진척` / `## 최근 완료` | `## Recently Completed` / `## Recent Progress` | 하단 주 독서면: 최신순 rolling semantic transition window (실질적 변경 → 영향) |
 | `## 제품 목표` / `## 프로젝트 큰 그림` | `## Product Goals` / `## Product Goal` / `## Project Frame` | 하단 영속적 맥락: 프로젝트 존재 이유 및 성공 경계 (컴팩트 에디토리얼) |
 | `## 확정된 방향` / `## 이미 정해진 방향` | `## Settled Direction` | 하단 영속적 맥락: 영속적 제약 결정 (컴팩트 에디토리얼) |
