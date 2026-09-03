@@ -1,8 +1,8 @@
 # Cockpit
 
-Cockpit은 프로젝트의 `PROGRESS.md` 파일을 읽어 브라우저에서 실시간으로 시각화해 주는 초경량 로컬 프로젝트 대시보드(Map-first Thin PM Cockpit)입니다.
+Cockpit은 프로젝트의 `PROGRESS.md` 파일을 읽어 브라우저에서 실시간으로 시각화해 주는 초경량 로컬 프로젝트 cockpit(Mental-model-first Thin Viewer)입니다.
 
-프로젝트 상태를 일반 마크다운(Markdown)으로 작성해 두면, Cockpit이 이를 파싱하여 구조화된 프로젝트 지도, 현재 상황 및 다음 전환, 영역별 상세 검사기(Inspector)를 제공합니다.
+프로젝트 상태를 일반 마크다운(Markdown)으로 작성해 두면, Cockpit이 이를 파싱하여 프로젝트의 지평·단계·상태·최전선·구조를 결정론적으로 보여주고, 필요할 때 하나의 Universal Inspector에서 근거까지 내려가게 합니다.
 
 ---
 
@@ -564,27 +564,71 @@ Cockpit v0.3은 프로젝트의 실질적인 진척과 상태를 정확하게 �
 
 ### 독자 중심 3단계 정보 계층 (Information Hierarchy)
 
-Cockpit의 화면 및 문맥 구성은 다음 우선순위 계층을 엄격히 준수합니다:
+Cockpit의 화면 및 문맥 구성은 다음 해상도 계층을 엄격히 준수합니다:
 
 ```text
-CURRENT STATE (현재 상태)
-    >
-RECENT SEMANTIC CHANGE (최근 시맨틱 전환)
-    >
-STABLE CONTEXT (영속적 맥락 프레임)
+PROJECT HORIZON
+    ↓
+STAGE JOURNEY ↔ PROJECT POSTURE
+    ↓
+CURRENT FRONTIER → STRATEGIC THREADS → RECENT MATERIAL MOVEMENT
+    ↓
+PROJECT MAP → AREA DETAIL → EVIDENCE
 ```
 
-1. **현재 상태 (Current State — 최우선 독서면)**:
-   - **현재 집중 (`## 현재 집중`)**: 사용자가 현재 중요하게 보고 있는 핵심 관심사.
-   - **프로젝트 지도 (`## 프로젝트 지도`)**: 프로젝트 고유의 궤적/중립 레일 및 영역 카드.
-    - **현재 상황 (`## 현재 상황`)**: Project Horizon — 프로젝트 전체의 현재 위치 (material category 2~4개로 압축한 project-level 상태). 최근 변경 chronology/evidence dump가 아님.
-    - **다음 전환 (`## 다음 전환`)**: Project Horizon — 현재 상태에서 전진하려는 상위 상태로 transition과 완료 조건 (executor command 아님).
-    - **직면한 문제 (`## 직면한 문제`)**: Project Horizon — 방향과 다음 전환을 실제로 제한하는 Blocker/Material Uncertainty/Constraint. bug backlog가 아님.
-   - **영역 상세 (`## 영역 상세`)**: 각 영역의 의미, 현재 수준, 근거 및 (증거 기반 미해결 문제가 있는 경우) 남은 문제.
-2. **최근 시맨틱 전환 (Recent Progress — 하단 주 독서면)**:
-   - **최근 진척 (`## 최근 진척` / `## Recent Progress`)**: "이 프로젝트가 바로 전 상태에서 현재 상태로 어떻게 실질적으로 도달했는가?"를 설명하는 최신순 rolling semantic window. 하단 영역에서 가장 넓고 명확한 독서면으로 렌더링되며, 오래된 history archive처럼 끝없이 누적하지 않습니다.
-3. **영속적 맥락 프레임 (Stable Context — 하단 보조 그리드)**:
-   - **제품 목표 (`## 제품 목표`)** 및 **확정된 방향 (`## 확정된 방향`)**: 느리게 변하는 고정 기반 맥락으로, 하단에서 공간 낭비 없이 정보 밀도 높은 컴팩트 에디토리얼 패널로 나란히 배치됩니다.
+1. **Project Horizon (최상단 orientation)**: 프로젝트 전체가 어디에 있고 어느 방향으로 가는지 2–3문장으로 압축합니다.
+2. **Stage Journey ↔ Project Posture (공동 주인공)**: 명시적 여정의 현재/다음 gate와 cross-cutting maturity를 나란히 보여줍니다. Stage는 maturity가 아닙니다.
+3. **Current Frontier / Strategic Threads / Recent Material Movement**: 가장 가까운 state transition, durable parallel directions, 최근의 material model delta를 차례로 보여줍니다.
+4. **Project Map → Universal Inspector → Evidence**: 구조·영역·근거로 내려가는 상세 해상도입니다. 기존 Map/Area Detail은 제거하거나 Posture로 복제하지 않습니다.
+5. **Current Focus / Product Goal / Settled Direction**: 각각 사용자 소유 관심사와 느리게 변하는 stable context로 보존하되, 위 mental-model surface보다 낮은 visual weight로 둡니다.
+
+---
+
+### Mental-model-first canonical contract
+
+새 문서는 다음 semantic surface를 가능한 순서대로 사용합니다. 모든 surface는 사람이 읽을 수 있는 평범한 heading과 본문이며, Cockpit은 선언된 의미를 표시할 뿐 project truth를 추론하지 않습니다.
+
+```text
+Project Horizon → Stage Journey ↔ Project Posture
+→ Current Frontier → Strategic Threads → Recent Material Movement
+→ Project Map → Area Detail → Evidence
+```
+
+#### Evidence Assimilation != Presentation Abstraction
+
+외부 capable agent의 작업은 두 단계입니다.
+
+1. **Evidence Assimilation** — 현재 권위, 구현/runtime, proof, relevant Git를 대조하고 모순을 해결하며, stale claim을 재입장시켜 admitted project model을 재구성합니다.
+2. **Presentation Synthesis** — admitted model을 독자가 읽을 해상도에 맞게 압축합니다. 분석 중 발견한 commit, test, path, command를 top-level 문장에 그대로 복사하지 않습니다.
+
+Project Horizon은 프로젝트 전체의 위치·핵심 기반·검증/readiness를 2–3개의 concise sentence로 말합니다. `PID`, full SHA, test node, absolute path, exact command, 개별 executor task는 Horizon에 두지 않습니다. 그런 evidence는 Area Detail, Recent Material Movement, Handoff, 또는 Universal Inspector의 Evidence depth에 둡니다.
+
+#### Canonical sections
+
+| Canonical heading | 작성 규칙 |
+|---|---|
+| `## 프로젝트 지평` / `## Project Horizon` | project-level 현재 상태와 dominant direction. 실행 chronology가 아닌 orientation. |
+| `## 단계 여정` / `## Stage Journey` | `### 현재 — Stage ...`, `### 다음 — Stage ...` 아래에 material gate만 기록. Stage는 maturity가 아님. |
+| `## 프로젝트 상태` / `## Project Posture` | 보통 5–8개의 cross-cutting axis. 각 `### Axis — STRONG/PARTIAL/WEAK/UNKNOWN`에는 한 줄 의미를 둠. |
+| `## 현재 최전선` / `## Current Frontier` | 기본 Primary Frontier 하나. `현재: A`, `목표: B` 또는 `A → B` 형태의 state transition. |
+| `## 전략적 흐름` / `## Strategic Threads` | 현재 Primary가 아닌 durable parallel direction만 기록. task backlog가 아님. |
+| `## 최근 실질적 변화` / `## Recent Material Movement` | Stage/Posture/Frontier/Horizon/Map capability를 실제로 움직인 변화만 `이전/변경/이후`로 기록. activity feed가 아님. |
+| `## 프로젝트 지도` / `## Project Map` | 기존 trajectory/neutral 구조를 유지. Posture의 복제본이 아님. |
+| `## 영역 상세` / `## Area Details` | Map item마다 `의미`, `현재 수준`, `근거`; 증거 기반인 경우에만 `남은 문제`를 추가. |
+
+Posture axis에는 `역할: CORE CAPABILITY`와 `역할: DELIVERY READINESS` 같은 작은 visible annotation으로 두 conceptual role을 명시할 수 있습니다. 축 이름은 프로젝트에 맞게 고르되 단일 파일·컴포넌트·test family·executor task를 축으로 만들지 않습니다. maturity는 위 네 값만 사용하고 `BLOCKED`는 별도 `STAGE BLOCKER` 관계나 `단계 영향` 문장으로 표현합니다. Ordinary refresh에서는 기존 축을 보존하며, 중복·비중요·성공조건 변화가 직접 입증되었거나 실제 Stage 전환이 생겼을 때만 전체 축을 재검토합니다.
+
+Current Frontier는 기본적으로 하나만 둡니다. 둘이 같은 다음 project-level transition에 독립적으로 필수이고 genuinely parallel인 경우에만 각 항목 heading에 `[CO-PRIMARY]`를 붙여 예외를 명시합니다. 여러 중요한 작업이 있다는 이유만으로 Primary를 늘리거나 frontier를 queue로 만들지 않습니다.
+
+관계는 `관련 영역: Authorization, Audit`, `관련 단계: Stage 1A`, `관련 상태: Security`, `관련 최전선: Exact release convergence`처럼 visible title을 참조합니다. hidden ID, registry, YAML, database를 추가하지 않습니다. `cockpit check`는 선언된 target이 현재 Map/Stage/Posture/Frontier/Movement에 존재하는지 확인합니다.
+
+Universal Inspector는 Posture, Stage Gate, Frontier, Strategic Thread, Material Movement, Area, Evidence를 하나의 shell에서 표시합니다. 관계 버튼과 breadcrumb/back으로 `Security → Audit → Evidence`처럼 이동하며, entity별로 별도 inspector나 window를 만들지 않습니다. Area Detail의 근거와 optional remaining problem은 그대로 보존하되, Posture에는 cross-cutting synthesis만 둡니다.
+
+### Acceptance boundary
+
+`cockpit check`는 headings, axis 수/상태, Primary Frontier cardinality, relation target, movement transition, Map ↔ Area Detail integrity와 Horizon의 명백한 telemetry 누출만 검사합니다. `PASS`는 문서 구조와 고신뢰 presentation guardrail의 통과이지, authored claim의 사실성이나 semantic truth를 보증하지 않습니다. 구조 변경 시에는 서로 다른 두 real-project-shaped fixture(복잡한 EMR testbed snapshot과 Cockpit 자체 vocabulary)를 parse/render하고, 가능한 환경에서는 실제 viewer에서 Horizon→Stage/Posture→Frontier→Movement→Map→Inspector→Evidence를 관찰합니다.
+
+Cold-read acceptance는 repository와 이 설명을 보지 않은 실제 대상 독자에게 reader-visible output만 주고 다음을 묻는 별도 단계입니다: 무엇을 만드는가, 전체 여정의 어디인가, 무엇이 강한가/partial인가, Primary Frontier는 무엇인가, 왜 다음 Stage가 열리지 않는가, 무엇을 다시 열지 않아야 하는가, 어디서 evidence를 볼 수 있는가. 독립 reader가 없으면 이를 keyword 검사로 대체하지 말고 `COLD_READ_JUDGE_REQUIRED`로 남깁니다.
 
 ---
 
@@ -623,8 +667,8 @@ STABLE CONTEXT (영속적 맥락 프레임)
 
 ### 컨텍스트 Handoff 액션
 
-- **`현재 집중 컨텍스트 복사`**: `## 현재 집중`이 존재할 때 우측 기본 개요의 현재 집중 카드 하단에 표시되는 버튼입니다. 프로젝트 이름, 현재 집중, 현재 상황, 다음 전환, 직면한 문제, 제품 목표, 확정된 방향, 프로젝트 지도, 영역 상세 전체 맥락과 Problem Framer 가이드라인을 원클릭으로 클립보드에 복사합니다. 외부 Problem Framer가 Current Focus를 Next Transition까지 전진시키기 위한 Execution Wave를 수립하도록 돕습니다. (Focus가 없는 문서에서는 버튼이 표시되지 않습니다.)
-- **`이 영역 검토하기`**: 지도에서 영역 카드를 클릭하면 나타나는 우측 검사기(Inspector)의 버튼입니다. 선택된 영역의 세부 정보와 핵심 프로젝트 컨텍스트(Current Focus, Current Situation, Next Transition, Product Goal, Settled Direction 등), 그리고 fresh evidence 기반 심층 검토 및 Execution Wave(NOW/SERIAL NOW/WAIT FOR EVIDENCE) 산출 가이드라인을 자기 완결적(self-contained)으로 클립보드에 복사합니다.
+- **`현재 집중 컨텍스트 복사`**: `## 현재 집중`이 존재할 때 보조 context 카드에 표시되는 버튼입니다. 프로젝트 이름, 현재 집중, canonical/legacy Horizon, Frontier, Stage/Posture 맥락, 제품 목표, 확정된 방향, 프로젝트 지도, 영역 상세 전체 맥락과 Problem Framer 가이드라인을 원클릭으로 클립보드에 복사합니다. (Focus가 없는 문서에서는 버튼이 표시되지 않습니다.)
+- **`이 영역 검토하기`**: 지도에서 영역 카드를 클릭하면 열리는 Universal Inspector의 버튼입니다. 선택된 영역의 세부 정보와 핵심 프로젝트 컨텍스트, fresh evidence 기반 심층 검토 및 Execution Wave(NOW/SERIAL NOW/WAIT FOR EVIDENCE) 산출 가이드라인을 자기 완결적(self-contained)으로 클립보드에 복사합니다.
 - **결정론적 전송 경계**: 두 버튼 모두 AI를 직접 실행하거나 태스크를 생성하지 않으며, 외부 capable agent에 표준화된 컨텍스트와 프레이밍 계약을 전달하는 클립보드 전송 역할만 수행합니다.
 
 ### 영역 상세 시맨틱
@@ -646,13 +690,19 @@ Cockpit은 한국어와 영어 `## h2` 헤딩을 모두 지원합니다:
 
 | 섹션 (한국어) | Section (English) | 패널 설명 |
 |---|---|---|
-| `## 현재 집중` | `## Current Focus` | 우측 기본 개요 최상단: 현재 집중 (사용자 소유의 핵심 관심사) 및 컨텍스트 복사 액션 |
+| `## 프로젝트 지평` | `## Project Horizon` | L0 최상단 orientation: 프로젝트 전체의 현재 상태와 방향 |
+| `## 단계 여정` | `## Stage Journey` | 현재/다음 Stage와 material gate families; Stage와 maturity를 분리 |
+| `## 프로젝트 상태` | `## Project Posture` | 5–8개 adaptive cross-cutting axes와 STRONG/PARTIAL/WEAK/UNKNOWN maturity |
+| `## 현재 최전선` | `## Current Frontier` | 기본 하나의 project-level state transition 및 완료 의미 |
+| `## 전략적 흐름` | `## Strategic Threads` | 현재 전환을 소유하지 않는 durable parallel directions |
+| `## 최근 실질적 변화` | `## Recent Material Movement` | project model을 움직인 BEFORE → MATERIAL CHANGE → AFTER |
+| `## 현재 집중` | `## Current Focus` | 보조 context: 사용자 소유의 핵심 관심사 및 컨텍스트 복사 액션 |
 | `## 프로젝트 지도` | `## Project Map` | 프로젝트 고유의 레일/그룹 구조 및 영역 카드 렌더링 |
 | `## 영역 상세` / `## 영역별 상세` | `## Area Details` / `## Area Detail` | 각 영역의 세부 속성 (필수: 의미, 현재 수준, 근거 / 선택: 남은 문제, 다시 열리는 조건) |
-| `## 현재 상황` / `## 지금` / `## 지금 하는 일` | `## Current Situation` / `## Current Frontier` | 우측 기본 개요: 현재 상황 (Project Horizon — material category로 압축한 프로젝트 전체 상태) |
-| `## 다음 전환` / `## 다음` | `## Next Transition` / `## Next` | 우측 기본 개요: 다음 전환 (Project Horizon — state transition + 완료 조건) |
-| `## 직면한 문제` / `## 막힌 것` | `## Facing Issues` / `## Blocked` | 우측 기본 개요: 직면한 문제 (Project Horizon — 방향을 제한하는 blocker/uncertainty/constraint) |
-| `## 최근 진척` / `## 최근 완료` | `## Recently Completed` / `## Recent Progress` | 하단 주 독서면: 최신순 rolling semantic transition window (실질적 변경 → 영향) |
+| `## 현재 상황` / `## 지금` / `## 지금 하는 일` | `## Current Situation` | legacy Project Horizon fallback. 새 `Project Horizon`이 있으면 중복 표시하지 않음 |
+| `## 다음 전환` / `## 다음` | `## Next Transition` / `## Next` | legacy Horizon fallback의 전환 문장 (canonical `Current Frontier`가 있으면 별도 중복 표시하지 않음) |
+| `## 직면한 문제` / `## 막힌 것` | `## Facing Issues` / `## Blocked` | legacy Horizon fallback의 project-level constraint |
+| `## 최근 진척` / `## 최근 완료` | `## Recently Completed` / `## Recent Progress` | legacy movement fallback; canonical `Recent Material Movement`가 있으면 중복 표시하지 않음 |
 | `## 제품 목표` / `## 프로젝트 큰 그림` | `## Product Goals` / `## Product Goal` / `## Project Frame` | 하단 영속적 맥락: 프로젝트 존재 이유 및 성공 경계 (컴팩트 에디토리얼) |
 | `## 확정된 방향` / `## 이미 정해진 방향` | `## Settled Direction` | 하단 영속적 맥락: 영속적 제약 결정 (컴팩트 에디토리얼) |
 

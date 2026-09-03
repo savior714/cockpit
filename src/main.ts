@@ -5,11 +5,23 @@ import {
   md,
   HERE_MARKER,
   type MapItem,
-  type MapRail,
   type ParsedMap,
   type AreaDetail,
   type AreaCompleteness,
+  type SemanticRelation,
+  type SemanticSubsection,
+  type ProjectHorizon,
+  type StageJourney,
+  type StageGate,
+  type StageSegment,
+  type ProjectPosture,
+  type PostureAxis,
+  type Frontier,
+  type StrategicThread,
+  type MaterialMovement,
+  type ParsedMentalModel,
   normalizeKey,
+  normalizeTitle,
   escapeHtml,
   renderTokens,
   withMermaidPlaceholders,
@@ -22,12 +34,12 @@ import {
   isCurrentStageHeading,
   isFoundationHeading,
   isFutureHeading,
+  parseMentalModel,
   extractSectionRawText,
   formatProjectMapText,
   formatAreaDetailsText,
   buildFocusHandoffContext,
   buildAreaHandoffContext,
-  type AreaHandoffParams,
 } from "./parser";
 
 mermaid.initialize({
@@ -37,13 +49,43 @@ mermaid.initialize({
   flowchart: { useMaxWidth: false },
 });
 
+type InspectorKind = "posture" | "stage" | "frontier" | "thread" | "movement" | "area" | "evidence";
+
+interface InspectorEntity {
+  key: string;
+  kind: InspectorKind;
+  title: string;
+  state?: string;
+  summaryText: string;
+  html: string;
+  rawText: string;
+  subsections: SemanticSubsection[];
+  relations: SemanticRelation[];
+  isStageBlocker?: boolean;
+  areaItem?: MapItem;
+  evidenceParent?: InspectorEntity;
+}
+
 let activeProjectTitle = "Cockpit";
 let currentSections = new Map<string, Token[]>();
 let currentAreaDetails = new Map<string, AreaDetail>();
 let currentParsedMap: ParsedMap | null = null;
+let currentModel: ParsedMentalModel = { frontiers: [], strategicThreads: [], movements: [] };
 let selectedAreaId: string | null = null;
+let inspectorHistory: InspectorEntity[] = [];
 
-/** Find MapItem by ID across all parsed rails */
+const INSPECTOR_LABELS: Record<InspectorKind, string> = {
+  posture: "POSTURE",
+  stage: "STAGE GATE",
+  frontier: "FRONTIER",
+  thread: "STRATEGIC THREAD",
+  movement: "MATERIAL MOVEMENT",
+  area: "AREA",
+  evidence: "EVIDENCE",
+};
+
+const entityKey = (kind: InspectorKind, title: string) => `${kind}:${normalizeTitle(title)}`;
+
 function findMapItemById(id: string): MapItem | null {
   if (!currentParsedMap) return null;
   for (const rail of currentParsedMap.rails) {
@@ -56,416 +98,777 @@ function findMapItemById(id: string): MapItem | null {
   return null;
 }
 
+function renderRawMarkdown(rawText: string): string {
+  if (!rawText.trim()) return "";
+  return withMermaidPlaceholders(renderTokens(md.parse(rawText, {})));
+}
+
+function subsection(
+  title: string,
+  rawText: string,
+  html = renderRawMarkdown(rawText)
+): SemanticSubsection {
+  return { subheading: title, rawText, html };
+}
+
+function getSubsection(
+  subsections: SemanticSubsection[],
+  labels: string[]
+): SemanticSubsection | undefined {
+  return subsections.find((item) =>
+    labels.some((label) => normalizeKey(item.subheading).includes(normalizeKey(label)))
+  );
+}
+
+const FRONTIER_SUBSECTION_ALIASES = [
+  ["왜 지금", "why now"],
+  ["완료 의미", "success meaning", "성공 의미", "success"],
+  ["단계 영향", "stage impact"],
+  ["이미 닫힌", "already closed", "closed boundaries", "closed"],
+  ["근거", "evidence"],
+];
+
+function isFrontierSubsectionAlias(subsectionItem: SemanticSubsection): boolean {
+  return FRONTIER_SUBSECTION_ALIASES.some((labels) =>
+    labels.some((label) => normalizeKey(subsectionItem.subheading).includes(normalizeKey(label)))
+  );
+}
+
+function areaEntity(item: MapItem): InspectorEntity {
+  const detail = findAreaDetail(item, currentAreaDetails);
+  const detailSections = detail?.subsections ?? [];
+  const meaning = getSubsection(detailSections, ["의미", "meaning"]);
+  return {
+    key: entityKey("area", item.title),
+    kind: "area",
+    title: item.title,
+    summaryText: item.description || meaning?.rawText.split(/\r?\n/)[0] || "",
+    html: detailSections.map((section) => section.html).join(""),
+    rawText: detailSections.map((section) => section.rawText).join("\n"),
+    subsections: detailSections,
+    relations: [],
+    areaItem: item,
+  };
+}
+
+function stageEntity(gate: StageGate, segment: StageSegment): InspectorEntity {
+  return {
+    key: entityKey("stage", gate.title),
+    kind: "stage",
+    title: gate.title,
+    state: gate.state,
+    summaryText: gate.summaryText || segment.title,
+    html: gate.html,
+    rawText: gate.rawText,
+    subsections: gate.subsections,
+    relations: gate.relations,
+    isStageBlocker: gate.isStageBlocker,
+  };
+}
+
+function stageSegmentEntity(segment: StageSegment): InspectorEntity {
+  return {
+    key: entityKey("stage", segment.title),
+    kind: "stage",
+    title: segment.title,
+    summaryText: segment.role === "current" ? "현재 프로젝트가 서 있는 단계" : "여정에서 선언된 다음 단계",
+    html: segment.html,
+    rawText: segment.rawText,
+    subsections: [],
+    relations: [],
+  };
+}
+
+function postureEntity(axis: PostureAxis): InspectorEntity {
+  return {
+    key: entityKey("posture", axis.title),
+    kind: "posture",
+    title: axis.title,
+    state: axis.state ?? axis.declaredState,
+    summaryText: axis.summaryText,
+    html: axis.html,
+    rawText: axis.rawText,
+    subsections: axis.subsections,
+    relations: axis.relations,
+    isStageBlocker: axis.isStageBlocker,
+  };
+}
+
+function frontierSubsections(frontier: Frontier): SemanticSubsection[] {
+  const sections: SemanticSubsection[] = [];
+  if (frontier.whyNow) sections.push(subsection("왜 지금", frontier.whyNow));
+  if (frontier.successMeaning) sections.push(subsection("완료 의미", frontier.successMeaning));
+  if (frontier.stageImpact) sections.push(subsection("단계 영향", frontier.stageImpact));
+  if (frontier.closedBoundaries) sections.push(subsection("이미 닫힌 것", frontier.closedBoundaries));
+  if (frontier.evidence) sections.push(subsection("근거", frontier.evidence));
+  return sections.concat(frontier.subsections.filter((item) => !isFrontierSubsectionAlias(item)));
+}
+
+function frontierEntity(frontier: Frontier): InspectorEntity {
+  const transition = `${frontier.currentState || "UNDECLARED"} → ${frontier.targetState || "UNDECLARED"}`;
+  return {
+    key: entityKey("frontier", frontier.title),
+    kind: "frontier",
+    title: frontier.title,
+    state: transition,
+    summaryText: frontier.summaryText,
+    html: frontier.html,
+    rawText: frontier.rawText,
+    subsections: frontierSubsections(frontier),
+    relations: frontier.relations,
+  };
+}
+
+function threadEntity(thread: StrategicThread): InspectorEntity {
+  return {
+    key: entityKey("thread", thread.title),
+    kind: "thread",
+    title: thread.title,
+    state: thread.state,
+    summaryText: thread.summaryText,
+    html: thread.html,
+    rawText: thread.rawText,
+    subsections: thread.subsections,
+    relations: thread.relations,
+  };
+}
+
+function movementSubsections(movement: MaterialMovement): SemanticSubsection[] {
+  const sections: SemanticSubsection[] = [];
+  if (movement.before) sections.push(subsection("BEFORE", movement.before));
+  if (movement.change) sections.push(subsection("MATERIAL CHANGE", movement.change));
+  if (movement.after) sections.push(subsection("AFTER", movement.after));
+  return sections.concat(movement.subsections.filter((item) =>
+    !sections.some((existing) => normalizeKey(existing.subheading) === normalizeKey(item.subheading))
+  ));
+}
+
+function movementEntity(movement: MaterialMovement): InspectorEntity {
+  return {
+    key: entityKey("movement", movement.title),
+    kind: "movement",
+    title: movement.title,
+    state: `${movement.before || "UNDECLARED"} → ${movement.after || "UNDECLARED"}`,
+    summaryText: movement.change || movement.summaryText,
+    html: movement.html,
+    rawText: movement.rawText,
+    subsections: movementSubsections(movement),
+    relations: movement.relations,
+  };
+}
+
+function findEntity(kind: InspectorKind, title: string): InspectorEntity | null {
+  const target = normalizeTitle(title);
+  if (kind === "area") {
+    const item = currentParsedMap?.rails
+      .flatMap((rail) => rail.groups)
+      .flatMap((group) => group.items)
+      .find((candidate) => normalizeTitle(candidate.title) === target);
+    return item ? areaEntity(item) : null;
+  }
+  if (kind === "posture") {
+    const axis = currentModel.posture?.axes.find((candidate) => normalizeTitle(candidate.title) === target);
+    return axis ? postureEntity(axis) : null;
+  }
+  if (kind === "frontier") {
+    const frontier = currentModel.frontiers.find((candidate) => normalizeTitle(candidate.title) === target);
+    return frontier ? frontierEntity(frontier) : null;
+  }
+  if (kind === "thread") {
+    const thread = currentModel.strategicThreads.find((candidate) => normalizeTitle(candidate.title) === target);
+    return thread ? threadEntity(thread) : null;
+  }
+  if (kind === "movement") {
+    const movement = currentModel.movements.find((candidate) => normalizeTitle(candidate.title) === target);
+    return movement ? movementEntity(movement) : null;
+  }
+  if (kind === "stage") {
+    for (const segment of currentModel.stageJourney?.segments ?? []) {
+      const gate = segment.gates.find((candidate) => normalizeTitle(candidate.title) === target);
+      if (gate) return stageEntity(gate, segment);
+      if (normalizeTitle(segment.title) === target) return stageSegmentEntity(segment);
+    }
+  }
+  return null;
+}
+
+function relatedEntity(relation: SemanticRelation): InspectorEntity | null {
+  const kind: InspectorKind = relation.kind === "area"
+    ? "area"
+    : relation.kind === "stage"
+      ? "stage"
+      : relation.kind === "posture"
+        ? "posture"
+        : relation.kind === "frontier"
+          ? "frontier"
+          : "movement";
+  return findEntity(kind, relation.target);
+}
+
+function semanticCardAttributes(kind: InspectorKind, title: string): string {
+  return `data-entity-kind="${escapeHtml(kind)}" data-entity-title="${escapeHtml(title)}"`;
+}
+
+function stateClass(state: string | undefined): string {
+  return normalizeKey(state ?? "").replace(/[^a-z0-9]+/g, "-") || "unknown";
+}
+
+function renderHorizon(horizon: ProjectHorizon): string {
+  return `<div class="horizon-copy ${horizon.isLegacyFallback ? "legacy-fallback" : ""}">
+    ${horizon.html}
+  </div>`;
+}
+
+function renderStageJourney(journey: StageJourney): string {
+  return `<div class="stage-journey-view">
+    ${journey.segments.map((segment) => `
+      <section class="stage-segment stage-segment-${segment.role}">
+        <div class="stage-segment-header">
+          <span class="stage-role">${segment.role === "current" ? "CURRENT" : segment.role === "next" ? "NEXT" : "STAGE"}</span>
+          <h3>${escapeHtml(segment.title)}</h3>
+        </div>
+        <div class="stage-gate-list">
+          ${segment.gates.map((gate) => `
+            <button type="button" class="semantic-card stage-gate-card ${gate.isStageBlocker ? "has-stage-blocker" : ""}" ${semanticCardAttributes("stage", gate.title)}>
+              <span class="semantic-card-top">
+                <span class="stage-gate-state state-${stateClass(gate.state)}">${escapeHtml(gate.state || "UNDECLARED")}</span>
+                ${gate.isStageBlocker ? '<span class="stage-blocker-marker">STAGE BLOCKER</span>' : ""}
+              </span>
+              <strong>${escapeHtml(gate.title)}</strong>
+              ${gate.summaryText ? `<span>${escapeHtml(gate.summaryText)}</span>` : ""}
+            </button>
+          `).join("")}
+        </div>
+      </section>
+    `).join("")}
+  </div>`;
+}
+
+function renderPosture(posture: ProjectPosture): string {
+  return `<div class="posture-grid">
+    ${posture.axes.map((axis) => `
+      <button type="button" class="semantic-card posture-card posture-${stateClass(axis.state ?? axis.declaredState)}" ${semanticCardAttributes("posture", axis.title)}>
+        <span class="posture-card-top">
+          <strong>${escapeHtml(axis.title)}</strong>
+          <span class="maturity-badge maturity-${stateClass(axis.state ?? axis.declaredState)}">${escapeHtml((axis.state ?? axis.declaredState) || "UNDECLARED")}</span>
+        </span>
+        ${axis.summaryText ? `<span class="posture-summary">${escapeHtml(axis.summaryText)}</span>` : ""}
+        ${axis.isStageBlocker ? '<span class="stage-blocker-marker">STAGE BLOCKER</span>' : ""}
+      </button>
+    `).join("")}
+  </div>`;
+}
+
+function renderFrontiers(frontiers: Frontier[]): string {
+  return `<div class="frontier-list">
+    ${frontiers.map((frontier) => `
+      <button type="button" class="semantic-card frontier-card ${frontier.isPrimary ? "frontier-primary" : "frontier-secondary"}" ${semanticCardAttributes("frontier", frontier.title)}>
+        <span class="semantic-card-top">
+          <span class="frontier-role">${frontier.isCoPrimary ? "CO-PRIMARY" : frontier.isPrimary ? "PRIMARY" : "STRATEGIC"}</span>
+          <span class="frontier-transition">${escapeHtml(frontier.currentState || "UNDECLARED")} <b>→</b> ${escapeHtml(frontier.targetState || "UNDECLARED")}</span>
+        </span>
+        <strong>${escapeHtml(frontier.title)}</strong>
+        ${frontier.summaryText ? `<span>${escapeHtml(frontier.summaryText)}</span>` : ""}
+      </button>
+    `).join("")}
+  </div>`;
+}
+
+function renderThreads(threads: StrategicThread[]): string {
+  return `<div class="thread-list">
+    ${threads.map((thread) => `
+      <button type="button" class="semantic-card thread-card" ${semanticCardAttributes("thread", thread.title)}>
+        <span class="semantic-card-top">
+          <strong>${escapeHtml(thread.title)}</strong>
+          ${thread.state ? `<span class="thread-state">${escapeHtml(thread.state)}</span>` : ""}
+        </span>
+        ${thread.summaryText ? `<span>${escapeHtml(thread.summaryText)}</span>` : ""}
+      </button>
+    `).join("")}
+  </div>`;
+}
+
+function renderMovements(movements: MaterialMovement[]): string {
+  return `<div class="movement-list">
+    ${movements.map((movement) => `
+      <button type="button" class="semantic-card movement-card" ${semanticCardAttributes("movement", movement.title)}>
+        <span class="semantic-card-top">
+          <span class="movement-transition">${escapeHtml(movement.before || "UNDECLARED")} <b>→</b> ${escapeHtml(movement.after || "UNDECLARED")}</span>
+        </span>
+        <strong>${escapeHtml(movement.title)}</strong>
+        ${movement.change ? `<span>${escapeHtml(movement.change)}</span>` : ""}
+      </button>
+    `).join("")}
+  </div>`;
+}
+
+function renderLegacyFrontier(nextHtml: string, issueHtml: string): string {
+  return `<div class="legacy-frontier-view">
+    <div><span class="surface-kicker">LEGACY NEXT TRANSITION</span>${nextHtml}</div>
+    ${issueHtml ? `<div class="legacy-frontier-issue"><span class="surface-kicker">LEGACY CONSTRAINT</span>${issueHtml}</div>` : ""}
+  </div>`;
+}
+
+function setPanelHtml(panelId: string, html: string, visible: boolean): void {
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
+  const body = panel.querySelector<HTMLElement>(".panel-body");
+  if (body) body.innerHTML = html || `<p class="muted">아직 기록된 내용이 없습니다.</p>`;
+  panel.hidden = !visible;
+}
+
 async function copyToClipboard(text: string): Promise<boolean> {
   try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
+    if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);
       return true;
-    } else {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-      return true;
     }
-  } catch (err) {
-    console.error("Clipboard copy failed", err);
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+    return true;
+  } catch (error) {
+    console.error("Clipboard copy failed", error);
     return false;
   }
 }
 
-/** Update the Area Inspector panel with the selected item's details */
-function updateInspectorView(item: MapItem | null) {
-  const overviewPanel = document.getElementById("overview-panel")!;
-  const areaInspectorPanel = document.getElementById("area-inspector-panel")!;
+function evidenceEntity(parent: InspectorEntity, section: SemanticSubsection): InspectorEntity {
+  return {
+    key: entityKey("evidence", `${parent.title}:${section.subheading}`),
+    kind: "evidence",
+    title: `${parent.title} · ${section.subheading}`,
+    summaryText: "이 판단을 지지하는 하위 해상도 근거",
+    html: section.html,
+    rawText: section.rawText,
+    subsections: [],
+    relations: [],
+    evidenceParent: parent,
+  };
+}
 
-  if (!item) {
-    selectedAreaId = null;
-    overviewPanel.hidden = false;
-    areaInspectorPanel.hidden = true;
-    document.querySelectorAll(".map-card.selected").forEach((el) => {
-      el.classList.remove("selected");
+function renderInspector(entity: InspectorEntity): void {
+  const aside = document.getElementById("inspector-aside");
+  if (!aside) return;
+  aside.hidden = false;
+
+  const breadcrumb = document.getElementById("inspector-breadcrumb");
+  if (breadcrumb) {
+    breadcrumb.innerHTML = inspectorHistory
+      .map((item, index) => index === inspectorHistory.length - 1
+        ? `<span>${escapeHtml(item.title)}</span>`
+        : `<button type="button" data-breadcrumb-index="${index}">${escapeHtml(item.title)}</button>`)
+      .join('<span class="breadcrumb-separator">→</span>');
+  }
+
+  const tag = document.getElementById("inspector-group-tag");
+  if (tag) tag.textContent = INSPECTOR_LABELS[entity.kind];
+  const state = document.getElementById("inspector-state");
+  if (state) {
+    state.textContent = entity.state ?? "";
+    state.className = `inspector-state state-${stateClass(entity.state)}`;
+    state.hidden = !entity.state;
+  }
+  const title = document.getElementById("inspector-title");
+  if (title) title.textContent = entity.title;
+  const summary = document.getElementById("inspector-summary");
+  if (summary) {
+    summary.innerHTML = entity.summaryText ? `<p class="inspector-lead">${escapeHtml(entity.summaryText)}</p>` : "";
+    summary.hidden = !entity.summaryText;
+  }
+
+  const sections = document.getElementById("inspector-sections");
+  if (sections) {
+    sections.innerHTML = entity.subsections.length > 0
+      ? entity.subsections.map((item, index) => `
+          <section class="inspector-sub-card">
+            <div class="sub-header"><span class="sub-badge">${escapeHtml(item.subheading)}</span></div>
+            <div class="sub-body">${item.html}</div>
+            ${/evidence|근거/i.test(item.subheading) ? `<button type="button" class="inspector-evidence-link" data-subsection-index="${index}">근거를 더 깊게 보기 →</button>` : ""}
+          </section>
+        `).join("")
+      : (entity.html ? `<section class="inspector-sub-card"><div class="sub-body">${entity.html}</div></section>` : `<p class="muted">추가 세부 기록이 없습니다.</p>`);
+  }
+
+  const related = document.getElementById("inspector-related");
+  if (related) {
+    const validRelations = entity.relations.filter((relation) => relatedEntity(relation));
+    related.innerHTML = validRelations.length > 0
+      ? `<div class="related-title">RELATED</div><div class="related-links">${validRelations.map((relation) => `
+          <button type="button" class="related-link" data-related-kind="${relation.kind}" data-related-title="${escapeHtml(relation.target)}">${escapeHtml(relation.target)}</button>
+        `).join("")}</div>`
+      : "";
+    related.hidden = validRelations.length === 0;
+  }
+
+  const copyButton = document.getElementById("inspector-copy-btn") as HTMLButtonElement | null;
+  const copyToast = document.getElementById("copy-toast");
+  if (copyButton) {
+    copyButton.hidden = entity.kind !== "area";
+    copyButton.onclick = async () => {
+      if (!entity.areaItem) return;
+      const detail = findAreaDetail(entity.areaItem, currentAreaDetails);
+      const text = buildAreaHandoffContext({
+        projectTitle: activeProjectTitle,
+        areaTitle: entity.areaItem.title,
+        railTitle: entity.areaItem.railTitle,
+        groupTitle: entity.areaItem.groupTitle,
+        areaDescription: entity.areaItem.description,
+        areaDetail: detail,
+        focusText: extractSectionRawText(currentSections.get("current focus")),
+        situationText: extractSectionRawText(currentSections.get("project horizon") ?? currentSections.get("current situation")),
+        nextTransitionText: extractSectionRawText(currentSections.get("current frontier") ?? currentSections.get("next transition")),
+        facingIssuesText: extractSectionRawText(currentSections.get("facing issues")),
+        projectFrameText: extractSectionRawText(currentSections.get("project frame")),
+        settledDirectionText: extractSectionRawText(currentSections.get("settled direction")),
+      });
+      if (await copyToClipboard(text) && copyToast) {
+        copyToast.hidden = false;
+        setTimeout(() => { copyToast.hidden = true; }, 3000);
+      }
+    };
+  }
+  if (copyToast && entity.kind !== "area") copyToast.hidden = true;
+}
+
+function openInspector(entity: InspectorEntity, replace = false): void {
+  if (replace) {
+    inspectorHistory = [entity];
+  } else if (inspectorHistory[inspectorHistory.length - 1]?.key !== entity.key) {
+    inspectorHistory.push(entity);
+  }
+  selectedAreaId = entity.areaItem?.id ?? null;
+  document.querySelectorAll(".map-card.selected").forEach((card) => {
+    card.classList.toggle("selected", card.getAttribute("data-item-id") === selectedAreaId);
+  });
+  if (entity.areaItem) {
+    document.querySelector(`[data-item-id="${CSS.escape(entity.areaItem.id)}"]`)?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "nearest",
     });
+  }
+  renderInspector(entity);
+}
+
+function closeInspector(): void {
+  inspectorHistory = [];
+  selectedAreaId = null;
+  const aside = document.getElementById("inspector-aside");
+  if (aside) aside.hidden = true;
+  document.querySelectorAll(".map-card.selected").forEach((card) => card.classList.remove("selected"));
+}
+
+function goBackInspector(): void {
+  if (inspectorHistory.length <= 1) {
+    closeInspector();
     return;
   }
+  inspectorHistory.pop();
+  const entity = inspectorHistory[inspectorHistory.length - 1];
+  selectedAreaId = entity.areaItem?.id ?? null;
+  renderInspector(entity);
+}
 
-  selectedAreaId = item.id;
-  overviewPanel.hidden = true;
-  areaInspectorPanel.hidden = false;
-
-  // Update card active state in map
-  document.querySelectorAll(".map-card").forEach((el) => {
-    if (el.getAttribute("data-item-id") === item.id) {
-      el.classList.add("selected");
-      el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
-    } else {
-      el.classList.remove("selected");
+function bindInspectorActions(): void {
+  const aside = document.getElementById("inspector-aside");
+  const close = document.getElementById("inspector-close-btn");
+  if (!aside || !close) return;
+  close.onclick = () => closeInspector();
+  aside.addEventListener("click", (event) => {
+    const target = event.target as HTMLElement;
+    const breadcrumb = target.closest<HTMLButtonElement>("[data-breadcrumb-index]");
+    if (breadcrumb) {
+      const index = Number(breadcrumb.dataset.breadcrumbIndex);
+      const entity = inspectorHistory[index];
+      if (entity) {
+        inspectorHistory = inspectorHistory.slice(0, index + 1);
+        renderInspector(entity);
+      }
+      return;
+    }
+    const relation = target.closest<HTMLButtonElement>("[data-related-kind]");
+    if (relation) {
+      const kind = relation.dataset.relatedKind as InspectorKind;
+      const related = findEntity(kind, relation.dataset.relatedTitle ?? "");
+      if (related) openInspector(related);
+      return;
+    }
+    const evidenceButton = target.closest<HTMLButtonElement>("[data-subsection-index]");
+    if (evidenceButton && inspectorHistory.length > 0) {
+      const index = Number(evidenceButton.dataset.subsectionIndex);
+      const parent = inspectorHistory[inspectorHistory.length - 1];
+      const section = parent.subsections[index];
+      if (section) openInspector(evidenceEntity(parent, section));
     }
   });
+}
 
-  const groupTag = document.getElementById("inspector-group-tag")!;
-  const titleEl = document.getElementById("inspector-title")!;
-  const summaryEl = document.getElementById("inspector-summary")!;
-  const sectionsEl = document.getElementById("inspector-sections")!;
-
-  groupTag.textContent = `${item.railTitle} · ${item.groupTitle}`;
-  titleEl.textContent = item.title;
-
-  const detail = findAreaDetail(item, currentAreaDetails);
-
-  if (item.description) {
-    summaryEl.innerHTML = `<p class="inspector-lead">${escapeHtml(item.description)}</p>`;
-    summaryEl.hidden = false;
-  } else {
-    summaryEl.innerHTML = "";
-    summaryEl.hidden = true;
-  }
-
-  sectionsEl.innerHTML = "";
-
-  if (detail && detail.subsections.length > 0) {
-    for (const sub of detail.subsections) {
-      const subCard = document.createElement("div");
-      subCard.className = "inspector-sub-card";
-
-      const normSub = normalizeKey(sub.subheading);
-      let badgeClass = "sub-badge";
-      if (normSub.includes("근거") || normSub.includes("evidence")) {
-        badgeClass += " badge-evidence";
-      } else if (normSub.includes("남은문제") || normSub.includes("remaining")) {
-        badgeClass += " badge-remaining";
-      } else if (normSub.includes("다시열리는조건") || normSub.includes("reopen")) {
-        badgeClass += " badge-reopen";
-      }
-
-      subCard.innerHTML = `
-        <div class="sub-header">
-          <span class="${badgeClass}">${escapeHtml(sub.subheading)}</span>
-        </div>
-        <div class="sub-body">${sub.html}</div>
-      `;
-      sectionsEl.appendChild(subCard);
-    }
-  } else {
-    const emptySub = document.createElement("div");
-    emptySub.className = "inspector-sub-card empty-detail";
-    emptySub.innerHTML = `
-      <p class="muted">이 영역('${escapeHtml(item.title)}')에 대한 추가 세부 기록(의미, 현재 수준, 근거 등)이 소스 문서의 '## 영역 상세'에 아직 작성되지 않았습니다.</p>
-    `;
-    sectionsEl.appendChild(emptySub);
-  }
-
-  // Setup "이 영역 검토하기" copy action
-  const copyBtn = document.getElementById("inspector-copy-btn")!;
-  const copyToast = document.getElementById("copy-toast")!;
-  copyToast.hidden = true;
-
-  copyBtn.onclick = async () => {
-    const focusTokens = currentSections.get("current focus");
-    const situationTokens = currentSections.get("current situation");
-    const nextTokens = currentSections.get("next transition");
-    const facingTokens = currentSections.get("facing issues");
-    const frameTokens = currentSections.get("project frame");
-    const settledTokens = currentSections.get("settled direction");
-
-    const handoffText = buildAreaHandoffContext({
-      projectTitle: activeProjectTitle,
-      areaTitle: item.title,
-      railTitle: item.railTitle,
-      groupTitle: item.groupTitle,
-      areaDescription: item.description,
-      areaDetail: detail,
-      focusText: focusTokens ? extractSectionRawText(focusTokens) : undefined,
-      situationText: situationTokens ? extractSectionRawText(situationTokens) : undefined,
-      nextTransitionText: nextTokens ? extractSectionRawText(nextTokens) : undefined,
-      facingIssuesText: facingTokens ? extractSectionRawText(facingTokens) : undefined,
-      projectFrameText: frameTokens ? extractSectionRawText(frameTokens) : undefined,
-      settledDirectionText: settledTokens ? extractSectionRawText(settledTokens) : undefined,
+function bindSemanticCards(container: HTMLElement): void {
+  container.querySelectorAll<HTMLButtonElement>("[data-entity-kind]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const kind = button.dataset.entityKind as InspectorKind;
+      const title = button.dataset.entityTitle ?? "";
+      const entity = findEntity(kind, title);
+      if (entity) openInspector(entity, false);
     });
+  });
+}
 
-    const ok = await copyToClipboard(handoffText);
-    if (ok) {
-      copyToast.hidden = false;
-      copyBtn.classList.add("btn-copied");
-      setTimeout(() => {
-        copyToast.hidden = true;
-        copyBtn.classList.remove("btn-copied");
-      }, 3000);
+function setLegacyContextSections(sections: Map<string, Token[]>): void {
+  const focusTokens = sections.get("current focus");
+  const focusPanel = document.getElementById("slot-focus");
+  if (focusPanel) {
+    const body = focusPanel.querySelector<HTMLElement>(".panel-body");
+    if (body) body.innerHTML = focusTokens ? withMermaidPlaceholders(renderTokens(focusTokens)) : "";
+    focusPanel.hidden = !focusTokens?.length;
+  }
+
+  const recentTokens = sections.get("recently completed");
+  const recentPanel = document.getElementById("slot-recent");
+  if (recentPanel) {
+    const body = recentPanel.querySelector<HTMLElement>(".panel-body");
+    if (body) body.innerHTML = recentTokens ? withMermaidPlaceholders(renderTokens(recentTokens)) : "";
+    recentPanel.hidden = Boolean(currentModel.movements.length) || !recentTokens?.length;
+  }
+
+  const frameTokens = sections.get("project frame");
+  const settledTokens = sections.get("settled direction");
+  const frame = document.getElementById("slot-frame");
+  const settled = document.getElementById("slot-settled");
+  if (frame) {
+    const body = frame.querySelector<HTMLElement>(".panel-body");
+    if (body) body.innerHTML = frameTokens ? withMermaidPlaceholders(renderTokens(frameTokens)) : "";
+    frame.hidden = !frameTokens?.length;
+  }
+  if (settled) {
+    const body = settled.querySelector<HTMLElement>(".panel-body");
+    if (body) body.innerHTML = settledTokens ? withMermaidPlaceholders(renderTokens(settledTokens)) : "";
+    settled.hidden = !settledTokens?.length;
+  }
+
+  const horizon = sections.get("project horizon") ?? sections.get("current situation");
+  const next = sections.get("next transition");
+  const facing = sections.get("facing issues");
+  const legacyNow = document.getElementById("slot-now")?.querySelector<HTMLElement>(".panel-body");
+  const legacyNext = document.getElementById("slot-next")?.querySelector<HTMLElement>(".panel-body");
+  const legacyFacing = document.getElementById("slot-blocked")?.querySelector<HTMLElement>(".panel-body");
+  if (legacyNow) legacyNow.innerHTML = horizon ? withMermaidPlaceholders(renderTokens(horizon)) : "";
+  if (legacyNext) legacyNext.innerHTML = next ? withMermaidPlaceholders(renderTokens(next)) : "";
+  if (legacyFacing) legacyFacing.innerHTML = facing ? withMermaidPlaceholders(renderTokens(facing)) : "";
+
+  const extra = document.getElementById("slot-extra");
+  if (!extra) return;
+  extra.innerHTML = "";
+  const known = new Set([
+    "project map", "area details", "project horizon", "stage journey", "project posture",
+    "current frontier", "strategic threads", "recent material movement", "current focus",
+    "current situation", "next transition", "facing issues", "project frame", "settled direction",
+    "recently completed",
+  ]);
+  let shown = false;
+  for (const [name, tokens] of sections) {
+    if (known.has(name)) continue;
+    const heading = name.startsWith("__h1:") ? name.slice(6) : name;
+    const card = document.createElement("section");
+    card.className = "panel panel-context";
+    card.innerHTML = `<h2>${escapeHtml(heading)}</h2><div class="panel-body">${withMermaidPlaceholders(renderTokens(tokens))}</div>`;
+    extra.appendChild(card);
+    shown = true;
+  }
+  extra.hidden = !shown;
+}
+
+function setupFocusCopy(sections: Map<string, Token[]>, parsedMap: ParsedMap): void {
+  const button = document.getElementById("focus-copy-btn") as HTMLButtonElement | null;
+  const toast = document.getElementById("focus-copy-toast");
+  if (!button) return;
+  button.onclick = async () => {
+    const text = buildFocusHandoffContext({
+      projectTitle: activeProjectTitle,
+      focusText: extractSectionRawText(sections.get("current focus")),
+      situationText: extractSectionRawText(sections.get("project horizon") ?? sections.get("current situation")),
+      nextTransitionText: extractSectionRawText(sections.get("current frontier") ?? sections.get("next transition")),
+      facingIssuesText: extractSectionRawText(sections.get("facing issues")),
+      projectFrameText: extractSectionRawText(sections.get("project frame")),
+      settledDirectionText: extractSectionRawText(sections.get("settled direction")),
+      projectMapText: formatProjectMapText(parsedMap),
+      areaDetailsText: formatAreaDetailsText(currentAreaDetails),
+    });
+    if (await copyToClipboard(text) && toast) {
+      toast.hidden = false;
+      setTimeout(() => { toast.hidden = true; }, 3000);
     }
   };
 }
 
-function setSection(panelId: string, tokens: Token[] | undefined) {
-  const panel = document.getElementById(panelId);
-  if (!panel) return;
-  const body = panel.querySelector<HTMLElement>(".panel-body");
-  if (!body) return;
-  const html = tokens ? withMermaidPlaceholders(renderTokens(tokens)) : "";
-  body.innerHTML = html || `<p class="muted">아직 기록된 내용이 없습니다.</p>`;
-}
-
-async function renderDoc(source: string) {
+async function renderDoc(source: string): Promise<void> {
   const tokens = md.parse(source, {});
   const { title, sections } = splitSections(tokens);
-  currentSections = sections;
   activeProjectTitle = title || "Cockpit";
-
-  const byHeading = (name: string) => sections.get(name);
+  currentSections = sections;
+  currentAreaDetails = parseAreaDetails(sections.get("area details") ?? []);
+  currentParsedMap = parseProjectMap(sections.get("project map") ?? []);
+  currentModel = parseMentalModel(sections);
 
   document.title = title ? `${title} — Cockpit` : "Cockpit";
-  document.getElementById("project-title")!.textContent = title || "이름 없는 프로젝트";
+  const projectTitle = document.getElementById("project-title");
+  if (projectTitle) projectTitle.textContent = title || "이름 없는 프로젝트";
 
-  // Parse Area Details
-  const areaDetailTokens = byHeading("area details") ?? [];
-  currentAreaDetails = parseAreaDetails(areaDetailTokens);
+  const horizonPanel = document.getElementById("slot-horizon");
+  if (horizonPanel) {
+    const horizonBody = horizonPanel.querySelector<HTMLElement>(".panel-body");
+    if (horizonBody && currentModel.horizon) horizonBody.innerHTML = renderHorizon(currentModel.horizon);
+    horizonPanel.hidden = !currentModel.horizon;
+    horizonPanel.classList.toggle("legacy-fallback", Boolean(currentModel.horizon?.isLegacyFallback));
+  }
 
-  // Parse Project Map
-  const mapTokens = byHeading("project map") ?? [];
-  const parsedMap = parseProjectMap(mapTokens);
-  currentParsedMap = parsedMap;
+  const stagePanel = document.getElementById("slot-stage");
+  if (stagePanel && currentModel.stageJourney) {
+    const body = stagePanel.querySelector<HTMLElement>(".panel-body");
+    if (body) body.innerHTML = renderStageJourney(currentModel.stageJourney);
+    stagePanel.hidden = currentModel.stageJourney.segments.length === 0;
+    bindSemanticCards(stagePanel);
+  } else if (stagePanel) stagePanel.hidden = true;
 
-  const mapPanel = document.getElementById("slot-map")!;
-  const mapBody = mapPanel.querySelector<HTMLElement>(".map-body")!;
+  const posturePanel = document.getElementById("slot-posture");
+  if (posturePanel && currentModel.posture) {
+    const body = posturePanel.querySelector<HTMLElement>(".panel-body");
+    if (body) body.innerHTML = renderPosture(currentModel.posture);
+    posturePanel.hidden = currentModel.posture.axes.length === 0;
+    bindSemanticCards(posturePanel);
+  } else if (posturePanel) posturePanel.hidden = true;
 
-  if (parsedMap.isNativeMap) {
-    mapBody.innerHTML = renderNativeMap(parsedMap, selectedAreaId, currentAreaDetails);
+  const frontierPanel = document.getElementById("slot-frontier");
+  if (frontierPanel) {
+    const body = frontierPanel.querySelector<HTMLElement>(".panel-body");
+    if (body) {
+      if (currentModel.frontiers.length > 0) {
+        body.innerHTML = renderFrontiers(currentModel.frontiers);
+      } else {
+        const nextHtml = sections.get("next transition") ? withMermaidPlaceholders(renderTokens(sections.get("next transition")!)) : "";
+        const issueHtml = sections.get("facing issues") ? withMermaidPlaceholders(renderTokens(sections.get("facing issues")!)) : "";
+        body.innerHTML = nextHtml ? renderLegacyFrontier(nextHtml, issueHtml) : "";
+      }
+    }
+    frontierPanel.hidden = currentModel.frontiers.length === 0 && !sections.get("next transition")?.length;
+    bindSemanticCards(frontierPanel);
+  }
 
-    // Bind click events on all map cards
-    mapBody.querySelectorAll<HTMLButtonElement>(".map-card").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const itemId = btn.getAttribute("data-item-id");
-        if (itemId) {
-          const item = findMapItemById(itemId);
-          if (item) {
-            updateInspectorView(selectedAreaId === item.id ? null : item);
-          }
-        }
+  const threadPanel = document.getElementById("slot-threads");
+  if (threadPanel) {
+    const body = threadPanel.querySelector<HTMLElement>(".panel-body");
+    if (body) body.innerHTML = currentModel.strategicThreads.length ? renderThreads(currentModel.strategicThreads) : "";
+    threadPanel.hidden = currentModel.strategicThreads.length === 0;
+    bindSemanticCards(threadPanel);
+  }
+
+  const movementPanel = document.getElementById("slot-movement");
+  if (movementPanel) {
+    const body = movementPanel.querySelector<HTMLElement>(".panel-body");
+    if (body) body.innerHTML = currentModel.movements.length ? renderMovements(currentModel.movements) : "";
+    movementPanel.hidden = currentModel.movements.length === 0;
+    bindSemanticCards(movementPanel);
+  }
+
+  const mapPanel = document.getElementById("slot-map");
+  const mapBody = mapPanel?.querySelector<HTMLElement>(".map-body");
+  if (mapBody && currentParsedMap.isNativeMap) {
+    mapBody.innerHTML = renderNativeMap(currentParsedMap, selectedAreaId, currentAreaDetails);
+    mapBody.querySelectorAll<HTMLButtonElement>(".map-card").forEach((button) => {
+      button.addEventListener("click", () => {
+        const item = findMapItemById(button.dataset.itemId ?? "");
+        if (item) openInspector(areaEntity(item));
       });
     });
-  } else {
-    // Fallback to generic tokens rendering (Mermaid or Markdown)
-    const html = mapTokens.length
+  } else if (mapBody) {
+    const mapTokens = sections.get("project map");
+    mapBody.innerHTML = mapTokens?.length
       ? withMermaidPlaceholders(renderTokens(mapTokens))
       : `<p class="muted">프로젝트 지도 내용이 없습니다.</p>`;
-    mapBody.innerHTML = html;
   }
 
-  // Setup Area Detail Completeness Badge
-  const completeness = getAreaCompleteness(parsedMap, currentAreaDetails);
-  const completenessBadge = document.getElementById("map-completeness-badge");
-  if (completenessBadge) {
-    if (completeness.totalItems > 0 && completeness.missingItems > 0) {
-      completenessBadge.textContent = `영역 상세 ${completeness.matchedItems}/${completeness.totalItems} · ${completeness.missingItems}개 미작성`;
-      completenessBadge.className = "completeness-badge missing";
-      completenessBadge.hidden = false;
+  const completeness: AreaCompleteness = getAreaCompleteness(currentParsedMap, currentAreaDetails);
+  const badge = document.getElementById("map-completeness-badge");
+  if (badge) {
+    badge.hidden = completeness.totalItems === 0 || completeness.missingItems === 0;
+    badge.textContent = `${completeness.matchedItems}/${completeness.totalItems} areas with detail`;
+    badge.className = `completeness-badge ${completeness.missingItems > 0 ? "missing" : "complete"}`;
+  }
+
+  setLegacyContextSections(sections);
+  setupFocusCopy(sections, currentParsedMap);
+
+  const empty = document.getElementById("empty-state");
+  if (empty) empty.hidden = Boolean(title || sections.size);
+
+  if (inspectorHistory.length > 0) {
+    const current = inspectorHistory[inspectorHistory.length - 1];
+    const refreshed = findEntity(current.kind, current.title);
+    if (refreshed) {
+      inspectorHistory[inspectorHistory.length - 1] = refreshed;
+      renderInspector(refreshed);
     } else {
-      completenessBadge.hidden = true;
+      closeInspector();
     }
   }
 
-  // Setup Header Chip (hidden by default; local stage markers live in each rail)
-  const chip = document.getElementById("you-are-here-chip");
-  if (chip) {
-    chip.hidden = true;
-  }
-
-  // Setup Overview Panels
-  const focusTokens = byHeading("current focus");
-  const slotFocus = document.getElementById("slot-focus");
-  const focusCopyBtn = document.getElementById("focus-copy-btn");
-  const focusCopyToast = document.getElementById("focus-copy-toast");
-  if (focusCopyToast) {
-    focusCopyToast.hidden = true;
-  }
-
-  if (slotFocus) {
-    if (focusTokens && focusTokens.length > 0) {
-      setSection("slot-focus", focusTokens);
-      slotFocus.hidden = false;
-
-      if (focusCopyBtn) {
-        focusCopyBtn.onclick = async () => {
-          const focusText = extractSectionRawText(focusTokens);
-          const situationText = extractSectionRawText(byHeading("current situation"));
-          const nextTransitionText = extractSectionRawText(byHeading("next transition"));
-          const facingIssuesText = extractSectionRawText(byHeading("facing issues"));
-          const projectFrameText = extractSectionRawText(byHeading("project frame"));
-          const settledDirectionText = extractSectionRawText(byHeading("settled direction"));
-          const projectMapText = formatProjectMapText(parsedMap);
-          const areaDetailsText = formatAreaDetailsText(currentAreaDetails);
-
-          const handoffText = buildFocusHandoffContext({
-            projectTitle: activeProjectTitle,
-            focusText,
-            situationText,
-            nextTransitionText,
-            facingIssuesText,
-            projectFrameText,
-            settledDirectionText,
-            projectMapText,
-            areaDetailsText,
-          });
-
-          const ok = await copyToClipboard(handoffText);
-          if (ok && focusCopyToast) {
-            focusCopyToast.hidden = false;
-            focusCopyBtn.classList.add("btn-copied");
-            setTimeout(() => {
-              focusCopyToast.hidden = true;
-              focusCopyBtn.classList.remove("btn-copied");
-            }, 3000);
-          }
-        };
-      }
-    } else {
-      slotFocus.hidden = true;
-    }
-  }
-
-  setSection("slot-now", byHeading("current situation"));
-  setSection("slot-next", byHeading("next transition"));
-  setSection("slot-blocked", byHeading("facing issues"));
-
-  // Context panels
-  setSection("slot-frame", byHeading("project frame"));
-  setSection("slot-settled", byHeading("settled direction"));
-
-  const recentTokens = byHeading("recently completed");
-  const slotRecent = document.getElementById("slot-recent");
-  if (slotRecent) {
-    if (recentTokens && recentTokens.length > 0) {
-      setSection("slot-recent", recentTokens);
-      slotRecent.hidden = false;
-    } else {
-      slotRecent.hidden = true;
-    }
-  }
-
-  // Extra context sections
-  const known = new Set([
-    "project map",
-    "area details",
-    "current focus",
-    "current situation",
-    "next transition",
-    "facing issues",
-    "project frame",
-    "settled direction",
-    "recently completed",
-  ]);
-
-  const extra = document.getElementById("slot-extra")!;
-  extra.innerHTML = "";
-  let extrasShown = false;
-  for (const [name, toks] of sections) {
-    if (known.has(name)) continue;
-    const heading = name.startsWith("__h") ? name.split(":", 2)[1] : name;
-    const card = document.createElement("section");
-    card.className = "panel panel-context";
-    card.innerHTML = `<h2>${escapeHtml(heading)}</h2><div class="panel-body">${
-      withMermaidPlaceholders(renderTokens(toks)) || `<p class="muted">아직 기록된 내용이 없습니다.</p>`
-    }</div>`;
-    extra.appendChild(card);
-    extrasShown = true;
-  }
-  extra.hidden = !extrasShown;
-
-  const empty = document.getElementById("empty-state")!;
-  const nothing = !title && sections.size === 0;
-  empty.hidden = !nothing;
-
-  // Support URL hash deep-linking or restore Inspector view
-  if (!selectedAreaId && window.location.hash) {
-    const rawHash = decodeURIComponent(window.location.hash.slice(1)).trim();
-    if (rawHash) {
-      const match = parsedMap.rails
-        ? parsedMap.rails
-            .flatMap((r) => r.groups)
-            .flatMap((g) => g.items)
-            .find(
-              (it) =>
-                it.id === rawHash ||
-                normalizeKey(it.title) === normalizeKey(rawHash) ||
-                it.title === rawHash
-            )
-        : null;
-      if (match) {
-        selectedAreaId = match.id;
-      }
-    }
-  }
-
-  if (selectedAreaId) {
-    const item = findMapItemById(selectedAreaId);
-    updateInspectorView(item);
-  } else {
-    updateInspectorView(null);
-  }
-
-  // Bind close button
-  const closeBtn = document.getElementById("inspector-close-btn");
-  if (closeBtn) {
-    closeBtn.onclick = () => updateInspectorView(null);
-  }
-
-  // Render any Mermaid diagrams elsewhere in the page
-  const nodes = Array.from(document.querySelectorAll<HTMLElement>(".mermaid"));
-  if (nodes.length) {
+  const diagrams = Array.from(document.querySelectorAll<HTMLElement>(".mermaid"));
+  if (diagrams.length) {
     try {
-      await mermaid.run({ nodes, suppressErrors: true });
+      await mermaid.run({ nodes: diagrams, suppressErrors: true });
     } catch {
-      /* Mermaid handles its own render errors */
+      /* Mermaid owns its own render errors. */
     }
   }
 
-  // Fallback: If Mermaid YOU ARE HERE marker exists in a legacy map
-  if (!parsedMap.hasCurrentStage) {
-    for (const el of nodes) {
-      const src = el.getAttribute("data-src") ?? "";
-      if (!el.closest("#slot-map")) continue;
-      const marker = HERE_MARKER.exec(src);
+  if (!currentParsedMap.hasCurrentStage) {
+    for (const element of diagrams) {
+      const sourceText = element.getAttribute("data-src") ?? "";
+      if (!element.closest("#slot-map")) continue;
+      const marker = HERE_MARKER.exec(sourceText);
       if (!marker) continue;
-      const nodeId = marker[1];
-      const g = document.querySelector<SVGGElement>(
-        `#slot-map [id$="-flowchart-${nodeId}"], #slot-map [id*="-flowchart-${nodeId}-"]`
+      const node = document.querySelector<SVGGElement>(
+        `#slot-map [id$="-flowchart-${marker[1]}"], #slot-map [id*="-flowchart-${marker[1]}-"]`
       );
-      if (g) {
-        g.classList.add("you-are-here");
-      }
+      node?.classList.add("you-are-here");
     }
   }
 }
 
-async function fetchAndRender() {
+async function fetchAndRender(): Promise<void> {
   try {
-    const res = await fetch("/progress.md", { cache: "no-store" });
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-    const text = await res.text();
-    await renderDoc(text);
-  } catch (err) {
+    const response = await fetch("/progress.md", { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    await renderDoc(await response.text());
+  } catch (error) {
     document.title = "Cockpit — Unavailable";
-    document.getElementById("project-title")!.textContent = "문서를 불러올 수 없습니다";
-    const empty = document.getElementById("empty-state")!;
-    empty.textContent = `진행 문서를 불러오지 못했습니다 (${err instanceof Error ? err.message : String(err)}).`;
-    empty.hidden = false;
+    const title = document.getElementById("project-title");
+    if (title) title.textContent = "문서를 불러올 수 없습니다";
+    const empty = document.getElementById("empty-state");
+    if (empty) {
+      empty.textContent = `진행 문서를 불러오지 못했습니다 (${error instanceof Error ? error.message : String(error)}).`;
+      empty.hidden = false;
+    }
   }
 }
 
-function initLiveReload() {
+function initLiveReload(): void {
   if (typeof EventSource === "undefined") return;
-  const es = new EventSource("/events");
-  es.addEventListener("change", () => {
-    void fetchAndRender();
-  });
+  const eventSource = new EventSource("/events");
+  eventSource.addEventListener("change", () => { void fetchAndRender(); });
 }
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
+  bindInspectorActions();
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeInspector();
+  });
   void fetchAndRender();
   initLiveReload();
 }

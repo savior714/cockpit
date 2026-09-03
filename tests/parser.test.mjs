@@ -28,6 +28,13 @@ import {
   formatFocusHandoffInstruction,
   formatAreaHandoffInstruction,
   formatExecutionWaveContractLines,
+  parseProjectHorizon,
+  parseStageJourney,
+  parseProjectPosture,
+  parseCurrentFrontiers,
+  parseStrategicThreads,
+  parseMaterialMovements,
+  parseMentalModel,
 } from "../dist/parser.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -644,24 +651,25 @@ test("DOM and CSS containment invariant: context-region prioritizes Recent Progr
   assert.ok(css.includes(".panel-stable"), "CSS must style .panel-stable");
 });
 
-test("Recent Progress is a newest-first semantic rolling window with visible recency hierarchy", () => {
+test("Recent Material Movement is a bounded semantic transition window, with legacy Recent Progress fallback", () => {
   const progressPath = path.join(__dirname, "..", "PROGRESS.md");
   const source = fs.readFileSync(progressPath, "utf-8");
   const { sections } = splitSections(md.parse(source, {}));
-  const recentTokens = sections.get("recently completed");
+  const recentTokens = sections.get("recent material movement");
+  assert.ok(recentTokens, "root PROGRESS.md must expose Recent Material Movement");
+  const movements = parseMaterialMovements(recentTokens);
+  assert.ok(movements.length >= 1 && movements.length <= 8, "Recent Material Movement must stay bounded");
+  assert.equal(movements[0].title, "Presentation synthesis");
+  assert.equal(movements[0].before, "MAP-FIRST");
+  assert.equal(movements[0].after, "HORIZON-FIRST");
+  assert.ok(movements.every((movement) => movement.hasStateTransition));
 
-  assert.ok(recentTokens, "root PROGRESS.md must expose a Recent Progress section");
-  const recentItems = recentTokens
-    .filter((token) => token.type === "inline")
-    .map((token) => token.content.trim());
-
-  assert.ok(recentItems.length >= 5 && recentItems.length <= 8, "Recent Progress must stay a bounded rolling window");
-  assert.match(recentItems[0], /^\*\*Overview를 Project Horizon zoom level로 재정의함/);
-  assert.match(recentItems[1], /^\*\*프로젝트 이해 충실도 acceptance gap/);
-  assert.match(recentItems[2], /^\*\*Recent Progress를 rolling semantic window/);
-  for (const item of recentItems) {
-    assert.match(item, /^\*\*.+\*\* → .+/, "each item must expose material change → consequence");
-  }
+  const legacy = splitSections(md.parse(`
+# Legacy
+## Recent Progress
+- **Semantic transition** → project state changed
+`, {})).sections;
+  assert.ok(legacy.get("recently completed"), "old Recent Progress remains a supported fallback");
 
   const htmlPath = path.join(__dirname, "..", "index.html");
   const html = fs.readFileSync(htmlPath, "utf-8");
@@ -2237,3 +2245,196 @@ test("Area Detail Evidence Admission: Area with Meaning + Current Level + Eviden
   assert.ok(handoffArea2.includes("#### 다시 열리는 조건\n- 카프카 클러스터"));
 });
 
+function readFixtureModel(filename) {
+  const source = fs.readFileSync(path.join(__dirname, "fixtures", filename), "utf-8");
+  const tokens = md.parse(source, {});
+  const { sections } = splitSections(tokens);
+  return { source, sections, model: parseMentalModel(sections) };
+}
+
+test("Mental-model canonical aliases normalize and legacy aliases remain distinct fallbacks", () => {
+  const canonical = splitSections(md.parse(`
+# Model
+## Project Horizon
+orientation
+## Stage Journey
+### Current — Stage 1
+- **CLOSED — Gate**
+`, {})).sections;
+
+  assert.ok(canonical.get("project horizon"));
+  assert.ok(canonical.get("stage journey"));
+  assert.equal(canonical.get("current situation"), undefined);
+
+  const legacy = splitSections(md.parse(`
+# Legacy
+## 현재 상황
+old orientation
+`, {})).sections;
+  const horizon = parseProjectHorizon(legacy.get("current situation"), true);
+  assert.ok(horizon);
+  assert.equal(horizon.isLegacyFallback, true);
+  assert.equal(horizon.title, "현재 상황");
+});
+
+test("NextChart EMR acceptance fixture parses as a complex, non-telemetry mental model", () => {
+  const { source, model } = readFixtureModel("nextchart-emr.md");
+  const result = checkProgressStructure(source);
+
+  assert.equal(result.ok, true, result.errors.join("; "));
+  assert.equal(model.horizon?.isLegacyFallback, false);
+  assert.match(model.horizon?.summaryText ?? "", /NextChart/);
+  assert.equal(model.stageJourney?.currentStage, "Stage 1A: Primary Care Baseline RC");
+  assert.equal(model.stageJourney?.nextStage, "Stage 1B");
+  assert.deepEqual(model.posture?.axes.map((axis) => axis.title), [
+    "Core Product",
+    "Production Truth",
+    "Reliability",
+    "Security",
+    "External Breadth",
+    "Delivery Readiness",
+  ]);
+  assert.equal(model.posture?.axes.find((axis) => axis.title === "Core Product")?.role, "core-capability");
+  assert.equal(model.posture?.axes.find((axis) => axis.title === "Delivery Readiness")?.role, "delivery-readiness");
+  assert.equal(model.frontiers.length, 1);
+  assert.equal(model.frontiers[0].title, "Exact release convergence");
+  assert.equal(model.frontiers[0].currentState, "NOT PROVEN");
+  assert.equal(model.frontiers[0].targetState, "PROVEN");
+  assert.equal(model.movements.length, 2);
+  assert.ok(model.movements.every((movement) => movement.hasStateTransition));
+  assert.match(model.frontiers[0].closedBoundaries, /HIRA sentinel/);
+});
+
+test("Cockpit acceptance fixture proves posture vocabulary is project-specific", () => {
+  const { source, model } = readFixtureModel("cockpit-self.md");
+  const result = checkProgressStructure(source);
+
+  assert.equal(result.ok, true, result.errors.join("; "));
+  assert.deepEqual(model.posture?.axes.map((axis) => axis.title), [
+    "Core Viewer",
+    "Model Fidelity",
+    "Comprehension",
+    "Portability",
+    "Operational Simplicity",
+    "Adoption Readiness",
+  ]);
+  assert.equal(model.posture?.axes.some((axis) => axis.title === "Production Truth"), false);
+  assert.equal(model.frontiers[0].title, "Reader comprehension closure");
+  assert.equal(model.frontiers[0].currentState, "DRAFT");
+  assert.equal(model.frontiers[0].targetState, "INDEPENDENTLY ACCEPTED");
+  assert.deepEqual(model.movements.map((movement) => movement.title), [
+    "Presentation synthesis",
+    "Inspector convergence",
+  ]);
+});
+
+test("Stage Blocker remains separate from maturity and respects explicit negative wording", () => {
+  const sections = splitSections(md.parse(`
+# Stage blocker wording
+## Project Posture
+### Core Capability — STRONG
+단계 blocker 아님.
+### Delivery Readiness — PARTIAL
+Stage blocker: yes
+`, {})).sections;
+  const posture = parseProjectPosture(sections.get("project posture"));
+
+  assert.equal(posture?.axes[0]?.state, "STRONG");
+  assert.equal(posture?.axes[0]?.isStageBlocker, false);
+  assert.equal(posture?.axes[1]?.state, "PARTIAL");
+  assert.equal(posture?.axes[1]?.isStageBlocker, true);
+});
+
+test("Canonical semantic guardrails reject invalid posture, frontier, movement, relation, and Horizon telemetry", () => {
+  const invalid = `
+# Invalid model
+
+## Project Horizon
+Current model was reconstructed at 0123456789abcdef0123456789abcdef01234567 by PID 123 from /Users/example/src/main.ts.
+
+## Stage Journey
+### Current — Stage 1
+- **CLOSED — Gate**
+### Next — Stage 2
+NOT OPEN
+
+## Project Posture
+### Core Capability — BLOCKED
+Role: CORE CAPABILITY
+bad state
+### Axis 2 — STRONG
+fine
+### Axis 3 — PARTIAL
+fine
+### Axis 4 — WEAK
+fine
+
+## Current Frontier
+### One
+현재: A
+목표: B
+### Two
+현재: B
+목표: C
+관련 영역: Missing Area
+
+## Recent Material Movement
+### Activity only
+변경: a refactor happened
+`;
+
+  const result = checkProgressStructure(invalid);
+  assert.equal(result.ok, false);
+  assert.ok(result.guardrailErrors.some((error) => /full Git SHA/.test(error)));
+  assert.ok(result.guardrailErrors.some((error) => /explicit PID/.test(error)));
+  assert.ok(result.guardrailErrors.some((error) => /absolute implementation path/.test(error)));
+  assert.ok(result.guardrailErrors.some((error) => /5–8 axes/.test(error)));
+  assert.ok(result.guardrailErrors.some((error) => /encodes BLOCKED as maturity/.test(error)));
+  assert.ok(result.guardrailErrors.some((error) => /Multiple Primary Frontiers/.test(error)));
+  assert.ok(result.guardrailErrors.some((error) => /Material movement/.test(error)));
+  assert.ok(result.unresolvedRelations.some((error) => /Missing Area/.test(error)));
+});
+
+test("Explicit CO-PRIMARY is the only valid multi-primary frontier exception", () => {
+  const doc = `
+# Co-primary
+## Current Frontier
+### [CO-PRIMARY] Release boundary
+현재: A
+목표: B
+### [CO-PRIMARY] Reader boundary
+현재: C
+목표: D
+`;
+  const result = checkProgressStructure(doc);
+  assert.equal(result.primaryFrontierCount, 2);
+  assert.equal(result.coPrimaryFrontierCount, 2);
+  assert.equal(result.guardrailErrors.some((error) => /Multiple Primary Frontiers/.test(error)), false);
+});
+
+test("Legacy documents use a single non-duplicating Horizon fallback", () => {
+  const { source, sections, model } = readFixtureModel("operational-system.md");
+  const result = checkProgressStructure(source);
+  assert.equal(result.ok, true, result.errors.join("; "));
+  assert.equal(model.horizon?.isLegacyFallback, true);
+  assert.equal(Boolean(sections.get("project horizon")), false);
+  assert.equal(model.frontiers.length, 0);
+  assert.equal(model.movements.length, 0);
+});
+
+test("Reader-visible DOM follows Horizon → Stage/Posture → Frontier → Movement → Map and exposes one Inspector shell", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf-8");
+  const ids = ["slot-horizon", "slot-stage", "slot-posture", "slot-frontier", "slot-threads", "slot-movement", "slot-map"];
+  const positions = ids.map((id) => html.indexOf(`id="${id}"`));
+  assert.ok(positions.every((position) => position !== -1));
+  assert.deepEqual([...positions].sort((a, b) => a - b), positions);
+  assert.ok(html.includes('id="inspector-aside"'));
+  assert.ok(html.includes('id="universal-inspector-panel"'));
+  assert.ok(html.includes('id="inspector-breadcrumb"'));
+  assert.ok(html.includes('id="inspector-related"'));
+
+  const css = fs.readFileSync(path.join(__dirname, "..", "src", "style.css"), "utf-8");
+  for (const selector of [".panel-horizon", ".stage-posture-grid", ".panel-frontier", ".panel-threads", ".panel-movement", ".universal-inspector-drawer"]) {
+    assert.ok(css.includes(selector), `${selector} must have a presentation rule`);
+  }
+});

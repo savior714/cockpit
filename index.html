@@ -17,74 +17,134 @@
       </header>
 
       <div id="primary-workspace" class="primary-workspace">
+        <div id="overview-panel" class="overview-panel" aria-label="프로젝트 개요">
+          <section id="slot-horizon" class="panel panel-horizon" aria-label="프로젝트 지평">
+            <div class="panel-header">
+              <div>
+                <span class="surface-kicker">L0 / ORIENTATION</span>
+                <h2>프로젝트 지평</h2>
+              </div>
+            </div>
+            <div class="panel-body"></div>
+          </section>
+
+          <div class="stage-posture-grid">
+            <section id="slot-stage" class="panel panel-stage" aria-label="단계 여정" hidden>
+              <div class="panel-header">
+                <div>
+                  <span class="surface-kicker">L1 / JOURNEY</span>
+                  <h2>단계 여정</h2>
+                </div>
+              </div>
+              <div class="panel-body"></div>
+            </section>
+
+            <section id="slot-posture" class="panel panel-posture" aria-label="프로젝트 상태" hidden>
+              <div class="panel-header">
+                <div>
+                  <span class="surface-kicker">L1 / POSTURE</span>
+                  <h2>프로젝트 상태</h2>
+                </div>
+              </div>
+              <div class="panel-body"></div>
+            </section>
+          </div>
+
+          <section id="slot-frontier" class="panel panel-frontier" aria-label="현재 최전선" hidden>
+            <div class="panel-header">
+              <div>
+                <span class="surface-kicker">L1 / TRANSITION</span>
+                <h2>현재 최전선</h2>
+              </div>
+              <span class="surface-note">가장 가까운 consequential state change</span>
+            </div>
+            <div class="panel-body"></div>
+          </section>
+
+          <section id="slot-threads" class="panel panel-threads" aria-label="전략적 흐름" hidden>
+            <div class="panel-header">
+              <div>
+                <span class="surface-kicker">L1 / PARALLEL DIRECTIONS</span>
+                <h2>전략적 흐름</h2>
+              </div>
+            </div>
+            <div class="panel-body"></div>
+          </section>
+
+          <section id="slot-movement" class="panel panel-movement" aria-label="최근 실질적 변화" hidden>
+            <div class="panel-header">
+              <div>
+                <span class="surface-kicker">L1 / MODEL DELTA</span>
+                <h2>최근 실질적 변화</h2>
+              </div>
+              <span class="surface-note">현재 PROGRESS.md · 최신 시맨틱 전환 · activity가 아니라 project model의 이동</span>
+            </div>
+            <div class="panel-body"></div>
+          </section>
+        </div>
+
         <section id="slot-map" class="panel panel-map" aria-label="프로젝트 지도">
           <div class="panel-header">
-            <h2>프로젝트 지도</h2>
+            <div>
+              <span class="surface-kicker">L2 / STRUCTURE</span>
+              <h2>프로젝트 지도</h2>
+            </div>
             <span id="map-completeness-badge" class="completeness-badge" hidden></span>
           </div>
           <div class="panel-body map-body"></div>
         </section>
 
-        <aside id="inspector-aside" class="side" aria-label="개요 및 영역 검사">
-          <!-- Default State: Overview Panel -->
-          <div id="overview-panel" class="inspector-panel">
-            <section id="slot-focus" class="panel panel-side panel-focus" aria-label="현재 집중" hidden>
-              <h2>현재 집중</h2>
-              <div class="panel-body"></div>
-              <div class="focus-actions">
-                <button id="focus-copy-btn" class="btn-focus-copy" type="button">
-                  현재 집중 컨텍스트 복사
-                </button>
-                <span id="focus-copy-toast" class="copy-toast" hidden>✓ Problem Framer용 컨텍스트가 복사되었습니다</span>
-              </div>
-            </section>
-            <section id="slot-now" class="panel panel-side" aria-label="현재 상황">
-              <h2>현재 상황</h2>
-              <div class="panel-body"></div>
-            </section>
-            <section id="slot-next" class="panel panel-side" aria-label="다음 전환">
-              <h2>다음 전환</h2>
-              <div class="panel-body"></div>
-            </section>
-            <section id="slot-blocked" class="panel panel-side" aria-label="직면한 문제">
-              <h2>직면한 문제</h2>
-              <div class="panel-body"></div>
-            </section>
-          </div>
-
-          <!-- Selected State: Area Inspector Panel -->
-          <div id="area-inspector-panel" class="inspector-panel area-inspector" hidden>
-            <div class="inspector-card panel">
-              <div class="inspector-top-bar">
-                <span id="inspector-group-tag" class="group-tag">영역 상세</span>
-                <button id="inspector-close-btn" class="btn-back" type="button" aria-label="프로젝트 개요로 돌아가기">
-                  ← 프로젝트 개요
-                </button>
-              </div>
-              <h2 id="inspector-title" class="inspector-title"></h2>
-              <div id="inspector-summary" class="inspector-summary"></div>
-              
-              <div id="inspector-sections" class="inspector-subsections">
-                <!-- Dynamically populated: 의미, 현재 수준, 남은 문제, 다시 열리는 조건, 근거 -->
-              </div>
-
-              <div class="inspector-actions">
-                <button id="inspector-copy-btn" class="btn-handoff" type="button">
-                  이 영역 검토하기
-                </button>
-                <span id="copy-toast" class="copy-toast" hidden>✓ 검토 요청이 복사되었습니다</span>
-              </div>
+        <aside id="inspector-aside" class="universal-inspector-drawer" aria-label="Universal Inspector" hidden>
+          <div id="universal-inspector-panel" class="inspector-card panel">
+            <div class="inspector-top-bar">
+              <div id="inspector-breadcrumb" class="inspector-breadcrumb">개요</div>
+              <button id="inspector-close-btn" class="btn-back" type="button" aria-label="프로젝트 개요로 돌아가기">
+                개요로 돌아가기
+              </button>
+            </div>
+            <div class="inspector-identity">
+              <span id="inspector-group-tag" class="group-tag"></span>
+              <span id="inspector-state" class="inspector-state" hidden></span>
+            </div>
+            <h2 id="inspector-title" class="inspector-title"></h2>
+            <div id="inspector-summary" class="inspector-summary"></div>
+            <div id="inspector-sections" class="inspector-subsections"></div>
+            <div id="inspector-related" class="inspector-related" hidden></div>
+            <div class="inspector-actions">
+              <button id="inspector-copy-btn" class="btn-handoff" type="button" hidden>
+                이 영역 검토하기
+              </button>
+              <span id="copy-toast" class="copy-toast" hidden>✓ 검토 요청이 복사되었습니다</span>
             </div>
           </div>
         </aside>
       </div>
 
       <div id="context-region" class="context-region">
+        <section id="slot-focus" class="panel panel-context panel-focus" aria-label="현재 집중" hidden>
+          <div class="panel-header">
+            <div>
+              <span class="surface-kicker">USER-OWNED</span>
+              <h2>현재 집중</h2>
+            </div>
+          </div>
+          <div class="panel-body"></div>
+          <div class="focus-actions">
+            <button id="focus-copy-btn" class="btn-focus-copy" type="button">
+              현재 집중 컨텍스트 복사
+            </button>
+            <span id="focus-copy-toast" class="copy-toast" hidden>✓ Problem Framer용 컨텍스트가 복사되었습니다</span>
+          </div>
+        </section>
+
+        <!-- Legacy Recent Progress remains available when a document has not adopted Recent Material Movement. -->
         <section id="slot-recent" class="panel panel-context panel-recent" aria-label="최근 진척" hidden>
-          <h2>
-            최근 진척
-            <span class="panel-kicker">현재 PROGRESS.md · 최신 시맨틱 전환</span>
-          </h2>
+          <div class="panel-header">
+            <div>
+              <span class="surface-kicker">LEGACY FALLBACK</span>
+              <h2>최근 진척</h2>
+            </div>
+          </div>
           <div class="panel-body"></div>
         </section>
 
@@ -100,8 +160,14 @@
           </section>
         </div>
 
-        <section id="slot-extra" class="panel-context-stack" hidden aria-label="추가 맥락">
-        </section>
+        <section id="slot-extra" class="panel-context-stack" hidden aria-label="추가 맥락"></section>
+
+        <!-- DOM compatibility anchors for older integrations; canonical rendering uses the mental-model slots above. -->
+        <div id="legacy-overview-slots" hidden>
+          <section id="slot-now"><div class="panel-body"></div></section>
+          <section id="slot-next"><div class="panel-body"></div></section>
+          <section id="slot-blocked"><div class="panel-body"></div></section>
+        </div>
       </div>
 
       <p id="empty-state" class="empty-state" hidden></p>
