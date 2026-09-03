@@ -3176,3 +3176,11 @@ test("Handoff contract output remains pinned after authority-boundary wording", 
   assert.equal(sha256(buildFocusHandoffContext(focusParams)), "cd4023527e7d946dbb2965ace7f81d9a7a33cbea325118a9989e95ef85491ccf");
   assert.equal(sha256(buildAreaHandoffContext(areaParams)), "c40ae0af996d5bc85310a25292a4f039afb460020ee181bc10dc50ada15a016a");
 });
+
+test("Handoff context extraction: sibling module owns implementation, parser facade re-exports it", async () => {
+  const sibling = await import("../dist/handoff-context.js");
+  assert.equal(typeof sibling.buildFocusHandoffContext, "function");
+  assert.equal(typeof sibling.buildAreaHandoffContext, "function");
+  assert.equal(buildFocusHandoffContext, sibling.buildFocusHandoffContext);
+  assert.equal(buildAreaHandoffContext, sibling.buildAreaHandoffContext);
+});
