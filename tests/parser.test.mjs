@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,6 +29,7 @@ import {
   formatFocusHandoffInstruction,
   formatAreaHandoffInstruction,
   formatExecutionWaveContractLines,
+  formatAdmissionPublicationContractLines,
   parseProjectHorizon,
   parseStageJourney,
   parseProjectPosture,
@@ -3094,4 +3096,40 @@ test("Fresh-supersession case replay: builtAt finding requires semantic root-cau
   assert.ok(readme.includes("topology movement 자체만으로 finding을 폐기하거나 유지하지 않는다"));
   assert.ok(readme.includes("root cause를 이미 완결적으로 해결하고 필요한 proof까지 포함하면"));
   assert.ok(readme.includes("CLOSED / SUPERSEDED_BY_PUBLISHED_FIX"));
+});
+test("Handoff contract extraction: baseline-identical observable output across facade", () => {
+  // Behavior-preserving bounded refactor proof: same probe inputs yield
+  // byte-identical handoff outputs before/after extraction.
+  // Hashes pin the fresh BASE (2f1116c) semantics; any wording edit fails here.
+  const sha256 = (value) => createHash("sha256").update(value, "utf8").digest("hex");
+  const focusParams = {
+    projectTitle: "Handoff Exact Probe",
+    focusText: "Probe focus",
+    situationText: "Probe situation",
+    nextTransitionText: "Probe transition",
+    facingIssuesText: "- probe issue",
+    projectFrameText: "Probe frame",
+    settledDirectionText: "- probe direction",
+    projectMapText: "### Rail\n- **Item** — desc",
+    areaDetailsText: "### Item\n#### 의미\nmeaning",
+  };
+  const areaParams = {
+    projectTitle: "Handoff Exact Probe",
+    areaTitle: "Probe Area",
+    railTitle: "Probe Rail",
+    groupTitle: "Probe Group",
+    areaDescription: "Probe desc",
+    areaDetail: {
+      title: "Probe Area",
+      normalizedKey: "probe area",
+      subsections: [{ subheading: "의미", html: "<p>m</p>", rawText: "meaning text" }],
+    },
+    focusText: "Probe focus",
+  };
+  assert.equal(sha256(formatExecutionWaveContractLines().join("\n")), "56549841422cecbc6be8428ed455148317c415c7431b4566cc5bdf29413bd4f9");
+  assert.equal(sha256(formatAdmissionPublicationContractLines().join("\n")), "6b6778e87c2f7a536f5cacd86a6f627e19b44f0493e32e990e064545b787f31f");
+  assert.equal(sha256(formatFocusHandoffInstruction()), "30a2cbcf7a5a3e3839f9844d9d4eb9cdc3d8eb056cb0f792e4c4c4a3050a2349");
+  assert.equal(sha256(formatAreaHandoffInstruction()), "c220cfead0a2734b69f463d798445f5c7c1c53707575a962098c75bb0888df8e");
+  assert.equal(sha256(buildFocusHandoffContext(focusParams)), "e0a333214761d9b34d1283b2106d022220149e5abaef4a0e38a13920e93c5072");
+  assert.equal(sha256(buildAreaHandoffContext(areaParams)), "9d0d61cc2798bb36f2d72b74d41e777de8e51270236dad95ed02c1e9928d7f34");
 });
