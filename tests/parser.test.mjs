@@ -3311,3 +3311,41 @@ test("Stage proof disposition: card and inspector surfaces expose reason with FA
   assert.ok(readme.includes("Decision reason:"));
   assert.ok(readme.includes("stage-gate-proof-disposition.md"));
 });
+
+test("Area-Local vs Project-Global Frontier Ownership: provider-local admission vs project-wide release proof", () => {
+  // WHERE-the-residual-is-owned rule: Area Details owns AREA_LOCAL residual only;
+  // PROJECT_GLOBAL_FRONTIER stays on the project-horizon surface. This adds to,
+  // not replaces, the existing WHAT-is-a-residual rule.
+  const content = fs.readFileSync(path.join(__dirname, "fixtures", "area-frontier-ownership.md"), "utf-8");
+  const structure = checkProgressStructure(content);
+  assert.equal(structure.ok, true, structure.errors.join("; "));
+  assert.equal(structure.totalMapItems, 3);
+  assert.equal(structure.matchedDetails, 3);
+
+  const { sections } = splitSections(md.parse(content, {}));
+  const areaDetails = parseAreaDetails(sections.get("area details"));
+  const model = parseMentalModel(sections);
+  const subsectionText = (area, label) =>
+    area?.subsections.find((s) => s.subheading.includes(label))?.rawText ?? "";
+
+  const provider = areaDetails.get(normalizeTitle("Provider admission"));
+  assert.ok(provider, "Provider admission area must exist");
+  const providerLevel = subsectionText(provider, "현재 수준");
+  const providerRemaining = subsectionText(provider, "남은 문제");
+  assert.match(providerLevel, /Live admission.*NOT PROVEN/);
+  assert.match(providerRemaining, /Live admission handshake.*NOT PROVEN/);
+  assert.ok(
+    providerLevel.includes("관련 최전선: Exact release convergence"),
+    "provider area may reference the global frontier as context"
+  );
+  assert.equal(
+    providerRemaining.includes("Exact release convergence"),
+    false,
+    "provider Remaining Problems must not carry the project-wide release proof"
+  );
+
+  assert.equal(model.frontiers.length, 1);
+  assert.equal(model.frontiers[0].title, "Exact release convergence");
+  assert.equal(model.frontiers[0].currentState, "NOT PROVEN");
+  assert.equal(model.frontiers[0].targetState, "PROVEN");
+});
