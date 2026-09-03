@@ -26,6 +26,12 @@ This is a decision criterion, not a scoring system, registry, or governance proc
 
 Use the simplest safe workspace. The current checkout is fine when ownership and dirty state make it safe; a branch or worktree is an optional implementation choice when isolation materially improves safety. Workspace mechanics are not semantic authority. Never reset, stash, clean, or overwrite state that another session or the user intends to preserve.
 
+### BASE admission
+
+- At task start, fetch fresh `origin/main` and record the BASE SHA the task actually starts from. A mutation-intended task starts from that fresh BASE in a task-owned worktree/branch; it never implicitly inherits canonical-checkout dirty state or a stale worktree HEAD.
+- The canonical checkout is a user-owned reading/publishing point, not a task BASE. A task worktree that is behind `origin/main` is a stale base, not a publication candidate: re-base the work by reapplying the bounded semantic delta onto fresh main (see §6), not by publishing the stale candidate.
+- `dist/` is regenerated build output (`npm run build`). Never hand-merge `dist/*` hashed-asset churn across candidates; stale `dist/*` differences alone are mechanical staleness, never semantic overlap.
+
 ## 4. Prompts and artifacts
 
 Prompts are disposable execution artifacts, not canonical project state. Investigation scratch work stays temporary; promote only durable verified conclusions to their actual authority owner. Do not store task queues, receipts, or execution progress in repository documentation.
@@ -37,7 +43,13 @@ Prompts are disposable execution artifacts, not canonical project state. Investi
 
 ## 6. Publication closure
 
-Before publication, fetch fresh upstream state and determine whether intervening changes materially affect the task. Overlapping semantic movement requires re-checking meaning and proof before proceeding; unrelated movement does not.
+Before publication, fetch fresh `origin/main` and classify intervening movement on three independent axes. Judge each axis separately; movement on one axis does not by itself invalidate the others.
+
+- **Topological staleness** — whether the candidate is still a direct fast-forward descendant of current `origin/main`. A newer `origin/main` normally makes an old-parent candidate no longer directly publishable. That is normal Git cost, not a defect and not a semantic verdict.
+- **Semantic overlap** — whether intervening changes alter the task's meaning, mutation ownership, or bounded outcome (same source hunks, same contract/test surface meaning, superseded fix). `dist/*` hashed-asset churn alone and same-file disjoint-hunk changes are not semantic overlap.
+- **Proof boundary** — whether the criterion inputs and the identity-bearing proof owner (parser contract, fixture, build output) relevant to the claimed evidence materially moved. If only topology moved, prior semantic proof is preserved under its original run identity; rerun only the affected proof layer and candidate integrity checks bound to the new candidate.
+
+When topology alone is stale and neither semantic overlap nor proof-boundary movement applies: preserve the prior semantic result, reapply only the bounded semantic delta onto fresh main in a fresh task-owned workspace, regenerate `dist/` via build, rerun the directly affected proof, then publish as an ordinary non-force fast-forward. Never force-push, and never merge/rebase/cherry-pick merely to preserve an old candidate SHA. The semantic delta matters; an old local commit identity does not.
 
 For publication-intended work, when the current user instruction authorizes it and no local-only restriction exists:
 
@@ -50,8 +62,8 @@ Canonical terminal outcomes:
 - `COMPLETE / NO_CHANGE` — proof shows no mutation was required; this is a legitimate terminal result;
 - `COMPLETE / LOCAL_ONLY` — only when the task explicitly requested local-only work.
 
-If publication cannot safely complete, report `CONTINUABLE` or `BLOCKED` with the concrete cause and exact resume point. Destructive or history-rewriting Git operations, force pushes, and external side effects (deployment, provider mutations) require explicit user authority.
+If publication cannot safely complete, report `CONTINUABLE` or `BLOCKED` with the concrete cause and exact resume point. `CONTINUABLE` means topology-only staleness: the semantic result stands and the exact resume point is reapplying the stated delta onto fresh main. `BLOCKED` means real semantic overlap, superseded meaning, or a safety invariant (unclear ownership, foreign dirty state, required authority missing): the candidate must not be rematerialized blindly. Destructive or history-rewriting Git operations, force pushes, and external side effects (deployment, provider mutations) require explicit user authority.
 
 ## 7. Concurrency
 
-Independent work may proceed independently when mutation, authority, and evidence boundaries are independent. Add coordination machinery only after direct recurring evidence demonstrates that ordinary repository-native practice cannot preserve the required semantics at lower cost.
+Independent work may proceed independently when mutation, authority, and evidence boundaries are independent. Publication is the short serialization boundary: fetch fresh immediately before publishing and publish one writer at a time; a second writer that arrives later classifies and rematerializes rather than racing. In this small single-surface repository, tasks touching the same source/test surface (`src/main.ts`, `src/parser.ts`, `src/style.css`, `index.html`, `tests/*`) default to serial framing, not parallel `NOW` execution. Add coordination machinery only after direct recurring evidence demonstrates that ordinary repository-native practice cannot preserve the required semantics at lower cost.
