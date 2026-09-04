@@ -196,20 +196,6 @@ body {
   color: var(--ink);
 }
 
-.stage-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-  background: var(--panel);
-  color: var(--accent);
-  border: 1px solid var(--accent);
-  font-family: var(--font-mono);
-  font-size: var(--text-chip);
-  font-weight: 600;
-}
-
 /* Primary Workspace (Map-first, single layout owner): the project map is the
    mental anchor (left, primary surface); the orientation column (프로젝트 현황 /
    다음 단계 / 진행 제약 / 최근 업데이트) reads alongside it on the right. No other rule in this
@@ -758,13 +744,6 @@ body {
 
 .sub-badge.tone-neutral {
   color: var(--muted);
-}
-
-.sub-badge.tone-active {
-  color: var(--accent);
-  background: var(--accent-soft);
-  padding: 1px 5px;
-  border-radius: var(--radius-xs);
 }
 
 .sub-badge.tone-danger {

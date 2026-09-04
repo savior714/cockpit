@@ -427,18 +427,20 @@ test("Semantic Tone Contract: Case 5 - Supporting evidence is evidence, but unve
   assert.equal(classifySubsectionTone("evidence", "none"), "neutral");
 });
 
-test("Semantic Tone Contract: Case 6 - Transitions, entry conditions, and movement phases are active", () => {
-  assert.equal(classifySubsectionTone("진입 조건", "Stage 1A release proof passes cleanly"), "active");
-  assert.equal(classifySubsectionTone("개시 조건", "Reader acceptance verified"), "active");
-  assert.equal(classifySubsectionTone("entry condition", "All checks green"), "active");
-  assert.equal(classifySubsectionTone("opens when", "A fresh reader accepts the rendered cockpit"), "active");
-  assert.equal(classifySubsectionTone("다음 전환", "Release 0.4.0 packaging"), "active");
-  assert.equal(classifySubsectionTone("next transition", "Contract migration"), "active");
-  assert.equal(classifySubsectionTone("왜 지금", "Legacy drift causing friction"), "active");
-  assert.equal(classifySubsectionTone("단계 영향", "Directly blocks Stage 2 promotion"), "active");
-  assert.equal(classifySubsectionTone("BEFORE", "Legacy modal inspector"), "active");
-  assert.equal(classifySubsectionTone("MATERIAL CHANGE", "Universal Inspector with deterministic tone contract"), "active");
-  assert.equal(classifySubsectionTone("AFTER", "Unified inspector drawer"), "active");
+test("Semantic Tone Contract: Case 6 - Legacy gate/transition/movement headings read as neutral", () => {
+  // Retired Stage-Gate / Frontier / Movement ontology: these headings get no
+  // first-class tone. Only evidence vs open-issue headings distinguish.
+  assert.equal(classifySubsectionTone("진입 조건", "Stage 1A release proof passes cleanly"), "neutral");
+  assert.equal(classifySubsectionTone("개시 조건", "Reader acceptance verified"), "neutral");
+  assert.equal(classifySubsectionTone("entry condition", "All checks green"), "neutral");
+  assert.equal(classifySubsectionTone("opens when", "A fresh reader accepts the rendered cockpit"), "neutral");
+  assert.equal(classifySubsectionTone("다음 전환", "Release 0.4.0 packaging"), "neutral");
+  assert.equal(classifySubsectionTone("next transition", "Contract migration"), "neutral");
+  assert.equal(classifySubsectionTone("왜 지금", "Legacy drift causing friction"), "neutral");
+  assert.equal(classifySubsectionTone("단계 영향", "Directly blocks Stage 2 promotion"), "neutral");
+  assert.equal(classifySubsectionTone("BEFORE", "Legacy modal inspector"), "neutral");
+  assert.equal(classifySubsectionTone("MATERIAL CHANGE", "Universal Inspector with deterministic tone contract"), "neutral");
+  assert.equal(classifySubsectionTone("AFTER", "Unified inspector drawer"), "neutral");
 });
 
 test("Semantic Tone Contract: Case 7 - Unknown custom subsections fall back safely to neutral", () => {
@@ -490,7 +492,7 @@ Commit af97c57 및 유닛 테스트 60+ 건 통과
   // projection owner. Same assertions, new sole owner.
   assert.equal(meaning && toViewSubsection(meaning).tone, "neutral");
   assert.equal(current && toViewSubsection(current).tone, "neutral");
-  assert.equal(entry && toViewSubsection(entry).tone, "active");
+  assert.equal(entry && toViewSubsection(entry).tone, "neutral");
   assert.equal(remaining && toViewSubsection(remaining).tone, "danger");
   assert.equal(evidence && toViewSubsection(evidence).tone, "evidence");
   assert.equal(notes && toViewSubsection(notes).tone, "neutral");
@@ -570,9 +572,16 @@ test("Contraction proof: no Stage/Posture/Frontier/Thread/Movement owners surviv
   assert.ok(mainSource.includes("MAP-FIRST"));
 
   const projectionSource = fs.readFileSync(path.join(__dirname, "..", "src", "inspector-projection.ts"), "utf-8");
-  for (const removed of ["stageEntity", "postureEntity", "frontierEntity", "threadEntity", "movementEntity", "relatedEntity", "renderStatusSynthesis", "renderThreadsSecondary", "stage-gate-reason", "판정 이유"]) {
+  for (const removed of ["stageEntity", "postureEntity", "frontierEntity", "threadEntity", "movementEntity", "relatedEntity", "renderStatusSynthesis", "renderThreadsSecondary", "stage-gate-reason", "판정 이유", "isActiveHeading", "entrycondition", "openswhen", "stageimpact", "whynow", "materialchange", "closedboundaries", "horizonText", "\"active\""]) {
     assert.equal(projectionSource.includes(removed), false, `projection must not contain: ${removed}`);
   }
+
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf-8");
+  assert.equal(html.includes("you-are-here-chip"), false, "dead parallel orientation chip must not exist");
+
+  const css = fs.readFileSync(path.join(__dirname, "..", "src", "style.css"), "utf-8");
+  assert.equal(css.includes(".stage-chip"), false, "dead chip style must not exist");
+  assert.equal(css.includes("tone-active"), false, "retired active tone style must not exist");
 
   const grammarSource = fs.readFileSync(path.join(__dirname, "..", "src", "authoring-grammar.ts"), "utf-8");
   assert.equal(grammarSource.includes('"FAILED"'), false);

@@ -34,7 +34,7 @@ import type {
   ParsedMap,
 } from "./domain.js";
 
-export type SemanticTone = "neutral" | "active" | "danger" | "evidence";
+export type SemanticTone = "neutral" | "danger" | "evidence";
 
 export interface ViewSubsection {
   subheading: string;
@@ -61,7 +61,6 @@ export interface InspectorEntity {
 export interface ProjectionContext {
   map: ParsedMap | null;
   areaDetails: Map<string, AreaDetail>;
-  horizonText?: string;
 }
 
 /**
@@ -133,6 +132,12 @@ function isClearlyUnverifiedOrPlannedEvidence(cleanText: string): boolean {
 
 /**
  * Canonical semantic tone classifier for Inspector subsections.
+ *
+ * Only the README §5 Area Detail contract distinguishes tones: evidence
+ * headings with verified content read as evidence, open remaining
+ * problems/blockers read as danger, everything else (meaning, level,
+ * closed/none issues, custom notes, legacy gate/transition headings) reads
+ * as neutral. There is no separate gate/transition/movement tone owner.
  */
 export function classifySubsectionTone(
   subheading: string,
@@ -183,36 +188,6 @@ export function classifySubsectionTone(
       return "neutral";
     }
     return "danger";
-  }
-
-  const isActiveHeading =
-    normKey.includes("진입조건") ||
-    normKey.includes("개시조건") ||
-    normKey.includes("entrycondition") ||
-    normKey.includes("openswhen") ||
-    normKey.includes("다음전환") ||
-    normKey.includes("nexttransition") ||
-    normKey.includes("전환") ||
-    normKey.includes("transition") ||
-    normKey.includes("왜지금") ||
-    normKey.includes("whynow") ||
-    normKey.includes("단계영향") ||
-    normKey.includes("stageimpact") ||
-    normKey === "before" ||
-    normKey === "materialchange" ||
-    normKey === "after" ||
-    normKey.includes("변경");
-
-  if (isActiveHeading) {
-    return "active";
-  }
-
-  if (
-    normKey.includes("이미닫힌") ||
-    normKey.includes("closedboundaries") ||
-    normKey.includes("closed")
-  ) {
-    return "neutral";
   }
 
   return "neutral";
