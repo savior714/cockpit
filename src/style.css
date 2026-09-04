@@ -184,13 +184,22 @@ body {
 
 /* Primary Workspace (Map-first, single layout owner): the project map is the
    mental anchor (left, primary surface); the orientation column (프로젝트 현황 /
-   다음 단계 / 진행 제약 / 최근 업데이트) reads alongside it on the right. No other rule in this
-   file redeclares .primary-workspace display/direction. */
+   다음 단계 / 진행 제약 / 최근 업데이트) reads alongside it on the right. The
+   Inspector is owned by the same right-side grid area ("side"): on desktop it
+   replaces the overview rail in place instead of anchoring to the viewport, so
+   Inspector geometry always equals primary-workspace / right-rail geometry.
+   No other rule in this file redeclares .primary-workspace display/direction. */
 .primary-workspace {
   display: grid;
   gap: 16px;
   grid-template-columns: minmax(0, 1fr) clamp(320px, 28vw, 440px);
+  grid-template-areas: "map side";
   align-items: start;
+  min-width: 0;
+}
+
+#slot-map {
+  grid-area: map;
   min-width: 0;
 }
 
@@ -198,6 +207,7 @@ body {
    Sticky companion to the map on desktop — long content scrolls inside the
    column instead of stretching the whole page. Mobile resets it to static flow. */
 .overview-panel {
+  grid-area: side;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -1152,6 +1162,9 @@ body {
 @media (max-width: 768px) {
   .primary-workspace {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "map"
+      "side";
   }
 
   .overview-panel {
@@ -1215,17 +1228,37 @@ body {
   white-space: nowrap;
 }
 
-/* Inspector drawer (fixed overlay; extends the Inspector chrome above) */
+/* Inspector drawer (workspace-owned right rail; extends the Inspector chrome above).
+   Desktop geometry owner is .primary-workspace, not the viewport: the drawer is
+   a sticky grid item projected onto the same "side" area as .overview-panel, so
+   its horizontal geometry always equals the right-rail geometry no matter how
+   wide the viewport grows beyond the Cockpit max-width shell. While open it
+   fully replaces the overview rail (see the :has rule below), so no partial
+   overview overlap is possible. Width tracks the rail track (100%), never the
+   viewport. Floating/elevated treatment (radius, shadow) is preserved. */
 .universal-inspector-drawer {
-  position: fixed;
+  grid-area: side;
+  align-self: start;
+  position: sticky;
+  top: 16px;
   z-index: 20;
-  top: 22px;
-  right: clamp(14px, 2.2vw, 32px);
-  width: min(430px, calc(100vw - 28px));
-  max-height: calc(100vh - 44px);
+  width: 100%;
+  min-width: 0;
+  max-height: calc(100vh - 32px);
   overflow: auto;
   border-radius: var(--radius-md);
   box-shadow: 0 18px 45px rgba(15, 23, 42, 0.2);
+}
+
+/* Desktop Inspector-open state: the drawer replaces the overview rail in the
+   shared "side" area. Derived purely from the existing hidden attribute that
+   main.ts already toggles — no JS layout class, no duplicated geometry owner.
+   Scoped to desktop because narrow layouts use the compact fixed sheet below
+   and keep their existing overview flow semantics. */
+@media (min-width: 769px) {
+  .primary-workspace:has(> #inspector-aside:not([hidden])) > #overview-panel {
+    display: none;
+  }
 }
 
 .universal-inspector-drawer .inspector-card {
@@ -1293,6 +1326,10 @@ body {
 
 @media (max-width: 768px) {
   .universal-inspector-drawer {
+    /* Narrow exception: dedicated compact viewport-contained sheet. The
+       single-column workspace has no right rail here, so the drawer floats
+       with guaranteed insets and inner scroll instead of joining the flow. */
+    position: fixed;
     top: 10px;
     right: 10px;
     width: calc(100vw - 20px);
