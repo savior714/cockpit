@@ -1188,27 +1188,24 @@ body {
 }
 
 /* Orientation panels: 프로젝트 현황 / 다음 단계 / 진행 제약 (overview column companions to the map).
-   Importance is carried by typography and geometry, not by identical card
-   chrome: only the primary surface (프로젝트 현황) keeps the accent edge. 다음 단계 and
-   진행 제약 read as quieter companions; 진행 제약 signals through its heading ink
+   Quiet, neutral, document-like information surfaces: the neutral outer
+   `.panel` border is the only boundary. No accent edge, no header divider,
+   no shadow / tint / badge substitute — hierarchy is carried by the
+   typography scale above plus header/body whitespace. 다음 단계 and 진행 제약
+   read at the same quiet level; 진행 제약 signals through its heading ink
    (existing failure token, no new accent) only when it is present. */
 .panel-status {
   padding: var(--pad-panel);
 }
 
 .panel-status .panel-header {
-  padding-bottom: 9px;
-  border-bottom: 1px solid var(--line-subtle);
+  margin-bottom: 8px;
 }
 
 .panel-status .panel-body {
   font-size: var(--text-l3-body);
   line-height: var(--leading-loose);
   color: var(--ink-secondary);
-}
-
-#slot-now {
-  border-left: 2px solid var(--accent);
 }
 
 #slot-now .panel-header h2 {
