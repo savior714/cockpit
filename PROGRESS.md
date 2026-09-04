@@ -15,7 +15,7 @@ Cockpit은 사람 손으로 작성한 `PROGRESS.md`를 결정론적으로 읽어
 ## 최근 변화
 
 - **제품 의미 수렴** → Horizon/Stage/Posture/Frontier/Thread/Movement 이중 canonical owner와 Execution Wave·BASE·JIT·freshness handoff 어휘를 제거하고 질문당 하나의 plain-text 섹션으로 수렴함.
-- **Map-first 복원** → 프로젝트 지도가 다시 첫 화면의 mental anchor가 되고, 지금/다음/막힘이 ontology 학습 없이 읽히는 평문 개요가 됨.
+- **Map-first 복원** → 프로젝트 지도가 다시 첫 화면의 mental anchor가 되고, 프로젝트 현황/다음 단계/진행 제약이 ontology 학습 없이 읽히는 평문 개요가 됨.
 - **Handoff 수렴** → Problem Framer handoff가 프로젝트 맥락 전달로 수렴하고, 실행·발행·Git 절차는 repository 자체 계약에 위임함.
 
 ## 프로젝트 지도
@@ -53,7 +53,7 @@ Cockpit은 사람 손으로 작성한 `PROGRESS.md`를 결정론적으로 읽어
 
 ### Map-first renderer
 #### 의미
-지도를 mental anchor로 먼저 보여주고 지금/다음/막힘 평문 개요로 방향을 전달하는 top-level presentation.
+지도를 mental anchor로 먼저 보여주고 프로젝트 현황/다음 단계/진행 제약 평문 개요로 방향을 전달하는 top-level presentation.
 #### 현재 수준
 수렴 구조를 렌더링한다. 독립 reader 수용은 다음 전환의 열린 검증이다.
 #### 근거

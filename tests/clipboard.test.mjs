@@ -93,7 +93,7 @@ test("Inspector affordance surfaces both success and failure (never silent)", ()
 test("Current Focus affordance surfaces both success and failure (never silent)", () => {
   const main = readSource("src/main.ts");
   const html = readSource("index.html");
-  assert.ok(html.includes("현재 집중 내용 복사"), "focus button label must be preserved");
+  assert.ok(html.includes("우선 과제 내용 복사"), "focus button label must be preserved");
   assert.ok(
     main.includes("✓ 에이전트에게 전달할 내용이 복사되었습니다"),
     "focus success text must be preserved"

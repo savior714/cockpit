@@ -382,7 +382,7 @@ async function renderDoc(source: string): Promise<void> {
     badge.className = `completeness-badge ${completeness.missingItems > 0 ? "missing" : "complete"}`;
   }
 
-  // Orientation second: 지금 / 다음 / 막힘 — plain-text projection, no ontology.
+  // Orientation second: 프로젝트 현황 / 다음 단계 / 진행 제약 — plain-text projection, no ontology.
   setSectionPanel("situation", "slot-now");
   setSectionPanel("next", "slot-next");
   setSectionPanel("facing", "slot-blocked");

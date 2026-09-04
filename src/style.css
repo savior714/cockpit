@@ -211,8 +211,8 @@ body {
 }
 
 /* Primary Workspace (Map-first, single layout owner): the project map is the
-   mental anchor (left, primary surface); the orientation column (지금 / 다음 /
-   막힘 / 최근 변화) reads alongside it on the right. No other rule in this
+   mental anchor (left, primary surface); the orientation column (프로젝트 현황 /
+   다음 단계 / 진행 제약 / 최근 업데이트) reads alongside it on the right. No other rule in this
    file redeclares .primary-workspace display/direction. */
 .primary-workspace {
   display: grid;
@@ -222,7 +222,7 @@ body {
   min-width: 0;
 }
 
-/* Orientation column (Map-first companion): 지금 / 다음 / 막힘 / 최근 변화.
+/* Orientation column (Map-first companion): 프로젝트 현황 / 다음 단계 / 진행 제약 / 최근 업데이트.
    Sticky companion to the map on desktop — long content scrolls inside the
    column instead of stretching the whole page. Mobile resets it to static flow. */
 .overview-panel {
@@ -1215,24 +1215,6 @@ body {
   color: var(--ink);
 }
 
-.surface-kicker {
-  display: block;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: var(--text-kicker);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  line-height: var(--leading-tight);
-  text-transform: uppercase;
-}
-
-.surface-note {
-  color: var(--muted);
-  font-size: var(--text-micro);
-  line-height: var(--leading-snug);
-  text-align: right;
-}
-
 .inspector-evidence-link:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -1337,16 +1319,12 @@ body {
     width: calc(100vw - 20px);
     max-height: calc(100vh - 20px);
   }
-
-  .surface-note {
-    display: none;
-  }
 }
 
-/* Orientation panels: 지금 / 다음 / 막힘 (overview column companions to the map).
+/* Orientation panels: 프로젝트 현황 / 다음 단계 / 진행 제약 (overview column companions to the map).
    Importance is carried by typography and geometry, not by identical card
-   chrome: only the primary surface (지금) keeps the accent edge. 다음 and
-   막힘 read as quieter companions; 막힘 signals through its heading ink
+   chrome: only the primary surface (프로젝트 현황) keeps the accent edge. 다음 단계 and
+   진행 제약 read as quieter companions; 진행 제약 signals through its heading ink
    (existing failure token, no new accent) only when it is present. */
 .panel-status {
   padding: var(--pad-panel);

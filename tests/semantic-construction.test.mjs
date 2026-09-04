@@ -282,7 +282,9 @@ test("Recent changes stay a bounded semantic transition window under one merged 
   const cssPath = path.join(__dirname, "..", "src", "style.css");
   const css = fs.readFileSync(cssPath, "utf-8");
 
-  assert.match(html, /현재 진행 문서 기준 · 프로젝트 상태의 핵심 전환/);
+  // Product display vocabulary: the Recent panel reads as a self-sufficient
+  // title with no definition-demanding helper. (Semantic owner stays `recent`.)
+  assert.match(html, /<h2>최근 업데이트<\/h2>/);
   const foregroundRule = css.indexOf("li:nth-child(-n + 2)");
   const backgroundRule = css.indexOf("li:nth-child(n + 3)");
   assert.ok(foregroundRule !== -1, "the newest two Recent items need a foreground rule");

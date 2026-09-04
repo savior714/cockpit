@@ -345,6 +345,15 @@ test("Reader-visible DOM leads Map-first and exposes one area Inspector shell", 
   for (const jargon of ["HORIZON-FIRST", "Stage Journey", "Project Posture", "Current Frontier", "Strategic Threads", "Material Movement"]) {
     assert.equal(html.includes(jargon), false, `primary surface must not expose internal jargon: ${jargon}`);
   }
+  // Product display vocabulary: panel titles name their role without a helper.
+  // (File-authoring headings and semantic owners — situation / next / facing /
+  // recent / focus / frame / settled — are unchanged; only display differs.)
+  for (const heading of ["<h2>프로젝트 지도</h2>", "<h2>프로젝트 현황</h2>", "<h2>다음 단계</h2>", "<h2>진행 제약</h2>", "<h2>최근 업데이트</h2>", "<h2>우선 과제</h2>", "<h2>제품 목표</h2>", "<h2>주요 결정</h2>"]) {
+    assert.ok(html.includes(heading), `primary surface must read as product language: ${heading}`);
+  }
+  for (const shorthand of ["<h2>지금</h2>", "<h2>다음</h2>", "<h2>막힘</h2>", "<h2>최근 변화</h2>", "<h2>현재 집중</h2>", "<h2>확정된 방향</h2>", "작업자 지정", "프로젝트 전체의 현재 상태", "가장 가까운 상태 전환", "다음 전환을 제한하는 제약", "현재 진행 문서 기준"]) {
+    assert.equal(html.includes(shorthand), false, `primary surface must not expose internal shorthand: ${shorthand}`);
+  }
   assert.ok(html.includes('id="inspector-aside"'));
   assert.ok(html.includes('id="universal-inspector-panel"'));
   assert.ok(html.includes('id="inspector-breadcrumb"'));

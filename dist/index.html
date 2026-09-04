@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cockpit</title>
-    <script type="module" crossorigin src="/assets/index-B_uw3-tQ.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CwNEvnHB.css">
+    <script type="module" crossorigin src="/assets/index-CLvvbMOV.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CvOkiyE_.css">
   </head>
   <body>
     <main id="cockpit" class="cockpit">
@@ -30,46 +30,42 @@
         </section>
 
         <div id="overview-panel" class="overview-panel" aria-label="프로젝트 개요">
-          <!-- 지금: 프로젝트 전체가 현재 어떤 상태인지. -->
-          <section id="slot-now" class="panel panel-status" aria-label="지금" hidden>
+          <!-- 프로젝트 현황: 프로젝트 전체가 현재 어떤 상태인지. -->
+          <section id="slot-now" class="panel panel-status" aria-label="프로젝트 현황" hidden>
             <div class="panel-header">
               <div>
-                <h2>지금</h2>
+                <h2>프로젝트 현황</h2>
               </div>
-              <span class="surface-note">프로젝트 전체의 현재 상태</span>
             </div>
             <div class="panel-body"></div>
           </section>
 
-          <!-- 다음: 가장 가까운 의미 있는 상태 전환. -->
-          <section id="slot-next" class="panel panel-status" aria-label="다음" hidden>
+          <!-- 다음 단계: 가장 가까운 의미 있는 상태 전환. -->
+          <section id="slot-next" class="panel panel-status" aria-label="다음 단계" hidden>
             <div class="panel-header">
               <div>
-                <h2>다음</h2>
+                <h2>다음 단계</h2>
               </div>
-              <span class="surface-note">가장 가까운 상태 전환</span>
             </div>
             <div class="panel-body"></div>
           </section>
 
-          <!-- 막힘: 다음 전환을 제한하는 것이 있을 때만. -->
-          <section id="slot-blocked" class="panel panel-status" aria-label="막힘" hidden>
+          <!-- 진행 제약: 다음 단계로의 전환을 제한하는 것이 있을 때만. -->
+          <section id="slot-blocked" class="panel panel-status" aria-label="진행 제약" hidden>
             <div class="panel-header">
               <div>
-                <h2>막힘</h2>
+                <h2>진행 제약</h2>
               </div>
-              <span class="surface-note">다음 전환을 제한하는 제약</span>
             </div>
             <div class="panel-body"></div>
           </section>
 
-          <!-- 최근 변화: 핵심 의미 전환만, 작업 나열이 아님. -->
-          <section id="slot-recent" class="panel panel-movement panel-recent" aria-label="최근 변화" hidden>
+          <!-- 최근 업데이트: 핵심 의미 전환만, 작업 나열이 아님. -->
+          <section id="slot-recent" class="panel panel-movement panel-recent" aria-label="최근 업데이트" hidden>
             <div class="panel-header">
               <div>
-                <h2>최근 변화</h2>
+                <h2>최근 업데이트</h2>
               </div>
-              <span class="surface-note">현재 진행 문서 기준 · 프로젝트 상태의 핵심 전환</span>
             </div>
             <div class="panel-body"></div>
           </section>
@@ -103,17 +99,16 @@
       </div>
 
       <div id="context-region" class="context-region">
-        <section id="slot-focus" class="panel panel-context panel-focus" aria-label="현재 집중" hidden>
+        <section id="slot-focus" class="panel panel-context panel-focus" aria-label="우선 과제" hidden>
           <div class="panel-header">
             <div>
-              <span class="surface-kicker">작업자 지정</span>
-              <h2>현재 집중</h2>
+              <h2>우선 과제</h2>
             </div>
           </div>
           <div class="panel-body"></div>
           <div class="focus-actions">
             <button id="focus-copy-btn" class="btn-focus-copy" type="button">
-              현재 집중 내용 복사
+              우선 과제 내용 복사
             </button>
             <span id="focus-copy-toast" class="copy-toast" role="status" aria-live="polite" hidden>✓ 에이전트에게 전달할 내용이 복사되었습니다</span>
           </div>
@@ -125,8 +120,8 @@
             <div class="panel-body"></div>
           </section>
 
-          <section id="slot-settled" class="panel panel-context panel-stable" aria-label="확정된 방향">
-            <h2>확정된 방향</h2>
+          <section id="slot-settled" class="panel panel-context panel-stable" aria-label="주요 결정">
+            <h2>주요 결정</h2>
             <div class="panel-body"></div>
           </section>
         </div>
