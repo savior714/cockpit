@@ -173,12 +173,34 @@ body {
   font-weight: 600;
 }
 
-/* Primary Workspace: Map | Side (Sticky Container) */
+/* Primary Workspace (Map-first, single layout owner): the project map is the
+   mental anchor (left, primary surface); the orientation column (지금 / 다음 /
+   막힘 / 최근 변화) reads alongside it on the right. No other rule in this
+   file redeclares .primary-workspace display/direction. */
 .primary-workspace {
   display: grid;
   gap: 16px;
   grid-template-columns: minmax(0, 1fr) clamp(320px, 28vw, 440px);
   align-items: start;
+  min-width: 0;
+}
+
+/* Orientation column (Map-first companion): 지금 / 다음 / 막힘 / 최근 변화.
+   Sticky companion to the map on desktop — long content scrolls inside the
+   column instead of stretching the whole page. Mobile resets it to static flow. */
+.overview-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.overview-panel > .panel {
   min-width: 0;
 }
 
@@ -214,18 +236,18 @@ body {
   gap: 12px;
   flex-wrap: wrap;
   margin-bottom: 14px;
-  padding-bottom: 8px;
+  padding-bottom: 9px;
   border-bottom: 1px solid var(--line-subtle);
 }
 
 .panel-map > .panel-header h2 {
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: var(--ink);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-family: var(--font-mono);
-  margin: 0;
+  margin: 3px 0 0;
 }
 
 .completeness-badge {
@@ -297,42 +319,6 @@ body {
   color: var(--ink);
 }
 
-/* Rail: Product Workflow / Trajectory Space */
-.workflow-groups-container {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.2fr) auto minmax(0, 1fr);
-  align-items: stretch;
-  gap: 10px;
-}
-
-.workflow-arrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-  font-size: 1rem;
-  font-weight: 700;
-  user-select: none;
-}
-
-.workflow-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: 8px 10px;
-}
-
-.workflow-group .group-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding-bottom: 5px;
-  border-bottom: 1px solid var(--line-subtle);
-}
-
 .group-name {
   margin: 0;
   font-family: var(--font-mono);
@@ -341,13 +327,6 @@ body {
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-}
-
-.group-items {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  flex: 1;
 }
 
 /* Map Card Common (Precise Node Boundaries) */
@@ -564,55 +543,16 @@ body {
   font-family: var(--font-mono);
 }
 
-/* Right Side Panel: Quiet Technical Editorial */
-.side {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 0;
-  position: sticky;
-  top: 16px;
-  max-height: calc(100vh - 32px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.inspector-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.panel-side {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  padding: 12px 14px;
-}
-
-.panel-side h2 {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-  border-bottom: 1px solid var(--line-subtle);
-  padding-bottom: 4px;
-  margin-bottom: 6px;
-}
-
-.panel-side .panel-body {
-  font-size: 0.84rem;
-  line-height: 1.5;
-  color: var(--ink-secondary);
-}
-
 /* Current Focus Section (Typography-Led Emphasis) */
 .panel-focus {
   background: var(--panel);
   border: 1px solid var(--line);
-  padding: 14px 16px;
+  border-left: 2px solid var(--muted);
+  padding: 13px 16px;
+}
+
+.panel-focus .panel-header {
+  padding-bottom: 6px;
 }
 
 #slot-focus h2 {
@@ -683,32 +623,14 @@ body {
   outline-offset: 1px;
 }
 
-.btn-focus-copy.btn-copied,
-.btn-handoff.btn-copied,
-.btn-copied {
-  background: var(--badge-evidence-bg) !important;
-  color: var(--badge-evidence-ink) !important;
-  border-color: var(--badge-evidence-ink) !important;
-}
-
-/* Area Detail Inspector Card */
-.area-inspector .inspector-card {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  padding: 14px 16px;
-  background: var(--panel);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
+/* Inspector (single owner; the drawer rules below extend this shared chrome) */
 .inspector-top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   border-bottom: 1px solid var(--line-subtle);
-  padding-bottom: 6px;
+  padding-bottom: 8px;
 }
 
 .group-tag {
@@ -741,9 +663,10 @@ body {
 
 .inspector-title {
   margin: 0;
-  font-size: 1.08rem;
+  font-size: 1.14rem;
   font-weight: 700;
   letter-spacing: -0.01em;
+  line-height: 1.3;
   color: var(--ink);
 }
 
@@ -752,22 +675,19 @@ body {
   font-size: 0.84rem;
   line-height: 1.5;
   color: var(--ink-secondary);
-  background: transparent;
-  padding: 0;
-  border: none;
 }
 
 .inspector-subsections {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .inspector-sub-card {
   background: transparent;
   border: none;
   border-top: 1px solid var(--line-subtle);
-  padding-top: 6px;
+  padding-top: 8px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -782,9 +702,9 @@ body {
   display: inline-flex;
   align-items: center;
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.63rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--muted);
   line-height: 1.2;
@@ -801,57 +721,39 @@ body {
   border-radius: var(--radius-xs);
 }
 
-.sub-badge.tone-danger,
-.badge-remaining {
+.sub-badge.tone-danger {
   color: var(--badge-remaining-ink);
   background: var(--badge-remaining-bg);
   padding: 1px 5px;
   border-radius: var(--radius-xs);
 }
 
-.sub-badge.tone-evidence,
-.badge-evidence {
+.sub-badge.tone-evidence {
   color: var(--badge-evidence-ink);
   background: var(--badge-evidence-bg);
   padding: 1px 5px;
   border-radius: var(--radius-xs);
 }
 
-.badge-reopen {
-  color: var(--badge-reopen-ink);
-}
-
 .sub-body {
-  font-size: 0.84rem;
+  margin-top: 4px;
+  font-size: 0.8rem;
   line-height: 1.5;
-  color: var(--ink);
+  color: var(--ink-secondary);
 }
 
 .sub-body p {
-  margin: 0 0 3px;
+  margin: 0 0 5px;
 }
 
 .sub-body p:last-child {
   margin-bottom: 0;
 }
 
-.sub-body details {
-  margin-top: 4px;
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: 4px 6px;
-}
-
-.sub-body summary {
-  font-size: 0.76rem;
-  font-weight: 600;
-  cursor: pointer;
-  color: var(--accent);
-}
-
-.sub-body details[open] summary {
-  margin-bottom: 4px;
+.sub-body ul,
+.sub-body ol {
+  margin: 0.25em 0;
+  padding-left: 1.2em;
 }
 
 /* Actions */
@@ -874,11 +776,11 @@ body {
   color: var(--badge-remaining-ink);
 }
 
-/* Bottom Context Region (Recent Progress > Stable Framing Context) */
+/* Lower Context Region (secondary context below the primary workspace) */
 .context-region {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
 }
 
@@ -888,7 +790,14 @@ body {
   min-width: 0;
 }
 
-/* Primary Lower Surface: Recent Progress */
+/* Live slot identity for #slot-recent (panel-movement + panel-recent):
+   grid blowout guard; visual ownership stays with .panel-recent below. */
+.panel-movement {
+  min-width: 0;
+}
+
+/* Orientation Surface: Recent Changes (overview column; the rolling-window
+   rules below foreground the newest two transitions). */
 .panel-recent {
   border-radius: var(--radius-md);
   padding: 16px 18px;
@@ -910,15 +819,6 @@ body {
   border-bottom: 1px solid var(--line-subtle);
   padding-bottom: 6px;
   margin-bottom: 10px;
-}
-
-.panel-recent .panel-kicker {
-  color: var(--muted);
-  font-family: var(--font-sans);
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0;
-  text-transform: none;
 }
 
 .panel-recent .panel-body {
@@ -1043,6 +943,12 @@ body {
   gap: 12px;
   grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
   min-width: 0;
+}
+
+/* Shared content container: long unbreakable tokens (paths, slash-chains)
+   must wrap instead of pushing the page into horizontal overflow. */
+.panel-body {
+  overflow-wrap: break-word;
 }
 
 .panel-body :last-child {
@@ -1215,7 +1121,7 @@ body {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .side {
+  .overview-panel {
     position: static;
     max-height: none;
     overflow-y: visible;
@@ -1244,29 +1150,6 @@ body {
   .neutral-group-connector .group-arrow {
     transform: rotate(90deg);
   }
-}
-
-/* Mental-model-first presentation layer. The legacy map rules above remain
-   available for the native map renderer; these rules own the new hierarchy. */
-.primary-workspace {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
-  position: relative;
-  align-items: stretch;
-}
-
-.overview-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 0;
-}
-
-.overview-panel > .panel,
-.stage-posture-grid > .panel {
-  min-width: 0;
 }
 
 .panel-header {
@@ -1300,185 +1183,12 @@ body {
   text-align: right;
 }
 
-.panel-horizon {
-  padding: 18px 22px;
-  border-left: 3px solid var(--accent);
-  box-shadow: var(--shadow-xs);
-}
-
-.panel-horizon .panel-header {
-  padding-bottom: 9px;
-  border-bottom: 1px solid var(--line-subtle);
-}
-
-.panel-horizon .panel-body {
-  max-width: 980px;
-  padding-top: 11px;
-  color: var(--ink);
-  font-size: 1rem;
-  line-height: 1.62;
-}
-
-.panel-horizon .panel-body p {
-  margin: 0 0 0.55em;
-}
-
-.panel-horizon .panel-body p:last-child {
-  margin-bottom: 0;
-}
-
-.horizon-copy.legacy-fallback::before {
-  content: "이전 형식 개요";
-  display: block;
-  margin-bottom: 7px;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.06em;
-}
-
-.stage-posture-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 14px;
-  min-width: 0;
-}
-
-.panel-stage,
-.panel-posture {
-  min-height: 230px;
-  padding: 16px 18px;
-}
-
-.panel-stage .panel-header,
-.panel-posture .panel-header,
-.panel-frontier .panel-header,
-.panel-threads .panel-header,
-.panel-movement .panel-header {
-  padding-bottom: 9px;
-  border-bottom: 1px solid var(--line-subtle);
-}
-
-.stage-journey-view {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
-  padding-top: 12px;
-}
-
-.stage-segment {
-  min-width: 0;
-  padding: 10px 11px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--panel-elevated);
-}
-
-.stage-segment-current {
-  border-color: var(--stage-border);
-  box-shadow: inset 2px 0 0 var(--stage-border);
-}
-
-.stage-segment-header,
-.semantic-card-top,
-.posture-card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.stage-segment-header {
-  align-items: baseline;
-  padding-bottom: 7px;
-  border-bottom: 1px solid var(--line-subtle);
-}
-
-.stage-segment-header h3 {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  color: var(--ink);
-  font-size: 0.83rem;
-  font-weight: 700;
-  line-height: 1.35;
-}
-
-.stage-role,
-.frontier-role,
-.related-title {
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.61rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.stage-segment-current .stage-role,
-.frontier-primary .frontier-role {
-  color: var(--accent);
-}
-
-.stage-gate-list,
-.posture-grid,
-.frontier-list,
-.thread-list,
-.movement-list {
-  display: grid;
-  gap: 7px;
-  padding-top: 9px;
-}
-
-.semantic-card {
-  appearance: none;
-  width: 100%;
-  min-width: 0;
-  padding: 9px 10px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--panel);
-  color: var(--ink);
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-  transition: border-color 0.12s ease, background-color 0.12s ease, transform 0.12s ease;
-}
-
-.semantic-card:hover {
-  border-color: var(--accent-border);
-  background: var(--accent-soft);
-  transform: translateY(-1px);
-}
-
-.semantic-card:focus-visible,
-.related-link:focus-visible,
 .inspector-evidence-link:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-.semantic-card strong {
-  display: block;
-  margin-top: 5px;
-  font-size: 0.81rem;
-  line-height: 1.35;
-}
-
-.semantic-card > span:last-child,
-.posture-summary {
-  display: block;
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 0.73rem;
-  line-height: 1.4;
-}
-
-.stage-gate-state,
-.maturity-badge,
-.inspector-state,
-.thread-state {
+.inspector-state {
   display: inline-flex;
   align-items: center;
   min-height: 19px;
@@ -1494,169 +1204,7 @@ body {
   white-space: nowrap;
 }
 
-.state-strong,
-.state-closed,
-.state-proven,
-.maturity-strong {
-  border-color: var(--badge-evidence-border, #a7f3d0);
-  background: var(--badge-evidence-bg);
-  color: var(--badge-evidence-ink);
-}
-
-.state-partial,
-.state-in-proof,
-.state-in-review,
-.maturity-partial {
-  border-color: var(--accent-border);
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.state-weak,
-.state-blocked,
-.state-failed,
-.maturity-weak {
-  border-color: var(--badge-remaining-border, #fecaca);
-  background: var(--badge-remaining-bg);
-  color: var(--badge-remaining-ink);
-}
-
-.state-unknown,
-.state-not-open,
-.state-not-proven,
-.maturity-unknown {
-  background: var(--badge-bg);
-  color: var(--badge-ink);
-}
-
-.stage-blocker-marker {
-  display: inline-block;
-  margin-top: 5px;
-  color: var(--status-blocked);
-  font-family: var(--font-mono);
-  font-size: 0.59rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-}
-
-.posture-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.posture-card {
-  min-height: 82px;
-}
-
-.posture-card-top strong {
-  max-width: 65%;
-  margin: 0;
-  font-size: 0.78rem;
-}
-
-.posture-card.posture-strong {
-  border-left: 2px solid var(--badge-evidence-ink);
-}
-
-.posture-card.posture-partial {
-  border-left: 2px solid var(--accent);
-}
-
-.posture-card.posture-weak {
-  border-left: 2px solid var(--badge-remaining-ink);
-}
-
-.panel-frontier {
-  padding: 16px 18px;
-  border-left: 3px solid var(--frontier-track);
-}
-
-.frontier-list {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.frontier-card {
-  padding: 12px 13px;
-}
-
-.frontier-card.frontier-primary {
-  border-color: var(--stage-border);
-  background: var(--stage-bg);
-  box-shadow: inset 3px 0 0 var(--frontier-track);
-}
-
-.frontier-card.frontier-secondary {
-  opacity: 0.86;
-}
-
-.frontier-transition,
-.movement-transition {
-  color: var(--accent);
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.frontier-transition b,
-.movement-transition b {
-  color: var(--muted);
-  padding: 0 3px;
-}
-
-.panel-threads,
-.panel-movement {
-  padding: 14px 18px;
-}
-
-.thread-list,
-.movement-list {
-  grid-template-columns: repeat(auto-fit, minmax(min(270px, 100%), 1fr));
-}
-
-.thread-card {
-  background: var(--panel-elevated);
-  opacity: 0.9;
-}
-
-.thread-card strong {
-  margin: 0;
-}
-
-.thread-state {
-  opacity: 0.9;
-}
-
-.movement-card {
-  padding: 9px 11px;
-  border-color: var(--line-subtle);
-  background: transparent;
-}
-
-.movement-card strong {
-  margin-top: 4px;
-  font-size: 0.77rem;
-}
-
-.movement-card > span:last-child {
-  font-size: 0.69rem;
-}
-
-.panel-map {
-  min-height: auto;
-  padding: 16px 18px;
-}
-
-.panel-map > .panel-header {
-  margin-bottom: 14px;
-  padding-bottom: 9px;
-  border-bottom: 1px solid var(--line-subtle);
-}
-
-.panel-map > .panel-header h2 {
-  margin-top: 3px;
-  font-size: 0.9rem;
-}
-
+/* Inspector drawer (fixed overlay; extends the Inspector chrome above) */
 .universal-inspector-drawer {
   position: fixed;
   z-index: 20;
@@ -1676,15 +1224,6 @@ body {
   padding: 16px 17px;
   border: 1px solid var(--accent-border);
   background: var(--panel);
-}
-
-.inspector-top-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--line-subtle);
 }
 
 .inspector-breadcrumb {
@@ -1723,57 +1262,6 @@ body {
   gap: 8px;
 }
 
-.inspector-title {
-  margin: 0;
-  color: var(--ink);
-  font-size: 1.14rem;
-  line-height: 1.3;
-}
-
-.inspector-summary .inspector-lead {
-  margin: 0;
-  color: var(--ink-secondary);
-  font-size: 0.84rem;
-  line-height: 1.5;
-}
-
-.inspector-subsections {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.inspector-sub-card {
-  padding-top: 8px;
-  border-top: 1px solid var(--line-subtle);
-}
-
-.sub-badge {
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.63rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.sub-body {
-  margin-top: 4px;
-  color: var(--ink-secondary);
-  font-size: 0.8rem;
-  line-height: 1.5;
-}
-
-.sub-body p {
-  margin: 0 0 5px;
-}
-
-.sub-body ul,
-.sub-body ol {
-  margin: 0.25em 0;
-  padding-left: 1.2em;
-}
-
 .inspector-evidence-link {
   appearance: none;
   margin-top: 6px;
@@ -1787,77 +1275,12 @@ body {
   font-weight: 600;
 }
 
-.inspector-related {
-  padding-top: 9px;
-  border-top: 1px solid var(--line-subtle);
-}
-
-.related-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-.related-link {
-  appearance: none;
-  padding: 4px 7px;
-  border: 1px solid var(--accent-border);
-  border-radius: var(--radius-xs);
-  background: var(--accent-soft);
-  color: var(--accent);
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.69rem;
-}
-
 .universal-inspector-drawer .inspector-actions {
   padding-top: 9px;
   border-top: 1px solid var(--line-subtle);
 }
 
-.context-region {
-  gap: 12px;
-}
-
-.panel-focus {
-  padding: 13px 16px;
-  border-left: 2px solid var(--muted);
-}
-
-.panel-focus .panel-header {
-  padding-bottom: 6px;
-}
-
-.panel-focus .panel-body {
-  color: var(--ink-secondary);
-  font-size: 0.82rem;
-}
-
-.legacy-frontier-view {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
-  color: var(--ink-secondary);
-  font-size: 0.84rem;
-  line-height: 1.5;
-}
-
-.legacy-frontier-view > div > .surface-kicker {
-  margin-bottom: 6px;
-}
-
 @media (max-width: 768px) {
-  .stage-posture-grid,
-  .stage-journey-view,
-  .legacy-frontier-view {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .posture-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .universal-inspector-drawer {
     top: 10px;
     right: 10px;
@@ -1870,9 +1293,7 @@ body {
   }
 }
 
-/* Compressed overview: 프로젝트 현황 synthesis + 최근 변화 secondary threads.
-   Canonical semantics unchanged — synthesis only groups existing card markup
-   into one reader flow (현재 위치 / 주목할 상태 / 가장 가까운 핵심 전환). */
+/* Orientation panels: 지금 / 다음 / 막힘 (overview column companions to the map). */
 .panel-status {
   padding: 18px 22px;
   border-left: 3px solid var(--accent);
@@ -1884,118 +1305,7 @@ body {
   border-bottom: 1px solid var(--line-subtle);
 }
 
-.status-synthesis {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding-top: 11px;
-}
-
-.status-horizon .horizon-copy {
-  max-width: 980px;
-  color: var(--ink);
-  font-size: 1rem;
-  line-height: 1.62;
-}
-
-.status-horizon .horizon-copy p {
-  margin: 0 0 0.55em;
-}
-
-.status-horizon .horizon-copy p:last-child {
-  margin-bottom: 0;
-}
-
-.status-flow {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.status-block {
-  min-width: 0;
-  padding: 10px 11px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--panel-elevated);
-}
-
-.status-block-next {
-  border-left: 3px solid var(--frontier-track);
-  background: var(--panel);
-}
-
-.status-block-title {
-  margin: 0 0 4px;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.status-block .stage-journey-view,
-.status-block .posture-grid,
-.status-block .frontier-list {
-  padding-top: 6px;
-}
-
-.status-established {
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: 0.74rem;
-  line-height: 1.5;
-}
-
-.status-established-link {
-  appearance: none;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--accent);
-  cursor: pointer;
-  font: inherit;
-  font-weight: 600;
-}
-
-.status-established-link:hover {
-  text-decoration: underline;
-}
-
-/* Demoted threads: secondary inside 최근 변화, never a primary surface. */
-.threads-secondary-slot[hidden] {
-  display: none;
-}
-
-.threads-secondary {
-  margin-top: 10px;
-  border-top: 1px dashed var(--line-strong);
-  padding-top: 8px;
-}
-
-.threads-secondary-summary {
-  cursor: pointer;
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-
-.threads-secondary-summary::marker {
-  color: var(--line-strong);
-}
-
-.threads-secondary-hint {
-  color: var(--line-strong);
-  font-weight: 400;
-}
-
-.threads-secondary-body {
-  padding-top: 8px;
-  opacity: 0.92;
-}
-
-/* Cold-read friction: stage identity, entry condition, handoff affordance */
+/* Current-stage identity tag inside the native map (NOW · 현재 단계 group). */
 .stage-id-tag {
   font-family: var(--font-mono);
   font-size: 0.68rem;
@@ -2008,49 +1318,6 @@ body {
   padding: 2px 8px;
   margin-left: 8px;
   white-space: nowrap;
-}
-
-.stage-gate-entry {
-  color: var(--muted);
-  font-size: 0.74rem;
-  line-height: 1.35;
-}
-
-.stage-gate-reason {
-  color: var(--ink-secondary);
-  font-size: 0.74rem;
-  line-height: 1.4;
-}
-
-.stage-gate-fallback {
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-style: italic;
-  line-height: 1.35;
-}
-
-.inspector-stage-context {
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  text-transform: uppercase;
-}
-
-.stage-context-link {
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: var(--accent);
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  text-transform: uppercase;
-}
-
-.stage-context-link:hover {
-  text-decoration: underline;
 }
 
 .handoff-hint {
