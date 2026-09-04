@@ -485,6 +485,13 @@ interface AutoRefreshStatus {
   lastResult: string | null;
 }
 
+// Latest server-reported capability. The control starts hidden and disabled in
+// markup and only appears once a status with `configured: true` arrives, so an
+// ordinary launch without COCKPIT_REFRESH_COMMAND never presents auto-update
+// as an available capability — including across the POST round-trip below,
+// where renderAutoRefresh may not run.
+let lastRefreshConfigured = false;
+
 function refreshStatusText(status: AutoRefreshStatus): string {
   // Capability first: the server already knows `configured`, so an
   // unconfigured reader never renders an operational/waiting state —
@@ -499,10 +506,19 @@ function refreshStatusText(status: AutoRefreshStatus): string {
 }
 
 function renderAutoRefresh(status: AutoRefreshStatus): void {
+  const control = document.getElementById("auto-refresh-control");
   const toggle = document.getElementById("auto-refresh-toggle") as HTMLButtonElement | null;
   const label = document.getElementById("auto-refresh-status");
-  if (toggle) toggle.setAttribute("aria-checked", status.enabled ? "true" : "false");
+  // Optional integration only: without a separately configured external owner
+  // there is no auto-update capability to offer, so the control stays hidden
+  // instead of rendering a permanently disabled operational-looking switch.
+  if (control) control.hidden = !status.configured;
+  if (toggle) {
+    toggle.setAttribute("aria-checked", status.enabled ? "true" : "false");
+    toggle.disabled = !status.configured;
+  }
   if (label) label.textContent = refreshStatusText(status);
+  lastRefreshConfigured = status.configured;
 }
 
 async function fetchAutoRefreshStatus(): Promise<AutoRefreshStatus | null> {
@@ -518,8 +534,8 @@ async function fetchAutoRefreshStatus(): Promise<AutoRefreshStatus | null> {
 function initAutoRefresh(): void {
   const toggle = document.getElementById("auto-refresh-toggle") as HTMLButtonElement | null;
   if (!toggle) return;
-  // Default is OFF in markup; converge to the server-owned state once known.
-  // No browser timer or stored preference ever schedules refresh.
+  // Default is hidden and OFF in markup; converge to the server-owned
+  // state once known. No browser timer or stored preference ever schedules refresh.
   void fetchAutoRefreshStatus().then((status) => {
     if (status) renderAutoRefresh(status);
   });
@@ -540,7 +556,10 @@ function initAutoRefresh(): void {
         /* POST failure keeps the previous toggle state; next SSE status converges */
       })
       .finally(() => {
-        toggle.disabled = false;
+        // Restore the capability truth, not blind interactivity: when the
+        // POST round-trip produced no status, the previous server state still
+        // owns whether this control is usable at all.
+        toggle.disabled = !lastRefreshConfigured;
       });
   });
 }

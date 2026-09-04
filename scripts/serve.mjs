@@ -398,10 +398,13 @@ Operator note:
   When an external agent is asked to open Cockpit for a project, the recommended
   workflow is to reconcile PROGRESS.md with current project evidence first,
   update only material semantic deltas, run 'cockpit check', then launch the viewer.
-  The optional 자동 업데이트 toggle (default OFF, top-right) asks one
-  configured external owner (COCKPIT_REFRESH_COMMAND) to re-check every
-  10 minutes; Cockpit only reads the file back and refreshes the screen when
-  the content actually changed.
+  The optional 자동 업데이트 toggle (default OFF, top-right) appears only when
+  COCKPIT_REFRESH_COMMAND is explicitly configured and asks that separately
+  configured external owner to re-check every 10 minutes; Cockpit only reads
+  the file back and refreshes the screen when the content actually changed.
+  Live Reload (built-in file re-read after PROGRESS.md changes) always works.
+  An ordinary launch without COCKPIT_REFRESH_COMMAND shows no auto-update
+  control and guarantees no 10-minute semantic updates.
 
 The default browser opens automatically once the server is ready.
 Pass --no-open to suppress this.

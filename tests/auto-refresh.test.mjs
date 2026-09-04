@@ -332,6 +332,47 @@ test("auto-refresh: browser never owns the schedule", async () => {
   assert.doesNotMatch(html + main, /PROGRESS\.md 생성/);
 });
 
+test("auto-refresh: unavailable control is never an operational switch", async () => {
+  const main = await fs.readFile(path.join(REPO_ROOT, "src", "main.ts"), "utf-8");
+  const html = await fs.readFile(path.join(REPO_ROOT, "index.html"), "utf-8");
+  // First paint must not offer an operable switch before capability is known.
+  assert.match(
+    html,
+    /id="auto-refresh-toggle"[^>]*\bdisabled\b/,
+    "toggle must start disabled in markup"
+  );
+  // The single render path gates interactivity on the canonical `configured`
+  // flag, so unavailable / OFF / ON-waiting stay visually distinct.
+  const renderFn = main.slice(main.indexOf("function renderAutoRefresh"));
+  assert.ok(renderFn.length > 0, "renderAutoRefresh must exist");
+  assert.match(renderFn, /toggle\.disabled = !status\.configured/);
+  // The POST round-trip must restore the capability truth, never blind
+  // interactivity that would re-arm an unavailable control.
+  assert.match(main, /toggle\.disabled = !lastRefreshConfigured/);
+  assert.doesNotMatch(main, /toggle\.disabled = false/);
+});
+
+test("auto-refresh: unconfigured integration stays hidden, configured integration appears", async () => {
+  const main = await fs.readFile(path.join(REPO_ROOT, "src", "main.ts"), "utf-8");
+  const html = await fs.readFile(path.join(REPO_ROOT, "index.html"), "utf-8");
+  // Ordinary launch must not present auto-update as an available capability:
+  // first paint hides the whole control, not just disables the switch.
+  assert.match(
+    html,
+    /id="auto-refresh-control"[^>]*\bhidden\b/,
+    "refresh control must start hidden in markup"
+  );
+  // The single render path owns visibility from the canonical `configured`
+  // flag: hidden when unconfigured, shown only for the optional integration.
+  const renderFn = main.slice(main.indexOf("function renderAutoRefresh"));
+  assert.ok(renderFn.length > 0, "renderAutoRefresh must exist");
+  assert.match(renderFn, /control\.hidden = !status\.configured/);
+  // Configured interactivity is preserved alongside hiding: the toggle still
+  // gates on `configured` so OFF/ON affordance exists only where the server
+  // actually reports an external owner.
+  assert.match(renderFn, /toggle\.disabled = !status\.configured/);
+});
+
 test("auto-refresh: server keeps a single refresh scheduler", async () => {
   const serve = await fs.readFile(path.join(REPO_ROOT, "scripts", "serve.mjs"), "utf-8");
   const refresh = await fs.readFile(path.join(REPO_ROOT, "scripts", "refresh.mjs"), "utf-8");
