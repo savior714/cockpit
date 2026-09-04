@@ -21,6 +21,7 @@ Tiers 1–3 are instructions; tier 4 is implementation evidence. When current ev
 |---|---|
 | Development decomposition, execution boundary, workspace, publication closure | `docs/operations/DEVELOPMENT.md` |
 | Evidence / validation semantics | `docs/operations/TESTING.md` |
+| Reader-facing language / product vocabulary | `README.md` §5 `독자용 표시 언어` |
 | Actual implementation state | code, tests, config, runtime evidence |
 
 Read only the owners directly relevant to the current task. Concrete commands are in §5 below and in `README.md` §6 (Korean).

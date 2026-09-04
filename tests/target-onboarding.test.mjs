@@ -329,7 +329,7 @@ test("CLI: non-interactive missing PROGRESS.md never hangs, never writes", async
   const r = await runCli(["--no-open", "--port", "0"], { cwd: dir, timeout: 12000 });
   assert.ok(Date.now() - start < 12000, "must exit without waiting for input");
   assert.equal(r.code, 1);
-  assert.match(r.stderr, /progress representation/);
+  assert.match(r.stderr, /PROGRESS\.md가 아직 없습니다/);
   assert.ok(r.stderr.includes(path.resolve(dir)), "must identify the target project");
   assert.equal(await fs.stat(path.join(dir, "PROGRESS.md")).then(() => true).catch(() => false), false);
 });

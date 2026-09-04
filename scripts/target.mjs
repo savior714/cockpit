@@ -239,7 +239,7 @@ export async function acquireTargetInteractively({
 /**
  * Neutral starter scaffold. Deliberately NOT structurally valid: it carries
  * the README §5 headings (no second schema) with TODO placeholders and no
- * map items / area details, so `cockpit check` FAILs until a capable agent
+ * map items / area details, so `cockpit check` FAILs until an external agent
  * (or the author) grounds it in real evidence. No stages, areas, evidence,
  * or completion state is claimed.
  */
@@ -248,7 +248,7 @@ export function buildStarterContent({ projectName = "프로젝트" } = {}) {
 
 > 이 파일은 Cockpit 온보딩이 만든 중립 시작점이다. 아직 실제 저장소/런타임 증거와
 > 대조되지 않았으므로 내용을 지어내지 않고 비워 두었다. \`README §5\` 구조를 따라
-> 외부 역량 에이전트(또는 작성자)가 실제 증거 기반으로 채울 차례다.
+> 외부 에이전트(또는 작성자)가 실제 증거 기반으로 채울 차례다.
 > 이 상태에서는 \`cockpit check\`가 FAIL인 것이 정상이다. (STRUCTURALLY VALID != EVIDENCE-GROUNDED)
 
 ## 현재 상황
@@ -279,8 +279,8 @@ export function buildStarterContent({ projectName = "프로젝트" } = {}) {
 }
 
 /**
- * First-class preparation handoff for a capable external agent. Cockpit
- * itself stays non-intelligent: this text only tells an external reader
+ * First-class preparation handoff for an external agent. Cockpit
+ * itself stays non-intelligent: this text only tells an external agent
  * what to do. No vendor/tool is hard-coded; no internal architecture
  * (Problem Framer, parser modules) is required to understand it.
  */
@@ -300,7 +300,7 @@ README §5의 마크다운 구조에 맞춰 사실 기반으로 작성해줘. �
 }
 
 export function formatMissingGuidance({ projectDir, progressFile }) {
-  return `cockpit: '${projectDir}'에는 Cockpit progress representation이 아직 없습니다.
+  return `cockpit: '${projectDir}'에는 PROGRESS.md가 아직 없습니다.
 찾는 위치: ${progressFile}
 
 Cockpit은 저장소를 분석하거나 내용을 자동으로 만들지 않습니다.
@@ -308,7 +308,7 @@ Cockpit은 저장소를 분석하거나 내용을 자동으로 만들지 않습�
 }
 
 const NEXT_STEPS = `다음:
-  1. 위 요청문을 외부 역량 에이전트에게 전달해 실제 증거 기반으로 채우거나,
+  1. 위 요청문을 외부 에이전트에게 전달해 실제 증거 기반으로 채우거나,
      중립 시작점을 직접 채운 뒤
   2. cockpit check <progress-file> 로 구조적 완전성을 확인하고
   3. cockpit <project-dir> 로 다시 실행하세요.`;
@@ -329,7 +329,7 @@ export async function runMissingProgressFlow({
 } = {}) {
   const projectName = path.basename(projectDir) || projectDir;
   stdout.write(`${formatMissingGuidance({ projectDir, progressFile })}\n\n`);
-  stdout.write(`외부 역량 에이전트에게 전달할 준비 요청문:\n\n`);
+  stdout.write(`외부 에이전트에게 전달할 준비 요청문:\n\n`);
   stdout.write(`${buildAgentHandoff({ projectDir, progressFile })}\n\n`);
 
   let answer;

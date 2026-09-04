@@ -354,7 +354,8 @@ test("Independent multi-rail mental-model axis invariants: single Current Stage 
   assert.ok(renderedHtml.includes("map-rail-trajectory"));
   assert.ok(renderedHtml.includes("도메인 및 운영 모델"));
   assert.ok(renderedHtml.includes("도입 및 검증 여정"));
-  assert.ok(renderedHtml.includes("NOW · 현재 단계"));
+  assert.ok(renderedHtml.includes("현재 단계"));
+  assert.equal(renderedHtml.includes("NOW ·"), false, "map must not expose internal shorthand");
 
   // Case B: Single neutral rail (no current stage anywhere)
   const singleNeutralDoc = `

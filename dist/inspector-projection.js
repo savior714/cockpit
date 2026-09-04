@@ -217,7 +217,7 @@ export function renderNativeMap(parsedMap, selectedAreaId = null, _areaDetails, 
                 type="button"
                 class="map-card card-foundation ${isSelected ? "selected" : ""}"
                 data-item-id="${escapeHtml(item.id)}"
-                aria-label="${escapeHtml(item.title)} 영역 검사"
+                aria-label="${escapeHtml(item.title)} 영역 상세 보기"
               >
                 <div class="card-inner">
                   <span class="card-title">${escapeHtml(item.title)}</span>
@@ -234,7 +234,7 @@ export function renderNativeMap(parsedMap, selectedAreaId = null, _areaDetails, 
                     html += `
             <div class="trajectory-group group-current-stage">
               <div class="group-header">
-                <span class="stage-tag">NOW · 현재 단계</span>
+                <span class="stage-tag">현재 단계</span>
                 ${showCurrentStageLabel ? `<span class="stage-id-tag">${escapeHtml(currentStageLabel ?? "")}</span>` : ""}
                 <h4 class="group-name visually-hidden">${escapeHtml(group.title)}</h4>
               </div>
@@ -247,7 +247,7 @@ export function renderNativeMap(parsedMap, selectedAreaId = null, _areaDetails, 
                 type="button"
                 class="map-card card-current-stage ${isSelected ? "selected" : ""}"
                 data-item-id="${escapeHtml(item.id)}"
-                aria-label="현재 단계: ${escapeHtml(item.title)} 영역 검사"
+                aria-label="현재 단계: ${escapeHtml(item.title)} 영역 상세 보기"
               >
                 <div class="card-inner">
                   <span class="card-title">${escapeHtml(item.title)}</span>
@@ -278,7 +278,7 @@ export function renderNativeMap(parsedMap, selectedAreaId = null, _areaDetails, 
                 type="button"
                 class="map-card card-future ${isSelected ? "selected" : ""}"
                 data-item-id="${escapeHtml(item.id)}"
-                aria-label="${escapeHtml(item.title)} 영역 검사"
+                aria-label="${escapeHtml(item.title)} 영역 상세 보기"
               >
                 <span class="step-num">${fIdx + 1}</span>
                 <div class="step-body">
@@ -312,7 +312,7 @@ export function renderNativeMap(parsedMap, selectedAreaId = null, _areaDetails, 
                   type="button"
                   class="map-card card-ordered ${isSelected ? "selected" : ""}"
                   data-item-id="${escapeHtml(item.id)}"
-                  aria-label="${escapeHtml(item.title)} 영역 검사"
+                  aria-label="${escapeHtml(item.title)} 영역 상세 보기"
                 >
                   <span class="step-num">${itemIdx + 1}</span>
                   <div class="step-body">
@@ -335,7 +335,7 @@ export function renderNativeMap(parsedMap, selectedAreaId = null, _areaDetails, 
                   type="button"
                   class="map-card card-peer ${isSelected ? "selected" : ""}"
                   data-item-id="${escapeHtml(item.id)}"
-                  aria-label="${escapeHtml(item.title)} 영역 검사"
+                  aria-label="${escapeHtml(item.title)} 영역 상세 보기"
                 >
                   <div class="card-inner">
                     <span class="card-title">${escapeHtml(item.title)}</span>
@@ -383,7 +383,7 @@ export function renderNativeMap(parsedMap, selectedAreaId = null, _areaDetails, 
                 type="button"
                 class="map-card card-ordered ${isSelected ? "selected" : ""}"
                 data-item-id="${escapeHtml(item.id)}"
-                aria-label="${escapeHtml(item.title)} 영역 검사"
+                aria-label="${escapeHtml(item.title)} 영역 상세 보기"
               >
                 <span class="step-num">${itemIdx + 1}</span>
                 <div class="step-body">
@@ -406,7 +406,7 @@ export function renderNativeMap(parsedMap, selectedAreaId = null, _areaDetails, 
                 type="button"
                 class="map-card card-peer ${isSelected ? "selected" : ""}"
                 data-item-id="${escapeHtml(item.id)}"
-                aria-label="${escapeHtml(item.title)} 영역 검사"
+                aria-label="${escapeHtml(item.title)} 영역 상세 보기"
               >
                 <div class="card-inner">
                   <span class="card-title">${escapeHtml(item.title)}</span>

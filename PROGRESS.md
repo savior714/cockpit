@@ -2,15 +2,15 @@
 
 ## 현재 상황
 
-Cockpit은 사람 손으로 작성한 `PROGRESS.md`를 결정론적으로 읽어 프로젝트의 구조와 상태를 보여주는 로컬 읽기 전용 뷰어다. 지도·영역 근거·Handoff 기반은 확립되어 있고, 이번 contraction으로 Horizon/Stage/Posture/Frontier/Thread/Movement 이중 소유와 실행·발행 handoff 어휘를 제거해 Map-first 단일 책임으로 수렴했다. 현재 무게중심은 수렴된 뷰어의 독립 reader 수용 증명에 있다.
+Cockpit은 사람 손으로 작성한 `PROGRESS.md`를 결정론적으로 읽어 프로젝트의 구조와 상태를 보여주는 로컬 읽기 전용 뷰어다. 지도·영역 근거·맥락 전달 기반은 확립되어 있고, 이번 정리로 Horizon/Stage/Posture/Frontier/Thread/Movement 이중 소유와 실행·발행 handoff 어휘를 제거해 Map-first 단일 책임으로 수렴했다. 현재 무게중심은 수렴된 뷰어의 독립 독자 확인에 있다.
 
 ## 다음 전환
 
-수렴된 Map-first 뷰어 → 독립 reader 수용 확정 상태. 처음 보는 독자가 primary surface만으로 목적·구조·위치·다음·제약을 복원하면 닫힌다. 그 이후에는 portable multi-project adoption으로 넘어간다.
+수렴된 Map-first 뷰어 → 독립 독자 확인 확정 상태. 처음 보는 독자가 주 화면만으로 목적·구조·위치·다음·제약을 복원하면 닫힌다. 그 이후에는 여러 프로젝트에서 그대로 쓰는 단계로 넘어간다.
 
 ## 직면한 문제
 
-- **독립 reader proof 잔여** — 수렴 구조의 fixture·브라우저 검증은 이번 작업에서 닫지만, 저장소 설명 없는 fresh-reader 판정은 다음 전환의 열린 검증으로 남는다.
+- **독립 독자 확인 잔여** — 수렴 구조의 예제·브라우저 검증은 이번 작업에서 닫지만, 저장소 설명 없는 처음 보는 독자의 판정은 다음 전환의 열린 검증으로 남는다.
 
 ## 최근 변화
 
@@ -55,7 +55,7 @@ Cockpit은 사람 손으로 작성한 `PROGRESS.md`를 결정론적으로 읽어
 #### 의미
 지도를 mental anchor로 먼저 보여주고 프로젝트 현황/다음 단계/진행 제약 평문 개요로 방향을 전달하는 top-level presentation.
 #### 현재 수준
-수렴 구조를 렌더링한다. 독립 reader 수용은 다음 전환의 열린 검증이다.
+수렴 구조를 렌더링한다. 독립 독자 확인은 다음 전환의 열린 검증이다.
 #### 근거
 - `src/main.ts` Map-first 셸과 `index.html` 지도 우선 슬롯.
 
@@ -77,7 +77,7 @@ package/loopback 기반은 검증되었지만 다중 외부 project의 실제 ad
 
 ### Independent comprehension proof
 #### 의미
-repository 설명이나 raw evidence 없이 reader-visible Cockpit output만 보고 mental model을 복원하는 acceptance.
+저장소 설명이나 원본 증거 없이 화면에 보이는 Cockpit 내용만 보고 전체 구조를 복원하는 확인이다.
 #### 현재 수준
 다음 전환의 열린 검증으로 정의되었고 수렴된 뷰어에서의 독립 판정은 아직 수행되지 않았다.
 #### 근거
@@ -85,7 +85,7 @@ repository 설명이나 raw evidence 없이 reader-visible Cockpit output만 보
 
 ## 제품 목표
 
-Cockpit은 외부 capable agent가 정리한 신뢰 가능한 `PROGRESS.md`를 가장 낮은 적절한 evidence 해상도까지 보존하면서, 프로젝트의 전체 위치·상태·다음 전환을 처음 보는 독자에게 짧고 결정론적으로 보여주는 초경량 로컬 viewer다.
+Cockpit은 외부 에이전트가 정리한 신뢰 가능한 `PROGRESS.md`를 꼭 필요한 수준까지 살리면서, 프로젝트의 전체 위치·상태·다음 전환을 처음 보는 독자에게 짧고 결정론적으로 보여주는 초경량 로컬 뷰어다.
 
 ## 확정된 방향
 

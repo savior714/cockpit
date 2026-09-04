@@ -271,7 +271,7 @@ test("Distribution artifact smoke: pack, install into isolated prefix, and verif
     assert.equal(err.status, 1, "First-run without PROGRESS.md must exit 1");
   }
   assert.ok(firstRunFailedAsExpected, "First-run without PROGRESS.md must exit non-zero");
-  assert.match(firstRunOutput, /progress representation/);
+  assert.match(firstRunOutput, /PROGRESS\.md가 아직 없습니다/);
   assert.ok(
     firstRunOutput.includes(path.resolve(emptyDir)),
     "First-run output must identify the target project"

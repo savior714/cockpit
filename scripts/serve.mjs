@@ -357,7 +357,7 @@ Viewer:
 
 Operator note:
   Cockpit itself is read-only and displays PROGRESS.md as-is.
-  When a capable agent is asked to open Cockpit for a project, the recommended
+  When an external agent is asked to open Cockpit for a project, the recommended
   workflow is to reconcile PROGRESS.md with current project evidence first,
   update only material semantic deltas, run 'cockpit check', then launch the viewer.
   The optional 자동 업데이트 toggle (default OFF, top-right) asks one
@@ -394,7 +394,7 @@ Pass --no-open to suppress this.`);
       });
       process.exit(flow.action === "created" || flow.action === "exists-now" ? 0 : 1);
     }
-    console.error(`cockpit: '${resolved.projectDir}'에는 Cockpit progress representation이 아직 없습니다.
+    console.error(`cockpit: '${resolved.projectDir}'에는 PROGRESS.md가 아직 없습니다.
 찾는 위치: ${resolved.progressFile}
 
 Cockpit은 저장소를 분석하거나 내용을 자동으로 만들지 않습니다.

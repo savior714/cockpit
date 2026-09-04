@@ -62,7 +62,10 @@ test("Native map rendering structural invariant across trajectory and neutral ra
   assert.ok(renderedHtml.includes("card-foundation"));
   assert.ok(renderedHtml.includes("card-current-stage"));
   assert.ok(renderedHtml.includes("card-future"));
-  assert.ok(renderedHtml.includes("NOW · 현재 단계"));
+  assert.ok(renderedHtml.includes("현재 단계"));
+  assert.equal(renderedHtml.includes("NOW ·"), false, "map must not expose internal shorthand");
+  assert.ok(renderedHtml.includes("영역 상세 보기"));
+  assert.equal(renderedHtml.includes("영역 검사"), false, "map must not expose internal inspection wording");
 });
 
 test("Area completeness calculation: complete vs partial document", () => {

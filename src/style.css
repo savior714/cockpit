@@ -1433,7 +1433,7 @@ body {
   color: var(--badge-remaining-ink);
 }
 
-/* Current-stage identity tag inside the native map (NOW · 현재 단계 group). */
+/* Current-stage identity tag inside the native map (현재 단계 group). */
 .stage-id-tag {
   font-family: var(--font-mono);
   font-size: var(--text-micro);

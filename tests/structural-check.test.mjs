@@ -656,8 +656,8 @@ test("Current Stage Canonical Semantics: Multi-frontier items under single Curre
 
   // 3. Native Map Rendering: both items rendered as .card-current-stage
   const html = renderNativeMap(parsedMap);
-  assert.ok(html.includes('aria-label="현재 단계: 노드 자동 복구 영역 검사"'));
-  assert.ok(html.includes('aria-label="현재 단계: 트래픽 미러링 영역 검사"'));
+  assert.ok(html.includes('aria-label="현재 단계: 노드 자동 복구 영역 상세 보기"'));
+  assert.ok(html.includes('aria-label="현재 단계: 트래픽 미러링 영역 상세 보기"'));
   assert.ok(html.includes("노드 자동 복구"));
   assert.ok(html.includes("트래픽 미러링"));
 

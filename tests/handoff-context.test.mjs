@@ -308,7 +308,7 @@ test("Fixture end-to-end focus handoff context on visual-test-focus.md", () => {
 
 test("README handoff contract matches generated handoff semantics", () => {
   const readme = fs.readFileSync(path.join(__dirname, "..", "README.md"), "utf-8");
-  assert.ok(readme.includes("전달받은側은 PROGRESS claim을 truth로 가정하지 않고 fresh evidence와 대조하며"));
+  assert.ok(readme.includes("전달받은 에이전트는 `PROGRESS.md` 내용을 사실로 단정하지 않고 최신 실제 증거와 대조하며"));
   assert.ok(readme.includes("실행·스케줄링·발행·Git 절차는 해당 repository 자체의 개발 계약을 따릅니다"));
   assert.ok(readme.includes("Cockpit handoff는 그 절차를 정의하지 않습니다"));
 });
