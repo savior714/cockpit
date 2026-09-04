@@ -1,10 +1,7 @@
 #!/usr/bin/env node
-// Cockpit local viewer server: loopback-only transport for exactly one
-// user-selected PROGRESS.md plus the built frontend assets in dist/.
-// The viewer itself never analyzes repository truth and never writes
-// PROGRESS.md: the optional automatic refresh only asks one configured
-// external owner to reconcile and PATCH, then reads the file back.
-// No frameworks, no general filesystem access.
+// Cockpit local viewer server: loopback-only, read-only transport for exactly
+// one user-selected PROGRESS.md plus the built frontend assets in dist/.
+// No frameworks, no writes, no general filesystem access.
 
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
@@ -27,10 +24,6 @@ import {
   resolveProgressTarget,
   runMissingProgressFlow,
 } from "./target.mjs";
-import {
-  createRefreshOrchestrator,
-  resolveRefreshIntervalMs,
-} from "./refresh.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = path.resolve(__dirname, "..");
@@ -158,53 +151,7 @@ async function serveAsset(req, res, pathname) {
   res.end(req.method === "HEAD" ? undefined : buf);
 }
 
-// Single fan-out for refresh status: every open /events stream observes the
-// same server-owned scheduler state, so multiple tabs can never start
-// duplicate refresh jobs. Change detection stays on the existing fingerprint
-// path above; status events never trigger a document re-render by themselves.
-const refreshStatusClients = new Set();
-
-function broadcastRefreshStatus(status) {
-  let payload = null;
-  try {
-    payload = `event: refresh-status\ndata: ${JSON.stringify(status)}\n\n`;
-  } catch {
-    return;
-  }
-  for (const client of refreshStatusClients) {
-    try {
-      client.write(payload);
-    } catch {
-      /* a broken client unsubscribes on close; never fail the scheduler */
-    }
-  }
-}
-
-function readJsonBody(req, limitBytes = 4096) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    let size = 0;
-    req.on("data", (chunk) => {
-      size += chunk.length;
-      if (size > limitBytes) {
-        reject(new Error("body too large"));
-        req.destroy();
-        return;
-      }
-      chunks.push(chunk);
-    });
-    req.on("end", () => {
-      try {
-        resolve(JSON.parse(Buffer.concat(chunks).toString("utf-8") || "{}"));
-      } catch (err) {
-        reject(err);
-      }
-    });
-    req.on("error", reject);
-  });
-}
-
-function openEventStream(req, res, progressFile, { getRefreshStatus } = {}) {
+function openEventStream(req, res, progressFile) {
   res.writeHead(200, {
     "content-type": "text/event-stream",
     "cache-control": "no-cache, no-transform",
@@ -233,18 +180,6 @@ function openEventStream(req, res, progressFile, { getRefreshStatus } = {}) {
 
   void checkAndNotify();
 
-  // The single scheduler lives on the server: tabs only reflect status.
-  // Send the current refresh status once so a newly opened tab converges
-  // without its own timer or stored preference.
-  if (typeof getRefreshStatus === "function") {
-    try {
-      res.write(`event: refresh-status\ndata: ${JSON.stringify(getRefreshStatus())}\n\n`);
-    } catch {
-      /* status snapshot is best-effort; change polling still works */
-    }
-    refreshStatusClients.add(res);
-  }
-
   let fsWatcher = null;
   try {
     fsWatcher = watch(progressFile, () => {
@@ -261,7 +196,6 @@ function openEventStream(req, res, progressFile, { getRefreshStatus } = {}) {
 
   const cleanup = () => {
     closed = true;
-    refreshStatusClients.delete(res);
     if (fsWatcher) {
       try {
         fsWatcher.close();
@@ -360,10 +294,6 @@ Operator note:
   When an external agent is asked to open Cockpit for a project, the recommended
   workflow is to reconcile PROGRESS.md with current project evidence first,
   update only material semantic deltas, run 'cockpit check', then launch the viewer.
-  The optional 자동 업데이트 toggle (default OFF, top-right) asks one
-  configured external owner (COCKPIT_REFRESH_COMMAND) to re-check every
-  10 minutes; Cockpit only reads the file back and refreshes the screen when
-  the content actually changed.
 
 The default browser opens automatically once the server is ready.
 Pass --no-open to suppress this.`);
@@ -411,49 +341,8 @@ To verify structural completeness once prepared:
     console.error("cockpit: dist/index.html missing — run `npm run build` first.");
     process.exit(1);
   }
-  // Optional automatic refresh: exactly one runtime-owned scheduler per
-  // server process. Tabs never schedule; they only reflect this status.
-  // Default is OFF. The executor is external (COCKPIT_REFRESH_COMMAND);
-  // Cockpit itself never infers repository truth and never writes the file.
-  const refresh = createRefreshOrchestrator({
-    progressFile,
-    projectDir: resolved.projectDir,
-    intervalMs: resolveRefreshIntervalMs(),
-    onStatus: (status) => broadcastRefreshStatus(status),
-  });
   const server = createServer((req, res) => {
     const pathname = new URL(req.url ?? "/", "http://127.0.0.1").pathname;
-    if (pathname === "/api/auto-refresh") {
-      if (req.method === "GET" || req.method === "HEAD") {
-        const body = JSON.stringify(refresh.getStatus());
-        res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-        res.end(req.method === "HEAD" ? undefined : body);
-        return;
-      }
-      if (req.method === "POST") {
-        readJsonBody(req)
-          .then((parsed) => {
-            if (!parsed || typeof parsed.enabled !== "boolean") {
-              res.writeHead(400, { "content-type": "application/json; charset=utf-8" });
-              res.end(JSON.stringify({ error: "expected { enabled: boolean }" }));
-              return;
-            }
-            const status = refresh.setEnabled(parsed.enabled);
-            res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-            res.end(JSON.stringify(status));
-          })
-          .catch(() => {
-            if (!res.headersSent) {
-              res.writeHead(400, { "content-type": "application/json; charset=utf-8" });
-            }
-            res.end(JSON.stringify({ error: "invalid JSON body" }));
-          });
-        return;
-      }
-      res.writeHead(405, { allow: "GET, HEAD, POST", "content-type": "text/plain; charset=utf-8" });
-      res.end("method not allowed");
-      return;
-    }
     if (req.method !== "GET" && req.method !== "HEAD") {
       res.writeHead(405, { allow: "GET, HEAD", "content-type": "text/plain; charset=utf-8" });
       res.end("method not allowed");
@@ -472,7 +361,7 @@ To verify structural completeness once prepared:
       return;
     }
     if (pathname === "/events") {
-      openEventStream(req, res, progressFile, { getRefreshStatus: () => refresh.getStatus() });
+      openEventStream(req, res, progressFile);
       return;
     }
     void serveAsset(req, res, pathname).catch(() => {
@@ -503,9 +392,6 @@ To verify structural completeness once prepared:
   });
 
   const shutdown = () => {
-    try {
-      refresh.dispose();
-    } catch {}
     try {
       if (typeof server.closeAllConnections === "function") {
         server.closeAllConnections();

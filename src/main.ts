@@ -460,85 +460,10 @@ async function fetchAndRender(): Promise<void> {
   }
 }
 
-function initLiveReload(): EventSource | null {
-  if (typeof EventSource === "undefined") return null;
+function initLiveReload(): void {
+  if (typeof EventSource === "undefined") return;
   const eventSource = new EventSource("/events");
   eventSource.addEventListener("change", () => { void fetchAndRender(); });
-  eventSource.addEventListener("refresh-status", ((event: MessageEvent) => {
-    try {
-      const status = JSON.parse((event as MessageEvent).data) as AutoRefreshStatus;
-      renderAutoRefresh(status);
-    } catch {
-      /* malformed status never breaks live reload */
-    }
-  }) as EventListener);
-  return eventSource;
-}
-
-interface AutoRefreshStatus {
-  enabled: boolean;
-  running: boolean;
-  intervalMs: number;
-  configured: boolean;
-  lastCheckAt: string | null;
-  lastResult: string | null;
-}
-
-function refreshStatusText(status: AutoRefreshStatus): string {
-  if (!status.enabled) return "꺼짐";
-  if (status.running) return "확인 중…";
-  if (status.lastResult === "failed") return "확인 실패 · 기존 화면 유지";
-  if (status.lastResult === "not-configured") return "연결 없음 · 기존 화면 유지";
-  if (status.lastResult === "changed") return "새 내용을 반영했습니다";
-  if (status.lastResult === "unchanged") return "최신 상태입니다";
-  return "켜짐 · 대기 중";
-}
-
-function renderAutoRefresh(status: AutoRefreshStatus): void {
-  const toggle = document.getElementById("auto-refresh-toggle") as HTMLButtonElement | null;
-  const label = document.getElementById("auto-refresh-status");
-  if (toggle) toggle.setAttribute("aria-checked", status.enabled ? "true" : "false");
-  if (label) label.textContent = refreshStatusText(status);
-}
-
-async function fetchAutoRefreshStatus(): Promise<AutoRefreshStatus | null> {
-  try {
-    const response = await fetch("/api/auto-refresh", { cache: "no-store" });
-    if (!response.ok) return null;
-    return (await response.json()) as AutoRefreshStatus;
-  } catch {
-    return null;
-  }
-}
-
-function initAutoRefresh(): void {
-  const toggle = document.getElementById("auto-refresh-toggle") as HTMLButtonElement | null;
-  if (!toggle) return;
-  // Default is OFF in markup; converge to the server-owned state once known.
-  // No browser timer or stored preference ever schedules refresh.
-  void fetchAutoRefreshStatus().then((status) => {
-    if (status) renderAutoRefresh(status);
-  });
-  toggle.addEventListener("click", () => {
-    const want = toggle.getAttribute("aria-checked") !== "true";
-    toggle.disabled = true;
-    fetch("/api/auto-refresh", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ enabled: want }),
-    })
-      .then(async (response) => {
-        if (!response.ok) return;
-        const status = (await response.json()) as AutoRefreshStatus;
-        renderAutoRefresh(status);
-      })
-      .catch(() => {
-        /* POST failure keeps the previous toggle state; next SSE status converges */
-      })
-      .finally(() => {
-        toggle.disabled = false;
-      });
-  });
 }
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
@@ -548,5 +473,4 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
   });
   void fetchAndRender();
   initLiveReload();
-  initAutoRefresh();
 }
