@@ -5,6 +5,7 @@
 
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
+import { readFileSync, realpathSync } from "node:fs";
 import { watch } from "node:fs";
 import { createHash } from "node:crypto";
 import { exec } from "node:child_process";
@@ -27,6 +28,63 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = path.resolve(__dirname, "..");
 const DIST_ROOT = path.join(PKG_ROOT, "dist");
+const SERVE_FILE = fileURLToPath(import.meta.url);
+
+// Stale-bin fail-fast: the canonical `cockpit` entry is whatever
+// package.json declares in `bin.cockpit` (currently scripts/cockpit.mjs,
+// the freshness-guard owner). npm link/install snapshots the bin symlink at
+// install time, so a checkout that moved the bin target leaves pre-existing
+// `cockpit` links resolving here (serve.mjs) and silently bypassing that
+// guard. Refuse that shape loudly instead of serving stale dist.
+// Direct `node scripts/serve.mjs ...` keeps basename serve.mjs and stays
+// allowed; canonical `cockpit ...` (argv[1] basename `cockpit`, realpath
+// cockpit.mjs) is imported, not main, and also stays allowed.
+function failOnStaleBinLink() {
+  const invoked = process.argv[1];
+  if (!invoked) return;
+  let invokedBase;
+  try {
+    invokedBase = path.basename(invoked);
+  } catch {
+    return;
+  }
+  if (invokedBase !== "cockpit" && !invokedBase.startsWith("cockpit.")) return;
+  let real;
+  try {
+    real = realpathSync(invoked);
+  } catch {
+    return;
+  }
+  let canonicalRel;
+  try {
+    canonicalRel = JSON.parse(readFileSync(path.join(PKG_ROOT, "package.json"), "utf-8"))?.bin?.cockpit;
+  } catch {
+    return;
+  }
+  if (typeof canonicalRel !== "string" || !canonicalRel) return;
+  const canonicalAbs = path.resolve(PKG_ROOT, canonicalRel);
+  const serveAbs = path.resolve(SERVE_FILE);
+  if (canonicalAbs === serveAbs) return;
+  let canonicalReal = canonicalAbs;
+  try {
+    canonicalReal = realpathSync(canonicalAbs);
+  } catch {}
+  if (path.resolve(real) === path.resolve(canonicalReal)) return;
+  if (path.resolve(real) === serveAbs || path.basename(real) === path.basename(serveAbs)) {
+    console.error(
+      `cockpit: stale install detected — the \`cockpit\` command resolved to scripts/serve.mjs, ` +
+        `but package.json declares ${canonicalRel} as the canonical entry.\n` +
+        `This bypasses the build freshness guard. Relink/reinstall so \`cockpit\` resolves to the canonical entry:\n` +
+        `  (local checkout) npm link   # then verify: command -v cockpit && readlink "$(command -v cockpit)"\n` +
+        `  (global) npm install -g --install-links "github:savior714/cockpit#main"\n` +
+        `Never symlink scripts/serve.mjs as \`cockpit\` directly; ` +
+        `\`node scripts/serve.mjs ...\` is only for explicit direct-file checks.`
+    );
+    process.exit(1);
+  }
+}
+
+failOnStaleBinLink();
 
 const MIME = {
   ".html": "text/html; charset=utf-8",

@@ -26,7 +26,7 @@ npm install -g --install-links "github:savior714/cockpit#main"
 *(최신 버전으로 업데이트할 때도 동일한 명령어를 다시 실행하면 됩니다.)*
 
 - **일반 전역 설치(배포 패키지)**: 설치 시점에 패키징된 빌드 스냅샷을 사용하며, 업데이트 시에는 위 명령어로 재설치합니다.
-- **로컬 개발 체크아웃(Linked Setup)**: 로컬 Git 체크아웃을 직접 `npm link` 등으로 연결해 사용하는 개발 환경에서는 소스가 변경되었을 때 다음 `cockpit` 실행 시 오래된 빌드를 자동으로 감지하고 갱신합니다.
+- **로컬 개발 체크아웃(Linked Setup)**: 로컬 Git 체크아웃을 직접 `npm link` 등으로 연결해 사용하는 개발 환경에서는 소스가 변경되었을 때 다음 `cockpit` 실행 시 오래된 빌드를 자동으로 감지하고 갱신합니다. `git pull` 등으로 체크아웃을 갱신한 뒤에는 `npm link`를 다시 실행해 `cockpit` 명령이 정식 진입점(`scripts/cockpit.mjs`)을 가리키게 하고, `command -v cockpit && readlink "$(command -v cockpit)"`으로 확인합니다. `scripts/serve.mjs`를 `cockpit` 이름으로 직접 심볼릭 링크하지 마세요.
 
 ---
 
@@ -183,6 +183,8 @@ Cockpit 자체를 다른 실제 저장소로 수용 테스트할 때만 적용�
   node scripts/serve.mjs check tests/fixtures/canonical-minimal.md
   ```
 
+  (위 명령은 저장소 파일을 직접 지정하는 검사 호출이며, 설치된 `cockpit` 명령 자체는 정식 진입점인 `scripts/cockpit.mjs`를 사용합니다.)
+
 - 예전 Horizon/Stage/Posture/Frontier/Thread/Movement 형식으로 쓴 문서는 해당 섹션이 보조 맥락으로 표시될 뿐 check를 깨지 않는다. 새 문서는 위 표의 heading을 쓴다.
 
 ### 작성 원칙 (짧은 계약)
@@ -242,6 +244,8 @@ cockpit/
 │   ├── parser.ts        # 호환/공개 파사드 (재노출만, 정식 구현 아님)
 │   └── style.css        # 지도/검사기 반응형 그리드 및 테마 스타일
 ├── scripts/
+│   ├── cockpit.mjs        # 정식 bin 진입점 (`package.json` bin 소유) + 빌드 신선도 가드 후 serve 위임
+│   ├── freshness.mjs      # 로컬 체크아웃용 빌드 지문·스탬프·자동 갱신
 │   ├── target.mjs       # CLI target 획득·progress resolution·온보딩의 단일 canonical owner
 │   └── serve.mjs        # 루프백 HTTP 서버 + SSE 파일 변경 감시 CLI
 ├── docs/operations/

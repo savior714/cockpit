@@ -64,6 +64,15 @@ test("Distribution artifact smoke: pack, install into isolated prefix, and verif
 
   const binPath = path.join(tmpDir, "bin", "cockpit");
 
+  // Fresh install must resolve the canonical bin target (cockpit.mjs, the
+  // freshness-guard owner) — never a stale direct serve.mjs link.
+  const binLinkTarget = await fs.readlink(binPath);
+  assert.ok(
+    binLinkTarget.endsWith(path.join("scripts", "cockpit.mjs")),
+    `Fresh-install bin must resolve to scripts/cockpit.mjs. Got: ${binLinkTarget}`
+  );
+  assert.doesNotMatch(binLinkTarget, /serve\.mjs/);
+
   // 3. Test: cockpit --help & cockpit check --help
   const helpOutput = execSync(`"${binPath}" --help`, { encoding: "utf-8" });
   assert.match(helpOutput, /Usage: cockpit/);
