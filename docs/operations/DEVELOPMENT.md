@@ -100,4 +100,39 @@ If publication cannot safely complete, report `CONTINUABLE` or `BLOCKED` with th
 
 ## 7. Concurrency
 
-Independent semantic work may proceed concurrently in independent task-owned detached worktrees admitted through Git Safety. Work that shares a semantic owner or an overlapping mutation boundary must not be mutated in parallel; the same semantic surface stays with one owner at a time. Final same-branch publication materialization remains a short serialization boundary: fetch fresh immediately before publishing and publish one writer at a time; topology-only movement before final JIT may rebind once, while a new divergent advance after final JIT is `SECOND_ADVANCE_CIRCUIT_BREAKER` for that attempt, with no same-attempt rematerialization loop. The next attempt starts with fresh classification. The dirty canonical checkout is never the mechanism for sharing concurrent WIP. Add coordination machinery only after direct recurring evidence demonstrates that ordinary repository-native practice cannot preserve the required semantics at lower cost.
+Concurrency is derived from independently convergent semantic ownership boundaries (§2), not from executor/session count. Do not manufacture N lanes to match N available executors. A good concurrent lane owns one coherent semantic outcome end to end; horizontal frontend/backend/tests/docs splitting is not the default decomposition when those layers implement one meaning. Fewer lanes are correct when the architecture exposes fewer independent boundaries.
+
+Independent semantic work may proceed concurrently in independent task-owned detached worktrees admitted through Git Safety (§3). Work that shares a semantic owner or an overlapping mutation boundary must not be mutated in parallel; the same semantic surface stays with one owner at a time. The dirty canonical checkout is never the mechanism for sharing concurrent WIP.
+
+### Transient ownership context
+
+A task/handoff may carry, when useful, only the ownership/dependency context relevant to that task:
+
+OWNERSHIP
+- Semantic boundary:
+- Intended outcome:
+- Expected direct surfaces:
+- Shared contracts expected to change:
+- Dependencies:
+
+This block is transient execution context. Expected direct surfaces are locators, not semantic authority and not a file lock. Do not persist it as a central registry/manifest, and do not add parsing, validation, schema, lifecycle state, or tooling for it.
+
+### Boundary drift
+
+When a lane discovers that another semantic boundary must change: continue work that remains independently valid inside the admitted boundary; do not silently absorb mutation of another active semantic owner; expose the newly discovered dependency; then, according to actual coupling, connect through an already-owned interface/contract, sequence the dependent work, or merge the work into one coherent semantic unit. A cross-file dependency alone is not `BLOCKED`, and work that can still validly continue outside the affected boundary keeps going.
+
+### Concurrent runtime isolation
+
+Automated concurrent local viewer/runtime proof should normally use the existing capability as:
+
+  --port 0 --no-open
+
+unless a fixed port or browser opening is itself required by the proof. Port `0` asks the OS for an assigned port and `serve.mjs` reports the actual bound port; `--no-open` suppresses opening a browser window per session. This avoids accidental TCP-port collision and repeated browser windows without adding any allocator, registry, lock service, runtime coordinator, or namespace framework.
+
+### Integration-owned surfaces
+
+Generated `dist/` output is not an independent semantic lane (§3): do not hand-merge hashed generated artifacts across independently completed source lanes; after source semantics converge, regenerate the integrated build output from that source state. Repository continuity/project documents stay continuity, not coordination: per §4, neither `PROGRESS.md` nor any repository document becomes a parallel-task manifest or batch task registry.
+
+### Publication serialization
+
+Final same-shared-ref publication remains a short serialization boundary under §6: fetch fresh immediately before publishing and publish one writer at a time; movement handling, proof scope, and retry/terminal vocabulary stay owned by §6 and Git Safety and are not reimplemented here. Add coordination machinery only after direct recurring evidence demonstrates that ordinary repository-native practice cannot preserve the required semantics at lower cost.
