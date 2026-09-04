@@ -10,13 +10,19 @@ import http from "node:http";
 import {
   acquireTargetInteractively,
   buildAgentHandoff,
-  buildStarterContent,
+  buildAuthorHandoff,
+  formatAuthorMissingGuidance,
   isAffirmative,
   isInteractive,
   parseArgs,
   resolveProgressTarget,
   runMissingProgressFlow,
 } from "../scripts/target.mjs";
+import {
+  buildAuthorHandoff as buildCanonicalHandoff,
+  resolveAuthorCommand,
+  resolveAuthorCommandSource,
+} from "../scripts/author.mjs";
 import { checkProgressStructure } from "../dist/structural-check.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -152,35 +158,47 @@ test("resolve: nonexistent target is invalid", async () => {
   assert.match(r.reason, /target not found/);
 });
 
-// --- bootstrap content: neutral, no fabricated truth, no second schema ---
+// --- bootstrap authorship: LLM author owns semantics, no starter fabrication ---
 
-test("starter: uses README §5 headings with placeholders and fails check by design", () => {
-  const content = buildStarterContent({ projectName: "my-proj" });
-  assert.match(content, /# my-proj/);
-  for (const h of [
-    "## 현재 상황",
-    "## 다음 전환",
-    "## 프로젝트 지도",
-    "## 영역 상세",
-    "## 제품 목표",
-    "## 확정된 방향",
-  ]) {
-    assert.ok(content.includes(h), `starter must carry the canonical heading ${h}`);
-  }
-  // No fixture-domain copy: the starter must not pretend to describe a project.
-  assert.ok(!content.includes("주문 접수"), "starter must not copy fixture domain content");
-  const result = checkProgressStructure(content);
-  assert.equal(result.ok, false, "neutral starter must FAIL check until grounded in evidence");
+test("author capability: canonical COCKPIT_AUTHOR_COMMAND wins, legacy fallback shares one meaning", () => {
+  assert.equal(
+    resolveAuthorCommand({ COCKPIT_AUTHOR_COMMAND: "author-cmd", COCKPIT_REFRESH_COMMAND: "legacy-cmd" }),
+    "author-cmd"
+  );
+  assert.equal(resolveAuthorCommandSource({ COCKPIT_AUTHOR_COMMAND: "author-cmd", COCKPIT_REFRESH_COMMAND: "legacy-cmd" }), "author");
+  assert.equal(resolveAuthorCommand({ COCKPIT_REFRESH_COMMAND: "legacy-cmd" }), "legacy-cmd");
+  assert.equal(resolveAuthorCommandSource({ COCKPIT_REFRESH_COMMAND: "legacy-cmd" }), "refresh-legacy");
+  assert.equal(resolveAuthorCommand({}), null);
+  assert.equal(resolveAuthorCommandSource({}), null);
 });
 
-test("handoff: parameterized, vendor-neutral, points at check", async (t) => {
+test("handoff: parameterized, vendor-neutral, single author for bootstrap+PATCH", async (t) => {
   const dir = await makeTempDir(t);
   const progressFile = path.join(dir, "PROGRESS.md");
-  const handoff = buildAgentHandoff({ projectDir: dir, progressFile });
+  const handoff = buildAuthorHandoff({ projectDir: dir, progressFile });
   assert.ok(handoff.includes(dir));
   assert.ok(handoff.includes(progressFile));
   assert.ok(handoff.includes("cockpit check"));
-  assert.ok(!/claude|chatgpt|gemini|problem framer/i.test(handoff), "no hard-coded executor");
+  assert.ok(handoff.includes("LLM author"));
+  assert.ok(!/claude|chatgpt|gemini|openai|codex|qwen/i.test(handoff), "no hard-coded provider");
+  // Bootstrap + refresh share one responsibility: create-when-missing and
+  // PATCH-when-present are both described, not two owners.
+  assert.match(handoff, /PATCH/);
+  assert.match(handoff, /최초/);
+  // Legacy name resolves to the same canonical text (one meaning, not two).
+  assert.equal(buildAgentHandoff({ projectDir: dir, progressFile }), handoff);
+  assert.equal(buildCanonicalHandoff({ projectDir: dir, progressFile }), handoff);
+});
+
+test("bootstrap: Cockpit runtime never fabricates a starter file", async () => {
+  const targetSource = await fs.readFile(path.join(REPO_ROOT, "scripts", "target.mjs"), "utf-8");
+  assert.doesNotMatch(targetSource, /buildStarterContent/);
+  assert.doesNotMatch(targetSource, /중립 시작점 파일을 만들까요/);
+  assert.doesNotMatch(targetSource, /중립 시작점을 만들었습니다/);
+  // No silent PROGRESS.md writes in the onboarding owner: the only writer is
+  // the external author process invoked via the capability.
+  assert.doesNotMatch(targetSource, /writeFile/);
+  assert.match(targetSource, /COCKPIT_AUTHOR_COMMAND|resolveAuthorCommand|runAuthorCommand/);
 });
 
 // --- interactive boundary ---
@@ -241,10 +259,42 @@ test("acquireTargetInteractively: gives up deterministically after max attempts"
   assert.equal(r.ok, false);
 });
 
-test("runMissingProgressFlow: decline writes nothing", async (t) => {
+test("runMissingProgressFlow: no author capability writes nothing and guides", async (t) => {
   const dir = await makeTempDir(t);
   const progressFile = path.join(dir, "PROGRESS.md");
-  let writes = 0;
+  let prompted = 0;
+  let authorCalls = 0;
+  const out = [];
+  const r = await runMissingProgressFlow({
+    projectDir: dir,
+    progressFile,
+    stdin: {},
+    stdout: { write: (s) => out.push(s) },
+    prompt: async () => {
+      prompted++;
+      return "y";
+    },
+    runAuthorFn: async () => {
+      authorCalls++;
+      return { outcome: "executed" };
+    },
+    resolveAuthorCommandFn: () => null,
+  });
+  assert.equal(r.action, "author-missing");
+  assert.equal(prompted, 0, "no author means no invocation prompt");
+  assert.equal(authorCalls, 0, "author must not be called when unconfigured");
+  assert.equal(await fs.stat(progressFile).then(() => true).catch(() => false), false);
+  const text = out.join("");
+  assert.ok(text.includes(dir), "flow must identify the owning project");
+  assert.ok(text.includes("cockpit check"), "flow must point at the preparation path");
+  assert.ok(text.includes("LLM author"), "guidance must name the canonical owner");
+  assert.ok(text.includes("COCKPIT_AUTHOR_COMMAND"), "guidance must tell how to connect");
+});
+
+test("runMissingProgressFlow: decline never invokes the author", async (t) => {
+  const dir = await makeTempDir(t);
+  const progressFile = path.join(dir, "PROGRESS.md");
+  let authorCalls = 0;
   const out = [];
   const r = await runMissingProgressFlow({
     projectDir: dir,
@@ -252,52 +302,122 @@ test("runMissingProgressFlow: decline writes nothing", async (t) => {
     stdin: {},
     stdout: { write: (s) => out.push(s) },
     prompt: async () => "n",
-    writeFileFn: async () => {
-      writes++;
+    runAuthorFn: async () => {
+      authorCalls++;
+      return { outcome: "executed" };
     },
+    resolveAuthorCommandFn: () => "true",
   });
   assert.equal(r.action, "declined");
-  assert.equal(writes, 0);
+  assert.equal(authorCalls, 0);
   assert.equal(await fs.stat(progressFile).then(() => true).catch(() => false), false);
   assert.ok(out.join("").includes(dir), "flow must identify the owning project");
-  assert.ok(out.join("").includes("cockpit check"), "flow must point at the preparation path");
 });
 
 test("runMissingProgressFlow: empty answer is not confirmation", async (t) => {
   const dir = await makeTempDir(t);
-  let writes = 0;
+  let authorCalls = 0;
   const r = await runMissingProgressFlow({
     projectDir: dir,
     progressFile: path.join(dir, "PROGRESS.md"),
     stdin: {},
     stdout: { write: () => {} },
     prompt: async () => "",
-    writeFileFn: async () => {
-      writes++;
+    runAuthorFn: async () => {
+      authorCalls++;
       throw new Error("must not be called without explicit confirmation");
     },
+    resolveAuthorCommandFn: () => "true",
   });
   assert.equal(r.action, "declined");
-  assert.equal(writes, 0);
+  assert.equal(authorCalls, 0);
 });
 
-test("runMissingProgressFlow: explicit 'y' creates the neutral starter", async (t) => {
+test("runMissingProgressFlow: configured author is invoked with location context, read back, and checked", async (t) => {
   const dir = await makeTempDir(t);
   const progressFile = path.join(dir, "PROGRESS.md");
   const out = [];
+  const seen = [];
+  const fixture = await fs.readFile(
+    path.join(REPO_ROOT, "tests", "fixtures", "canonical-minimal.md"),
+    "utf-8"
+  );
   const r = await runMissingProgressFlow({
     projectDir: path.resolve(dir),
     progressFile,
     stdin: {},
     stdout: { write: (s) => out.push(s) },
     prompt: async () => "y",
-    writeFileFn: (f, c, e) => fs.writeFile(f, c, e),
+    runAuthorFn: async (ctx) => {
+      seen.push(ctx);
+      await fs.writeFile(progressFile, fixture, "utf-8");
+      return { outcome: "executed" };
+    },
+    checkFn: (content) => checkProgressStructure(content),
+    resolveAuthorCommandFn: () => "fixture-author",
   });
-  assert.equal(r.action, "created");
+  assert.equal(r.action, "authored");
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].projectDir, path.resolve(dir));
+  assert.equal(seen[0].progressFile, progressFile);
   const written = await fs.readFile(progressFile, "utf-8");
-  assert.ok(written.includes(path.basename(path.resolve(dir))));
-  assert.equal(checkProgressStructure(written).ok, false);
-  assert.ok(out.join("").includes("FAIL인 것이 정상"));
+  assert.equal(checkProgressStructure(written).ok, true, "authored file must pass read-back check");
+  assert.ok(out.join("").includes("LLM author"));
+});
+
+test("runMissingProgressFlow: author success without output is not success", async (t) => {
+  const dir = await makeTempDir(t);
+  const progressFile = path.join(dir, "PROGRESS.md");
+  const r = await runMissingProgressFlow({
+    projectDir: dir,
+    progressFile,
+    stdin: {},
+    stdout: { write: () => {} },
+    prompt: async () => "y",
+    runAuthorFn: async () => ({ outcome: "executed" }),
+    checkFn: (content) => checkProgressStructure(content),
+    resolveAuthorCommandFn: () => "true",
+  });
+  assert.equal(r.action, "author-no-output");
+  assert.equal(await fs.stat(progressFile).then(() => true).catch(() => false), false);
+});
+
+test("runMissingProgressFlow: failed author keeps the (missing) document and reports", async (t) => {
+  const dir = await makeTempDir(t);
+  const progressFile = path.join(dir, "PROGRESS.md");
+  const r = await runMissingProgressFlow({
+    projectDir: dir,
+    progressFile,
+    stdin: {},
+    stdout: { write: () => {} },
+    prompt: async () => "y",
+    runAuthorFn: async () => ({ outcome: "failed", error: new Error("llm down") }),
+    checkFn: (content) => checkProgressStructure(content),
+    resolveAuthorCommandFn: () => "failing-author",
+  });
+  assert.equal(r.action, "author-failed");
+  assert.equal(await fs.stat(progressFile).then(() => true).catch(() => false), false);
+});
+
+test("runMissingProgressFlow: author output that fails check is not accepted", async (t) => {
+  const dir = await makeTempDir(t);
+  const progressFile = path.join(dir, "PROGRESS.md");
+  const r = await runMissingProgressFlow({
+    projectDir: dir,
+    progressFile,
+    stdin: {},
+    stdout: { write: () => {} },
+    prompt: async () => "y",
+    runAuthorFn: async () => {
+      await fs.writeFile(progressFile, "# Broken\n\n## 현재 상황\n\n형식 미달.\n", "utf-8");
+      return { outcome: "executed" };
+    },
+    checkFn: (content) => checkProgressStructure(content),
+    resolveAuthorCommandFn: () => "sloppy-author",
+  });
+  assert.equal(r.action, "author-invalid");
+  // The file the author wrote stays for manual repair; Cockpit does not fix it.
+  assert.equal(await fs.stat(progressFile).then(() => true).catch(() => false), true);
 });
 
 // --- real CLI process surface (non-interactive: stdin ignored, never hangs) ---
@@ -336,6 +456,10 @@ test("CLI: non-interactive missing PROGRESS.md never hangs, never writes", async
   assert.equal(r.code, 1);
   assert.match(r.stderr, /PROGRESS\.md가 아직 없습니다/);
   assert.ok(r.stderr.includes(path.resolve(dir)), "must identify the target project");
+  assert.match(r.stderr, /LLM author/, "must name the canonical owner");
+  assert.match(r.stderr, /COCKPIT_AUTHOR_COMMAND/, "must tell how to connect the author");
+  assert.doesNotMatch(r.stderr, /중립 시작점을 만들|중립 시작점 안내|중립 시작점 파일/, "must not offer a starter as the normal path");
+  assert.match(r.stderr, /자동 생성하지 않습니다/, "must state no starter is auto-created");
   assert.equal(await fs.stat(path.join(dir, "PROGRESS.md")).then(() => true).catch(() => false), false);
 });
 

@@ -11,14 +11,27 @@
 //     -> [existing] viewer launch for a concrete file (serve.mjs)
 //        or explicit bootstrap UX when the representation is missing.
 //
+// Bootstrap never fabricates project truth and never writes a neutral
+// starter: a missing PROGRESS.md is owned by the canonical LLM author
+// capability (scripts/author.mjs, COCKPIT_AUTHOR_COMMAND with legacy
+// COCKPIT_REFRESH_COMMAND fallback). This module only resolves the target,
+// invokes that one capability after explicit confirmation, and verifies via
+// read-back (+ structural check when a checker is provided).
+//
 // serve.mjs keeps the loopback/read-only runtime; it must not duplicate
 // path semantics. `cockpit check` shares resolution but never prompts,
 // never writes, and never starts onboarding.
 
 import path from "node:path";
 import process from "node:process";
-import { stat, writeFile } from "node:fs/promises";
+import { stat, readFile } from "node:fs/promises";
 import { createInterface } from "node:readline/promises";
+import {
+  buildAuthorHandoff as buildCanonicalAuthorHandoff,
+  resolveAuthorCommand,
+  resolveAuthorCommandSource,
+  runAuthorCommand,
+} from "./author.mjs";
 
 export const PROGRESS_FILENAME = "PROGRESS.md";
 export const DEFAULT_PORT = 4321;
@@ -235,91 +248,68 @@ export async function acquireTargetInteractively({
 }
 
 // ---------------------------------------------------------------------------
-// Bootstrap content (neutral; no fabricated project truth)
+// Bootstrap authorship (LLM author owns PROGRESS.md semantics)
 // ---------------------------------------------------------------------------
+//
+// Cockpit never fabricates project truth and never writes a neutral starter.
+// A missing PROGRESS.md is owned by the canonical LLM author capability.
+// This module only invokes that one capability (shared with refresh) after
+// explicit confirmation, then verifies via read-back and structural check.
 
 /**
- * Neutral starter scaffold. Deliberately NOT structurally valid: it carries
- * the README §5 headings (no second schema) with TODO placeholders and no
- * map items / area details, so `cockpit check` FAILs until an external agent
- * (or the author) grounds it in real evidence. No stages, areas, evidence,
- * or completion state is claimed.
+ * Canonical LLM author handoff request. Bootstrap and refresh share one
+ * author responsibility; the author decides create-vs-PATCH from file
+ * existence and fresh evidence. Single owner lives in scripts/author.mjs.
  */
-export function buildStarterContent({ projectName = "프로젝트" } = {}) {
-  return `# ${projectName}
-
-> 이 파일은 Cockpit 온보딩이 만든 중립 시작점이다. 아직 실제 저장소/런타임 증거와
-> 대조되지 않았으므로 내용을 지어내지 않고 비워 두었다. \`README §5\` 구조를 따라
-> 외부 에이전트(또는 작성자)가 실제 증거 기반으로 채울 차례다.
-> 이 상태에서는 \`cockpit check\`가 FAIL인 것이 정상이다. (STRUCTURALLY VALID != EVIDENCE-GROUNDED)
-
-## 현재 상황
-
-아직 확인되지 않았다. (TODO: 저장소/런타임 증거와 대조해 현재 위치·확보된 것·가장 중요한 미완료 전환을 2~4문장으로 작성. 배경·이유·이력은 영역 상세/근거에)
-
-## 다음 전환
-
-아직 정의되지 않았다. (TODO: \`A 상태 → B 상태\` + 완료 조건 형태로 작성. 실행 command가 아님)
-
-## 프로젝트 지도
-
-<!-- TODO: README §5 규칙에 따라 \`###\` 레일 → \`####\` 그룹 → \`- **제목** — 한 줄 설명\` 형태로 실제 영역을 채울 것. -->
-<!-- 지도 항목과 \`## 영역 상세\`의 \`### 제목\`은 정확히 1:1이어야 하며, 그 전까지 \`cockpit check\`는 FAIL이다. -->
-
-## 영역 상세
-
-<!-- TODO: 지도 항목마다 \`### 제목\` + \`#### 의미\` / \`#### 현재 수준\` / \`#### 근거\`를 증거 기반으로 작성. 확인된 미해결 문제가 있을 때만 \`#### 남은 문제\`를 둘 것. -->
-
-## 제품 목표
-
-<!-- TODO: 안정적 맥락을 간결하게 작성. 모르면 비워 둘 것. -->
-
-## 확정된 방향
-
-<!-- TODO: 영속적 결정만 작성. 모르면 비워 둘 것. -->
-`;
+export function buildAuthorHandoff({ projectDir, progressFile }) {
+  return buildCanonicalAuthorHandoff({ projectDir, progressFile });
 }
 
 /**
- * First-class preparation handoff for an external agent. Cockpit
- * itself stays non-intelligent: this text only tells an external agent
- * what to do. No vendor/tool is hard-coded; no internal architecture
- * (Problem Framer, parser modules) is required to understand it.
+ * Legacy name for the same single author handoff — not an independent
+ * executor. Kept so existing callers keep resolving to the canonical text.
  */
 export function buildAgentHandoff({ projectDir, progressFile }) {
-  return `이 프로젝트의 실제 상태를 파악하여 Cockpit용 \`PROGRESS.md\` 문서를 작성해줘.
-
-대상 프로젝트: ${projectDir}
-작성 위치: ${progressFile}
-
-먼저 저장소의 권위 문서(AGENTS.md, README.md, docs/, package.json 등), 실제 소스 코드 진입점과 실행 경로,
-테스트 스위트, 최근 변경 이력을 각각 독립적으로 확인하고 서로 대조해줘. 한 축의 존재를 다른 축의
-증명으로 비약하지 말고 (문서에 적혀 있다고 구현된 것이 아님), 모순은 미리 해결하고, 확인되지 않은
-주장은 쓰지 마.
-
-README §5의 마크다운 구조에 맞춰 사실 기반으로 작성해줘. 불확실한 영역은 지어내지 말고 생략하거나
-모르는 범위와 경계를 명시해줘. 저장 후 반드시 \`cockpit check\`로 구조적 완전성을 확인해줘.`;
+  return buildCanonicalAuthorHandoff({ projectDir, progressFile });
 }
 
 export function formatMissingGuidance({ projectDir, progressFile }) {
   return `cockpit: '${projectDir}'에는 PROGRESS.md가 아직 없습니다.
 찾는 위치: ${progressFile}
 
-Cockpit은 저장소를 분석하거나 내용을 자동으로 만들지 않습니다.
-이 프로젝트를 보려면 PROGRESS.md를 실제 증거 기반으로 준비해야 합니다.`;
+이 프로젝트의 PROGRESS.md는 LLM author가 작성해야 합니다.
+LLM이 PROGRESS.md를 작성·대조하고, Cockpit은 결정론적으로 검사·읽기·렌더링만 합니다.
+Cockpit은 저장소를 분석하거나 내용을 만들지 않으며, 중립 시작점을 자동 생성하지 않습니다.`;
+}
+
+export function formatAuthorMissingGuidance() {
+  return `현재 author capability가 연결되지 않았습니다.
+연결 방법: COCKPIT_AUTHOR_COMMAND 환경 변수에 LLM author를 호출하는 명령을 지정하세요.
+예: COCKPIT_AUTHOR_COMMAND="my-llm-author --write" cockpit <project-dir>
+기존 COCKPIT_REFRESH_COMMAND도 같은 의미의 fallback으로 인식됩니다.
+명령은 PROJECT_DIR / PROGRESS_FILE 환경 변수로 호출되며, 해당 위치에 증거 기반 PROGRESS.md를 작성해야 합니다.`;
 }
 
 const NEXT_STEPS = `다음:
-  1. 위 요청문을 외부 에이전트에게 전달해 실제 증거 기반으로 채우거나,
-     중립 시작점을 직접 채운 뒤
+  1. 위 요청문을 LLM author에게 전달해 실제 증거 기반으로 작성하거나,
+     COCKPIT_AUTHOR_COMMAND로 author capability를 연결한 뒤 호출하고
+     (사람이 직접 파일을 고치는 경우는 filesystem 소유자로서 보조 경로일 뿐이다)
   2. cockpit check <progress-file> 로 구조적 완전성을 확인하고
   3. cockpit <project-dir> 로 다시 실행하세요.`;
 
 /**
  * Explicit first-run/bootstrap UX for a concrete target with no progress
- * representation. Identifies the owning project, never writes silently:
- * a starter file is created only after an explicit affirmative answer.
- * Returns an action descriptor; the caller decides the exit code.
+ * representation. Never writes project truth itself:
+ *
+ *   - no author capability  -> guidance only, non-zero, no write, no prompt
+ *     beyond the handoff display
+ *   - author configured     -> explicit confirmation, then invoke the ONE
+ *     author capability (shared with refresh), read back the file, and
+ *     verify with the structural check when a checker is provided
+ *
+ * Non-interactive callers must not invoke this with an auto-affirmative
+ * prompt: no silent writes. Returns an action descriptor; the caller
+ * decides the exit code.
  */
 export async function runMissingProgressFlow({
   projectDir,
@@ -327,17 +317,31 @@ export async function runMissingProgressFlow({
   stdin = process.stdin,
   stdout = process.stdout,
   prompt = promptLine,
-  writeFileFn = (f, c, e) => writeFile(f, c, e),
+  runAuthorFn,
+  checkFn,
+  resolveAuthorCommandFn,
+  readFileFn,
 } = {}) {
-  const projectName = path.basename(projectDir) || projectDir;
   stdout.write(`${formatMissingGuidance({ projectDir, progressFile })}\n\n`);
-  stdout.write(`외부 에이전트에게 전달할 준비 요청문:\n\n`);
-  stdout.write(`${buildAgentHandoff({ projectDir, progressFile })}\n\n`);
+  stdout.write(`LLM author에게 전달할 준비 요청문:\n\n`);
+  stdout.write(`${buildAuthorHandoff({ projectDir, progressFile })}\n\n`);
+
+  const resolveCommand = resolveAuthorCommandFn ?? resolveAuthorCommand;
+  const command = resolveCommand();
+  const source = (resolveAuthorCommandSource) ? resolveAuthorCommandSource() : null;
+  if (!command) {
+    stdout.write(`${formatAuthorMissingGuidance()}\n\n`);
+    stdout.write(`${NEXT_STEPS.replace("<progress-file>", progressFile).replace("<project-dir>", projectDir)}\n`);
+    return { action: "author-missing" };
+  }
+  if (source === "refresh-legacy") {
+    stdout.write(`참고: COCKPIT_REFRESH_COMMAND로 연결된 author capability를 사용합니다. 권장 명칭은 COCKPIT_AUTHOR_COMMAND입니다.\n\n`);
+  }
 
   let answer;
   try {
     answer = await prompt(
-      `중립 시작점 파일을 만들까요? (${progressFile}) [y/N]: `,
+      `LLM author를 호출할까요? (${progressFile}) [y/N]: `,
       { stdin, stdout }
     );
   } catch {
@@ -346,7 +350,7 @@ export async function runMissingProgressFlow({
   }
 
   if (!isAffirmative(answer)) {
-    stdout.write(`\n파일을 만들지 않았습니다.\n`);
+    stdout.write(`\nLLM author를 호출하지 않았습니다. 파일을 만들지 않았습니다.\n`);
     stdout.write(`${NEXT_STEPS.replace("<progress-file>", progressFile).replace("<project-dir>", projectDir)}\n`);
     return { action: "declined" };
   }
@@ -357,18 +361,60 @@ export async function runMissingProgressFlow({
     return { action: "exists-now" };
   }
 
+  const invoke = runAuthorFn ?? (async () => runAuthorCommand({ projectDir, progressFile }));
+  let authorResult;
   try {
-    await writeFileFn(progressFile, buildStarterContent({ projectName }), "utf-8");
+    authorResult = await invoke({ projectDir, progressFile });
   } catch (err) {
-    stdout.write(`\n중립 시작점을 만들지 못했습니다: ${err.message}\n`);
-    return { action: "write-failed", error: err };
+    stdout.write(`\nLLM author 호출에 실패했습니다: ${err.message}\n`);
+    stdout.write(`기존 문서를 유지합니다. 위 요청문으로 다시 시도하세요.\n`);
+    return { action: "author-failed", error: err };
+  }
+  if (authorResult && authorResult.outcome === "not-configured") {
+    stdout.write(`\n${formatAuthorMissingGuidance()}\n`);
+    return { action: "author-missing" };
+  }
+  if (authorResult && (authorResult.outcome === "failed" || authorResult.error)) {
+    const detail = authorResult.error?.message ?? authorResult.error ?? "unknown error";
+    stdout.write(`\nLLM author 호출에 실패했습니다: ${detail}\n`);
+    stdout.write(`기존 문서를 유지합니다. 위 요청문으로 다시 시도하세요.\n`);
+    return { action: "author-failed", error: authorResult.error };
   }
 
-  stdout.write(`\n중립 시작점을 만들었습니다: ${progressFile}\n`);
-  stdout.write(`이 상태에서는 \`cockpit check\`가 FAIL인 것이 정상입니다. 실제 증거 기반으로 채운 뒤:\n`);
-  stdout.write(`  cockpit check ${progressFile}\n`);
+  if (!(await isFile(progressFile))) {
+    stdout.write(`\nLLM author가 PROGRESS.md를 만들지 않았습니다: ${progressFile}\n`);
+    stdout.write(`위 요청문과 author 명령 설정을 확인한 뒤 다시 시도하세요.\n`);
+    return { action: "author-no-output" };
+  }
+
+  if (typeof checkFn === "function") {
+    let content;
+    try {
+      const reader = readFileFn ?? ((f) => readFile(f, "utf-8"));
+      content = await reader(progressFile);
+    } catch (err) {
+      stdout.write(`\n작성된 PROGRESS.md를 읽지 못했습니다: ${err.message}\n`);
+      return { action: "author-no-output", error: err };
+    }
+    let check;
+    try {
+      check = await checkFn(content);
+    } catch (err) {
+      stdout.write(`\n구조적 검사 중 오류가 발생했습니다: ${err.message}\n`);
+      return { action: "author-invalid", error: err };
+    }
+    const ok = Boolean(check && typeof check === "object" ? check.ok : check);
+    if (!ok) {
+      stdout.write(`\nLLM author가 파일을 만들었지만 \`cockpit check\`가 FAIL입니다. 증거 기반으로 보완한 뒤:\n`);
+      stdout.write(`  cockpit check ${progressFile}\n`);
+      stdout.write(`  cockpit ${projectDir}\n`);
+      return { action: "author-invalid", check };
+    }
+  }
+
+  stdout.write(`\nLLM author가 PROGRESS.md를 작성하고 구조적 검사를 통과했습니다: ${progressFile}\n`);
   stdout.write(`  cockpit ${projectDir}\n`);
-  return { action: "created" };
+  return { action: "authored" };
 }
 
 export const __testOnly = { AFFIRMATIVE };

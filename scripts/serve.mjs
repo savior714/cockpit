@@ -2,8 +2,8 @@
 // Cockpit local viewer server: loopback-only transport for exactly one
 // user-selected PROGRESS.md plus the built frontend assets in dist/.
 // The viewer itself never analyzes repository truth and never writes
-// PROGRESS.md: the optional automatic refresh only asks one configured
-// external owner to reconcile and PATCH, then reads the file back.
+// PROGRESS.md: the optional automatic refresh only asks the canonical LLM
+// author capability to reconcile and PATCH, then reads the file back.
 // Viewer lifecycle (last SSE viewer + short grace) owns process exit; the
 // refresh cadence timer is unref'd and disposed on shutdown so it never
 // keeps the server alive. No frameworks, no general filesystem access.
@@ -394,17 +394,21 @@ Viewer:
                            when it changes. Read-only.
 
 Operator note:
-  Cockpit itself is read-only and displays PROGRESS.md as-is.
-  When an external agent is asked to open Cockpit for a project, the recommended
+  LLM writes and reconciles PROGRESS.md. Cockpit deterministically checks,
+  reads, and renders it.
+  When an LLM author is asked to open Cockpit for a project, the recommended
   workflow is to reconcile PROGRESS.md with current project evidence first,
   update only material semantic deltas, run 'cockpit check', then launch the viewer.
   The optional 자동 업데이트 toggle (default OFF, top-right) appears only when
-  COCKPIT_REFRESH_COMMAND is explicitly configured and asks that separately
-  configured external owner to re-check every 10 minutes; Cockpit only reads
+  the canonical LLM author capability (COCKPIT_AUTHOR_COMMAND, legacy fallback
+  COCKPIT_REFRESH_COMMAND) is explicitly configured and asks that author
+  to re-check every 10 minutes; Cockpit only reads
   the file back and refreshes the screen when the content actually changed.
   Live Reload (built-in file re-read after PROGRESS.md changes) always works.
-  An ordinary launch without COCKPIT_REFRESH_COMMAND shows no auto-update
+  An ordinary launch without the author capability shows no auto-update
   control and guarantees no 10-minute semantic updates.
+  Missing-file bootstrap and periodic refresh share the same author
+  responsibility; Cockpit never analyzes repository truth itself.
 
 The default browser opens automatically once the server is ready.
 Pass --no-open to suppress this.
@@ -434,14 +438,20 @@ shortly after the last viewer disconnects (refresh/reconnect is tolerated).`);
       const flow = await runMissingProgressFlow({
         projectDir: resolved.projectDir,
         progressFile: resolved.progressFile,
+        checkFn: (content) => checkProgressStructure(content),
       });
-      process.exit(flow.action === "created" || flow.action === "exists-now" ? 0 : 1);
+      process.exit(flow.action === "authored" || flow.action === "exists-now" ? 0 : 1);
     }
     console.error(`cockpit: '${resolved.projectDir}'에는 PROGRESS.md가 아직 없습니다.
 찾는 위치: ${resolved.progressFile}
 
-Cockpit은 저장소를 분석하거나 내용을 자동으로 만들지 않습니다.
-터미널에서 'cockpit ${resolved.projectDir}'을(를) 실행하면 준비 요청문과 중립 시작점 안내를 볼 수 있습니다.
+이 프로젝트의 PROGRESS.md는 LLM author가 작성해야 합니다.
+LLM이 PROGRESS.md를 작성·대조하고, Cockpit은 결정론적으로 검사·읽기·렌더링만 합니다.
+Cockpit은 저장소를 분석하거나 내용을 만들지 않으며, 중립 시작점을 자동 생성하지 않습니다.
+현재 author capability가 연결되지 않았거나 비대화형 실행에서는 파일을 만들지 않고 종료합니다.
+연결 방법: COCKPIT_AUTHOR_COMMAND 환경 변수에 LLM author 호출 명령을 지정하세요.
+(기존 COCKPIT_REFRESH_COMMAND도 같은 의미의 fallback으로 인식됩니다.)
+터미널에서 'cockpit ${resolved.projectDir}'을(를) 실행하면 LLM author용 준비 요청문을 볼 수 있습니다.
 
 To verify structural completeness once prepared:
   cockpit check ${resolved.progressFile}`);
@@ -457,7 +467,8 @@ To verify structural completeness once prepared:
 
   // Optional automatic refresh: exactly one runtime-owned scheduler per
   // server process. Tabs never schedule; they only reflect this status.
-  // Default is OFF. The executor is external (COCKPIT_REFRESH_COMMAND);
+  // Default is OFF. The executor is the canonical LLM author capability
+  // (COCKPIT_AUTHOR_COMMAND, legacy fallback COCKPIT_REFRESH_COMMAND);
   // Cockpit itself never infers repository truth and never writes the file.
   // The cadence timer is unref'd and disposed on shutdown, so it never
   // blocks the last-viewer idle shutdown below.

@@ -4,7 +4,7 @@
 //
 // What this module owns:
 //   - one runtime-owned scheduler (10-minute cadence, single timer per process)
-//   - invoking one configured external refresh executor per tick
+//   - invoking the canonical LLM author capability once per tick
 //   - read-back of the target PROGRESS.md and before/after comparison
 //   - non-destructive status reporting (never writes PROGRESS.md itself)
 //
@@ -14,28 +14,37 @@
 //   - file watching / live reload (owned by serve.mjs SSE path)
 //   - browser timers or localStorage (the server is the sole scheduler owner)
 //
-// The external executor (COCKPIT_REFRESH_COMMAND) is owned outside Cockpit.
-// It must reconcile fresh evidence with the existing document and PATCH only
-// material semantic deltas. When it is not configured, refresh ticks are a
-// no-op that preserve the current document and screen.
+// The LLM author (COCKPIT_AUTHOR_COMMAND, legacy fallback
+// COCKPIT_REFRESH_COMMAND — one capability, not two) is owned outside
+// Cockpit. It must reconcile fresh evidence with the existing document and
+// PATCH only material semantic deltas. When it is not configured, refresh
+// ticks are a no-op that preserve the current document and screen.
+// Bootstrap (missing PROGRESS.md) uses the same author capability via
+// scripts/author.mjs; this module never duplicates that execution mechanism.
 //
 // Lifecycle (last-viewer shutdown):
 //   - the cadence timer is unref'd, so it never keeps the Node process alive
 //     by itself; the viewer lifecycle in serve.mjs (active SSE viewers +
 //     short idle grace) remains the sole owner of process exit.
-//   - dispose() clears the timer and terminates any in-flight external child
+//   - dispose() clears the timer and terminates any in-flight author child
 //     so shutdown never leaks a detached background process.
-//   - activation is defined: enabling arms the timer; the first external
+//   - activation is defined: enabling arms the timer; the first author
 //     invocation happens on the next cadence tick, never immediately and
 //     never from the browser.
 
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { exec } from "node:child_process";
 import path from "node:path";
+import {
+  DEFAULT_AUTHOR_TIMEOUT_MS,
+  resolveAuthorCommand,
+  resolveAuthorTimeoutMs,
+  runAuthorCommand,
+} from "./author.mjs";
 
 export const DEFAULT_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
-export const DEFAULT_REFRESH_TIMEOUT_MS = 5 * 60 * 1000;
+// Backward-compatible alias: the author timeout owns the value.
+export const DEFAULT_REFRESH_TIMEOUT_MS = DEFAULT_AUTHOR_TIMEOUT_MS;
 
 function parsePositiveInt(raw, fallback) {
   const n = Number.parseInt(String(raw ?? ""), 10);
@@ -47,13 +56,17 @@ export function resolveRefreshIntervalMs(env = process.env) {
   return parsePositiveInt(env?.COCKPIT_REFRESH_INTERVAL_MS, DEFAULT_REFRESH_INTERVAL_MS);
 }
 
-export function resolveRefreshTimeoutMs(env = process.env) {
-  return parsePositiveInt(env?.COCKPIT_REFRESH_TIMEOUT_MS, DEFAULT_REFRESH_TIMEOUT_MS);
+// Canonical author command (COCKPIT_AUTHOR_COMMAND, legacy fallback
+// COCKPIT_REFRESH_COMMAND). resolveRefreshCommand is the legacy name for the
+// same single capability — not an independent executor.
+export function resolveRefreshCommand(env = process.env) {
+  return resolveAuthorCommand(env);
 }
 
-export function resolveRefreshCommand(env = process.env) {
-  const raw = String(env?.COCKPIT_REFRESH_COMMAND ?? "").trim();
-  return raw ? raw : null;
+export { resolveAuthorCommand };
+
+export function resolveRefreshTimeoutMs(env = process.env) {
+  return resolveAuthorTimeoutMs(env);
 }
 
 function hashBuffer(buf) {
@@ -66,54 +79,20 @@ async function readSnapshot(file, readFileFn = readFile) {
   return { bytes: content, hash: hashBuffer(content) };
 }
 
-function runShellCommand(command, { cwd, timeoutMs, env, onSpawn } = {}) {
-  return new Promise((resolve) => {
-    let child = null;
-    try {
-      child = exec(
-        command,
-        { cwd, timeout: timeoutMs, env, maxBuffer: 4 * 1024 * 1024, shell: "/bin/sh" },
-        (error, _stdout, _stderr) => {
-          if (error) {
-            resolve({ ok: false, error });
-            return;
-          }
-          resolve({ ok: true });
-        }
-      );
-    } catch (err) {
-      resolve({ ok: false, error: err });
-      return;
-    }
-    if (child && typeof onSpawn === "function") {
-      try {
-        onSpawn(child);
-      } catch {
-        /* spawn tracking must never break execution */
-      }
-    }
-  });
-}
-
 export function createDefaultExecRefresh({ progressFile, projectDir, childRef } = {}) {
   return async () => {
-    const command = resolveRefreshCommand();
-    if (!command) return { outcome: "not-configured" };
-    const timeoutMs = resolveRefreshTimeoutMs();
-    const result = await runShellCommand(command, {
-      cwd: projectDir ?? path.dirname(progressFile),
-      timeoutMs,
-      env: {
-        ...process.env,
-        PROGRESS_FILE: progressFile,
-        PROJECT_DIR: projectDir ?? path.dirname(progressFile),
-      },
+    // Single author execution mechanism (shared with bootstrap): no second
+    // shell path lives here.
+    const result = await runAuthorCommand({
+      projectDir: projectDir ?? path.dirname(progressFile),
+      progressFile,
       onSpawn: (child) => {
         if (childRef && typeof childRef === "object") childRef.current = child;
       },
     });
     if (childRef && typeof childRef === "object") childRef.current = null;
-    if (!result.ok) return { outcome: "failed", error: result.error };
+    if (result.outcome === "not-configured") return { outcome: "not-configured" };
+    if (result.outcome === "failed") return { outcome: "failed", error: result.error };
     return { outcome: "executed" };
   };
 }
@@ -135,7 +114,7 @@ export function createRefreshOrchestrator({
   if (!progressFile) throw new Error("createRefreshOrchestrator requires progressFile");
   const resolvedProjectDir = projectDir ?? path.dirname(progressFile);
   const cadenceMs = parsePositiveInt(intervalMs, DEFAULT_REFRESH_INTERVAL_MS);
-  // Shared handle for the one in-flight external child (default executor
+  // Shared handle for the one in-flight author child (default executor
   // only): dispose() terminates it so shutdown never orphans background work.
   const childRef = { current: null };
   const runExternal =
@@ -245,7 +224,7 @@ export function createRefreshOrchestrator({
       running = false;
       // Emit the settled (non-running) status exactly once per attempt.
       // The in-flight `running: true` emit above keeps tabs honest while
-      // the external owner works; this emit releases them.
+      // the LLM author works; this emit releases them.
       emit();
     }
   }
@@ -253,7 +232,7 @@ export function createRefreshOrchestrator({
   function setEnabled(next) {
     const want = Boolean(next);
     if (want && !resolveRefreshCommand()) {
-      // No external owner, no capability: never become operational.
+      // No LLM author, no capability: never become operational.
       // Refuse ON immediately so the reader never sees a waiting state
       // that would need the first cadence tick to disprove. The canonical
       // `configured` flag stays the single availability owner; the reader
@@ -297,7 +276,7 @@ export function createRefreshOrchestrator({
       timer = null;
     }
     enabled = false;
-    // Terminate any in-flight external owner so server shutdown never leaves
+    // Terminate any in-flight LLM author child so server shutdown never leaves
     // a detached background child behind. Best-effort: a mock executor has
     // no child and this is a no-op.
     const child = childRef.current;

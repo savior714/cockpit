@@ -11,6 +11,10 @@ import {
   resolveRefreshCommand,
   DEFAULT_REFRESH_INTERVAL_MS,
 } from "../scripts/refresh.mjs";
+import {
+  resolveAuthorCommand,
+  resolveAuthorCommandSource,
+} from "../scripts/author.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..");
@@ -29,26 +33,74 @@ async function makeProgressFile(t, initial = "# Test\n\n## 현재 상황\n\n초�
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// The canonical availability owner is COCKPIT_REFRESH_COMMAND. Tests that
-// exercise the configured ON path must explicitly configure it; tests for
-// the unconfigured path must explicitly clear it. Global env leakage would
-// make the capability assertion meaningless.
+// The canonical availability owner is COCKPIT_AUTHOR_COMMAND with legacy
+// fallback COCKPIT_REFRESH_COMMAND (one author capability, not two). Tests
+// that exercise the configured ON path must explicitly configure it; tests
+// for the unconfigured path must explicitly clear both. Global env leakage
+// would make the capability assertion meaningless.
 function withRefreshCommand(t, value = "true") {
-  const saved = process.env.COCKPIT_REFRESH_COMMAND;
+  const savedAuthor = process.env.COCKPIT_AUTHOR_COMMAND;
+  const savedLegacy = process.env.COCKPIT_REFRESH_COMMAND;
+  process.env.COCKPIT_AUTHOR_COMMAND = value;
+  t.after(() => {
+    if (savedAuthor === undefined) delete process.env.COCKPIT_AUTHOR_COMMAND;
+    else process.env.COCKPIT_AUTHOR_COMMAND = savedAuthor;
+    if (savedLegacy === undefined) delete process.env.COCKPIT_REFRESH_COMMAND;
+    else process.env.COCKPIT_REFRESH_COMMAND = savedLegacy;
+  });
+}
+
+function withLegacyRefreshCommand(t, value = "true") {
+  const savedAuthor = process.env.COCKPIT_AUTHOR_COMMAND;
+  const savedLegacy = process.env.COCKPIT_REFRESH_COMMAND;
+  delete process.env.COCKPIT_AUTHOR_COMMAND;
   process.env.COCKPIT_REFRESH_COMMAND = value;
   t.after(() => {
-    if (saved === undefined) delete process.env.COCKPIT_REFRESH_COMMAND;
-    else process.env.COCKPIT_REFRESH_COMMAND = saved;
+    if (savedAuthor === undefined) delete process.env.COCKPIT_AUTHOR_COMMAND;
+    else process.env.COCKPIT_AUTHOR_COMMAND = savedAuthor;
+    if (savedLegacy === undefined) delete process.env.COCKPIT_REFRESH_COMMAND;
+    else process.env.COCKPIT_REFRESH_COMMAND = savedLegacy;
   });
 }
 
 function withoutRefreshCommand(t) {
-  const saved = process.env.COCKPIT_REFRESH_COMMAND;
+  const savedAuthor = process.env.COCKPIT_AUTHOR_COMMAND;
+  const savedLegacy = process.env.COCKPIT_REFRESH_COMMAND;
+  delete process.env.COCKPIT_AUTHOR_COMMAND;
   delete process.env.COCKPIT_REFRESH_COMMAND;
   t.after(() => {
-    if (saved !== undefined) process.env.COCKPIT_REFRESH_COMMAND = saved;
+    if (savedAuthor !== undefined) process.env.COCKPIT_AUTHOR_COMMAND = savedAuthor;
+    if (savedLegacy !== undefined) process.env.COCKPIT_REFRESH_COMMAND = savedLegacy;
   });
 }
+
+test("author capability: canonical wins, legacy fallback shares one meaning", () => {
+  assert.equal(
+    resolveAuthorCommand({ COCKPIT_AUTHOR_COMMAND: "author-cmd", COCKPIT_REFRESH_COMMAND: "legacy-cmd" }),
+    "author-cmd"
+  );
+  assert.equal(resolveAuthorCommandSource({ COCKPIT_AUTHOR_COMMAND: "a", COCKPIT_REFRESH_COMMAND: "b" }), "author");
+  assert.equal(resolveAuthorCommand({ COCKPIT_REFRESH_COMMAND: "legacy-cmd" }), "legacy-cmd");
+  assert.equal(resolveAuthorCommandSource({ COCKPIT_REFRESH_COMMAND: "legacy-cmd" }), "refresh-legacy");
+  assert.equal(resolveRefreshCommand({ COCKPIT_AUTHOR_COMMAND: "author-cmd" }), "author-cmd");
+  assert.equal(resolveRefreshCommand({ COCKPIT_REFRESH_COMMAND: "legacy-cmd" }), "legacy-cmd");
+  assert.equal(resolveRefreshCommand({}), null);
+});
+
+test("auto-refresh: legacy fallback command still configures the same author", async (t) => {
+  withLegacyRefreshCommand(t);
+  const { file } = await makeProgressFile(t);
+  const orch = createRefreshOrchestrator({
+    progressFile: file,
+    execRefresh: async () => ({ outcome: "executed" }),
+  });
+  t.after(() => orch.dispose());
+  const status = orch.setEnabled(true);
+  assert.equal(status.configured, true);
+  assert.equal(status.enabled, true);
+  const result = await orch.runRefreshOnce("manual");
+  assert.equal(result.outcome, "unchanged");
+});
 
 // ---------------------------------------------------------------------------
 // 1. initial OFF
@@ -201,7 +253,7 @@ test("auto-refresh: failure preserves existing document", async (t) => {
   const orch = createRefreshOrchestrator({
     progressFile: file,
     execRefresh: async () => {
-      throw new Error("external owner failed");
+      throw new Error("LLM author failed");
     },
   });
   t.after(() => orch.dispose());
@@ -314,9 +366,44 @@ test("auto-refresh: reader projection never renders waiting without capability",
 
 test("auto-refresh: Cockpit never writes PROGRESS.md itself", async () => {
   const source = await fs.readFile(path.join(REPO_ROOT, "scripts", "refresh.mjs"), "utf-8");
+  const authorSource = await fs.readFile(path.join(REPO_ROOT, "scripts", "author.mjs"), "utf-8");
   assert.doesNotMatch(source, /writeFile|appendFile|unlink|rm\(|createWriteStream/);
-  assert.match(source, /COCKPIT_REFRESH_COMMAND/);
+  assert.doesNotMatch(authorSource, /writeFile|appendFile|unlink|createWriteStream/);
+  // Canonical author capability with legacy fallback — one meaning, not two.
+  assert.match(source, /COCKPIT_AUTHOR_COMMAND/);
+  assert.match(source + authorSource, /COCKPIT_REFRESH_COMMAND/);
+  assert.match(authorSource, /PROJECT_DIR/);
+  assert.match(authorSource, /PROGRESS_FILE/);
   assert.match(source, /read.*back|readSnapshot/i);
+});
+
+test("author boundary: refresh and bootstrap share one execution mechanism", async () => {
+  const refreshSource = await fs.readFile(path.join(REPO_ROOT, "scripts", "refresh.mjs"), "utf-8");
+  const targetSource = await fs.readFile(path.join(REPO_ROOT, "scripts", "target.mjs"), "utf-8");
+  const authorSource = await fs.readFile(path.join(REPO_ROOT, "scripts", "author.mjs"), "utf-8");
+  // Both call sites converge on scripts/author.mjs; no second shell path.
+  assert.match(refreshSource, /from\s+["']\.\/author\.mjs["']/);
+  assert.match(targetSource, /from\s+["']\.\/author\.mjs["']/);
+  assert.match(authorSource, /runAuthorCommand/);
+  assert.equal([...refreshSource.matchAll(/exec\s*\(/g)].length, 0, "refresh must not own a second exec path");
+  assert.doesNotMatch(targetSource, /writeFile/);
+  // No embedded intelligence in the runtime.
+  for (const src of [refreshSource, targetSource, authorSource]) {
+    assert.doesNotMatch(src, /openai|anthropic|claude-sdk|@anthropic|generative-ai|qwen|codex/i);
+    assert.doesNotMatch(src, /fetch\s*\(\s*["']https?:\/\//i);
+  }
+  const serveSource = await fs.readFile(path.join(REPO_ROOT, "scripts", "serve.mjs"), "utf-8");
+  // Positive boundary: the runtime documents that it never infers truth.
+  assert.match(
+    serveSource + refreshSource + targetSource + authorSource,
+    /never analyzes|never infers|deterministically checks/i
+  );
+  // Forbidden implementation signals (not mere boundary words): model SDKs,
+  // DBs, progress calculators, semantic state machines.
+  for (const src of [serveSource, refreshSource, targetSource, authorSource]) {
+    assert.doesNotMatch(src, /calculateProgress|progressPercent|semanticStateMachine|stateMachine/i);
+    assert.doesNotMatch(src, /mongoose|sqlite|postgres|redis|leveldb/i);
+  }
 });
 
 test("auto-refresh: browser never owns the schedule", async () => {
@@ -396,7 +483,7 @@ test("auto-refresh: HTTP toggle defaults OFF and converges when configured", asy
     {
       cwd: REPO_ROOT,
       stdio: ["pipe", "pipe", "pipe"],
-      env: { ...process.env, COCKPIT_REFRESH_COMMAND: "true" },
+      env: { ...process.env, COCKPIT_AUTHOR_COMMAND: "true" },
     }
   );
   t.after(() => {
@@ -457,6 +544,7 @@ test("auto-refresh: HTTP toggle defaults OFF and converges when configured", asy
 test("auto-refresh: HTTP unconfigured ON is refused truthfully without waiting", async (t) => {
   const { file, initial } = await makeProgressFile(t);
   const env = { ...process.env };
+  delete env.COCKPIT_AUTHOR_COMMAND;
   delete env.COCKPIT_REFRESH_COMMAND;
   const proc = spawn(
     process.execPath,
@@ -570,7 +658,7 @@ test("auto-refresh lifecycle: enabled scheduler does not block last-viewer shutd
     {
       cwd: REPO_ROOT,
       stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, COCKPIT_IDLE_SHUTDOWN_MS: "300", COCKPIT_REFRESH_COMMAND: "true" },
+      env: { ...process.env, COCKPIT_IDLE_SHUTDOWN_MS: "300", COCKPIT_AUTHOR_COMMAND: "true" },
     }
   );
   t.after(() => {
@@ -632,7 +720,7 @@ test("auto-refresh lifecycle: fresh invocation starts OFF with a clean scheduler
     spawn(process.execPath, [path.join(REPO_ROOT, "scripts", "serve.mjs"), file, "--port", "0", "--no-open"], {
       cwd: REPO_ROOT,
       stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, COCKPIT_IDLE_SHUTDOWN_MS: "300", COCKPIT_REFRESH_COMMAND: "true" },
+      env: { ...process.env, COCKPIT_IDLE_SHUTDOWN_MS: "300", COCKPIT_AUTHOR_COMMAND: "true" },
     });
   const waitPort = async (proc, stdoutRef) => {
     const start = Date.now();
