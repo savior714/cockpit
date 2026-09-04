@@ -14,6 +14,13 @@
  * not a primary taxonomy surface. There are no Stage/Posture/Frontier/
  * Thread/Movement entities and no relation graph: map cards open areas,
  * evidence buttons open evidence depth. That is the whole navigation.
+ *
+ * Information-depth ownership: the map card owns the short area label, the
+ * area view owns 의미/현재 수준/남은 문제 (why + residual), and the evidence
+ * drill-down owns full proof. The area lead is intentionally not rendered as
+ * a separate summary (it would repeat the map label), and evidence sections
+ * render in the area view as entry points only, with the full text preserved
+ * in the evidence drill-down.
  */
 
 import {

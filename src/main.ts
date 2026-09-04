@@ -171,8 +171,13 @@ function renderInspector(entity: InspectorEntity): void {
   if (title) title.textContent = entity.title;
   const summary = document.getElementById("inspector-summary");
   if (summary) {
-    summary.innerHTML = entity.summaryText ? `<p class="inspector-lead">${escapeHtml(entity.summaryText)}</p>` : "";
-    summary.hidden = !entity.summaryText;
+    // Summary ownership: the map card already owns the area short label, and
+    // the 의미 subsection owns the explanation. Rendering summaryText again as
+    // an area lead repeats the same meaning, so only the evidence drill-down
+    // (which has no map card) carries its own lead.
+    const showSummary = Boolean(entity.summaryText) && entity.kind === "evidence";
+    summary.innerHTML = showSummary ? `<p class="inspector-lead">${escapeHtml(entity.summaryText)}</p>` : "";
+    summary.hidden = !showSummary;
   }
 
   const sections = document.getElementById("inspector-sections");
@@ -182,6 +187,17 @@ function renderInspector(entity: InspectorEntity): void {
           const tone = item.tone ?? classifySubsectionTone(item.subheading, item.rawText, entity.state);
           const toneClass = `tone-${tone}`;
           const isEvidence = tone === "evidence" || /evidence|근거/i.test(item.subheading);
+          // Evidence ownership: full proof lives in the evidence drill-down.
+          // The area view keeps only the badge + entry point so the same
+          // text is not shown twice (inline + drill-down).
+          if (entity.kind === "area" && isEvidence) {
+            return `
+          <section class="inspector-sub-card">
+            <div class="sub-header"><span class="sub-badge ${toneClass}">${escapeHtml(item.subheading)}</span></div>
+            <button type="button" class="inspector-evidence-link" data-subsection-index="${index}">세부 근거 보기 →</button>
+          </section>
+        `;
+          }
           return `
           <section class="inspector-sub-card">
             <div class="sub-header"><span class="sub-badge ${toneClass}">${escapeHtml(item.subheading)}</span></div>
@@ -195,8 +211,6 @@ function renderInspector(entity: InspectorEntity): void {
 
   const copyButton = document.getElementById("inspector-copy-btn") as HTMLButtonElement | null;
   const copyToast = document.getElementById("copy-toast");
-  const handoffHint = document.getElementById("handoff-hint");
-  if (handoffHint) handoffHint.hidden = entity.kind !== "area";
   if (copyButton) {
     copyButton.hidden = entity.kind !== "area";
     copyButton.onclick = async () => {

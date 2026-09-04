@@ -1355,10 +1355,3 @@ body {
   margin-left: 8px;
   white-space: nowrap;
 }
-
-.handoff-hint {
-  color: var(--muted);
-  font-size: var(--text-micro);
-  line-height: var(--leading-snug);
-  margin: 4px 0 0;
-}
