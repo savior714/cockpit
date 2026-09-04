@@ -499,10 +499,13 @@ interface AutoRefreshStatus {
 }
 
 function refreshStatusText(status: AutoRefreshStatus): string {
+  // Capability first: the server already knows `configured`, so an
+  // unconfigured reader never renders an operational/waiting state —
+  // not before the first tick and not after an ON attempt.
+  if (!status.configured) return "연결 없음 · 기존 화면 유지";
   if (!status.enabled) return "꺼짐";
   if (status.running) return "확인 중…";
   if (status.lastResult === "failed") return "확인 실패 · 기존 화면 유지";
-  if (status.lastResult === "not-configured") return "연결 없음 · 기존 화면 유지";
   if (status.lastResult === "changed") return "새 내용을 반영했습니다";
   if (status.lastResult === "unchanged") return "최신 상태입니다";
   return "켜짐 · 대기 중";

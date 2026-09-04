@@ -29,6 +29,27 @@ async function makeProgressFile(t, initial = "# Test\n\n## 현재 상황\n\n초�
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// The canonical availability owner is COCKPIT_REFRESH_COMMAND. Tests that
+// exercise the configured ON path must explicitly configure it; tests for
+// the unconfigured path must explicitly clear it. Global env leakage would
+// make the capability assertion meaningless.
+function withRefreshCommand(t, value = "true") {
+  const saved = process.env.COCKPIT_REFRESH_COMMAND;
+  process.env.COCKPIT_REFRESH_COMMAND = value;
+  t.after(() => {
+    if (saved === undefined) delete process.env.COCKPIT_REFRESH_COMMAND;
+    else process.env.COCKPIT_REFRESH_COMMAND = saved;
+  });
+}
+
+function withoutRefreshCommand(t) {
+  const saved = process.env.COCKPIT_REFRESH_COMMAND;
+  delete process.env.COCKPIT_REFRESH_COMMAND;
+  t.after(() => {
+    if (saved !== undefined) process.env.COCKPIT_REFRESH_COMMAND = saved;
+  });
+}
+
 // ---------------------------------------------------------------------------
 // 1. initial OFF
 // ---------------------------------------------------------------------------
@@ -64,6 +85,7 @@ test("auto-refresh: default cadence is 10 minutes", () => {
 // ---------------------------------------------------------------------------
 
 test("auto-refresh: enabling twice keeps exactly one scheduler", async (t) => {
+  withRefreshCommand(t);
   const { file } = await makeProgressFile(t);
   const orch = createRefreshOrchestrator({
     progressFile: file,
@@ -84,6 +106,7 @@ test("auto-refresh: enabling twice keeps exactly one scheduler", async (t) => {
 // ---------------------------------------------------------------------------
 
 test("auto-refresh: concurrent refresh never overlaps", async (t) => {
+  withRefreshCommand(t);
   const { file } = await makeProgressFile(t);
   let calls = 0;
   const orch = createRefreshOrchestrator({
@@ -109,6 +132,7 @@ test("auto-refresh: concurrent refresh never overlaps", async (t) => {
 // ---------------------------------------------------------------------------
 
 test("auto-refresh: unchanged result keeps identical content", async (t) => {
+  withRefreshCommand(t);
   const { file, initial } = await makeProgressFile(t);
   const orch = createRefreshOrchestrator({
     progressFile: file,
@@ -128,6 +152,7 @@ test("auto-refresh: unchanged result keeps identical content", async (t) => {
 // ---------------------------------------------------------------------------
 
 test("auto-refresh: changed result reads back new content", async (t) => {
+  withRefreshCommand(t);
   const { file } = await makeProgressFile(t);
   const next = "# Test\n\n## 현재 상황\n\n실질적 전환이 확인됨.\n";
   const orch = createRefreshOrchestrator({
@@ -147,6 +172,7 @@ test("auto-refresh: changed result reads back new content", async (t) => {
 });
 
 test("auto-refresh: atomic replacement is detected via read-back", async (t) => {
+  withRefreshCommand(t);
   const { dir, file } = await makeProgressFile(t);
   const next = "# Test\n\n## 현재 상황\n\n원자적 교체로 반영됨.\n";
   const orch = createRefreshOrchestrator({
@@ -170,6 +196,7 @@ test("auto-refresh: atomic replacement is detected via read-back", async (t) => 
 // ---------------------------------------------------------------------------
 
 test("auto-refresh: failure preserves existing document", async (t) => {
+  withRefreshCommand(t);
   const { file, initial } = await makeProgressFile(t);
   const orch = createRefreshOrchestrator({
     progressFile: file,
@@ -188,26 +215,43 @@ test("auto-refresh: failure preserves existing document", async (t) => {
   assert.equal(status.enabled, true, "failure must not silently disable the toggle");
 });
 
-test("auto-refresh: unconfigured executor is a non-destructive no-op", async (t) => {
+test("auto-refresh: unconfigured ON is refused immediately without becoming operational", async (t) => {
+  withoutRefreshCommand(t);
   const { file, initial } = await makeProgressFile(t);
-  const saved = process.env.COCKPIT_REFRESH_COMMAND;
-  delete process.env.COCKPIT_REFRESH_COMMAND;
-  try {
-    assert.equal(resolveRefreshCommand(), null);
-    const { createDefaultExecRefresh } = await import("../scripts/refresh.mjs");
-    const orch = createRefreshOrchestrator({
-      progressFile: file,
-      execRefresh: createDefaultExecRefresh({ progressFile: file, projectDir: path.dirname(file) }),
-    });
-    t.after(() => orch.dispose());
-    orch.setEnabled(true);
-    const result = await orch.runRefreshOnce("manual");
-    assert.equal(result.outcome, "not-configured");
-    assert.equal(await fs.readFile(file, "utf-8"), initial);
-    assert.equal(orch.getStatus().lastResult, "not-configured");
-  } finally {
-    if (saved !== undefined) process.env.COCKPIT_REFRESH_COMMAND = saved;
-  }
+  assert.equal(resolveRefreshCommand(), null);
+  const { createDefaultExecRefresh } = await import("../scripts/refresh.mjs");
+  const orch = createRefreshOrchestrator({
+    progressFile: file,
+    execRefresh: createDefaultExecRefresh({ progressFile: file, projectDir: path.dirname(file) }),
+  });
+  t.after(() => orch.dispose());
+  const status = orch.setEnabled(true);
+  // The unavailable capability must never arm the scheduler or report ON.
+  assert.equal(status.configured, false);
+  assert.equal(status.enabled, false);
+  assert.equal(status.running, false);
+  assert.equal(status.lastResult, "not-configured");
+  assert.notEqual(status.lastCheckAt, null);
+  assert.equal(orch.__testOnly.getTimer(), null, "refused ON must not arm a timer");
+  assert.equal(orch.getStatus().enabled, false);
+  // No tick is needed to reveal the truth, and nothing was mutated.
+  assert.equal(await fs.readFile(file, "utf-8"), initial);
+});
+
+test("auto-refresh: unconfigured tick stays a non-destructive no-op when already enabled", async (t) => {
+  withRefreshCommand(t);
+  const { file, initial } = await makeProgressFile(t);
+  const orch = createRefreshOrchestrator({
+    progressFile: file,
+    execRefresh: async () => ({ outcome: "not-configured" }),
+  });
+  t.after(() => orch.dispose());
+  orch.setEnabled(true);
+  assert.equal(orch.getStatus().enabled, true);
+  const result = await orch.runRefreshOnce("manual");
+  assert.equal(result.outcome, "not-configured");
+  assert.equal(await fs.readFile(file, "utf-8"), initial);
+  assert.equal(orch.getStatus().lastResult, "not-configured");
 });
 
 // ---------------------------------------------------------------------------
@@ -215,6 +259,7 @@ test("auto-refresh: unconfigured executor is a non-destructive no-op", async (t)
 // ---------------------------------------------------------------------------
 
 test("auto-refresh: OFF stops the scheduler", async (t) => {
+  withRefreshCommand(t);
   const { file } = await makeProgressFile(t);
   let calls = 0;
   const orch = createRefreshOrchestrator({
@@ -254,6 +299,19 @@ test("auto-refresh: manual external modification is still detectable", async (t)
 // Boundary preservation: no new semantic ownership in Cockpit
 // ---------------------------------------------------------------------------
 
+test("auto-refresh: reader projection never renders waiting without capability", async () => {
+  const main = await fs.readFile(path.join(REPO_ROOT, "src", "main.ts"), "utf-8");
+  // The single availability owner is `configured`: the text mapping must
+  // consult it before any operational/waiting branch.
+  const textFn = main.slice(main.indexOf("function refreshStatusText"));
+  assert.ok(textFn.length > 0, "refreshStatusText must exist");
+  const configuredPos = textFn.indexOf("!status.configured");
+  const waitingPos = textFn.indexOf("켜짐 · 대기 중");
+  assert.ok(configuredPos !== -1, "projection must reuse canonical configured");
+  assert.ok(waitingPos !== -1, "waiting text must still exist for the configured path");
+  assert.ok(configuredPos < waitingPos, "configured must gate waiting");
+});
+
 test("auto-refresh: Cockpit never writes PROGRESS.md itself", async () => {
   const source = await fs.readFile(path.join(REPO_ROOT, "scripts", "refresh.mjs"), "utf-8");
   assert.doesNotMatch(source, /writeFile|appendFile|unlink|rm\(|createWriteStream/);
@@ -289,12 +347,16 @@ test("auto-refresh: server keeps a single refresh scheduler", async () => {
 // HTTP integration: toggle API + SSE status fan-out
 // ---------------------------------------------------------------------------
 
-test("auto-refresh: HTTP toggle defaults OFF and converges", async (t) => {
+test("auto-refresh: HTTP toggle defaults OFF and converges when configured", async (t) => {
   const { file } = await makeProgressFile(t);
   const proc = spawn(
     process.execPath,
     [path.join(REPO_ROOT, "scripts", "serve.mjs"), file, "--port", "0", "--no-open"],
-    { cwd: REPO_ROOT, stdio: ["pipe", "pipe", "pipe"], env: { ...process.env } }
+    {
+      cwd: REPO_ROOT,
+      stdio: ["pipe", "pipe", "pipe"],
+      env: { ...process.env, COCKPIT_REFRESH_COMMAND: "true" },
+    }
   );
   t.after(() => {
     try {
@@ -317,6 +379,7 @@ test("auto-refresh: HTTP toggle defaults OFF and converges", async (t) => {
 
   const initial = await getStatus();
   assert.equal(initial.enabled, false, "default must be OFF");
+  assert.equal(initial.configured, true);
 
   const onRes = await fetch(`${base}/api/auto-refresh`, {
     method: "POST",
@@ -324,7 +387,9 @@ test("auto-refresh: HTTP toggle defaults OFF and converges", async (t) => {
     body: JSON.stringify({ enabled: true }),
   });
   assert.equal(onRes.status, 200);
-  assert.equal((await onRes.json()).enabled, true);
+  const onStatus = await onRes.json();
+  assert.equal(onStatus.enabled, true);
+  assert.equal(onStatus.configured, true);
 
   assert.equal((await getStatus()).enabled, true, "second tab would read the same server state");
 
@@ -346,6 +411,65 @@ test("auto-refresh: HTTP toggle defaults OFF and converges", async (t) => {
   const exitPromise = new Promise((resolve) => proc.on("exit", resolve));
   proc.kill("SIGTERM");
   await exitPromise;
+});
+
+test("auto-refresh: HTTP unconfigured ON is refused truthfully without waiting", async (t) => {
+  const { file, initial } = await makeProgressFile(t);
+  const env = { ...process.env };
+  delete env.COCKPIT_REFRESH_COMMAND;
+  const proc = spawn(
+    process.execPath,
+    [path.join(REPO_ROOT, "scripts", "serve.mjs"), file, "--port", "0", "--no-open"],
+    { cwd: REPO_ROOT, stdio: ["pipe", "pipe", "pipe"], env }
+  );
+  t.after(() => {
+    try {
+      proc.kill("SIGTERM");
+    } catch {}
+  });
+  let stdout = "";
+  proc.stdout.on("data", (d) => (stdout += d.toString("utf-8")));
+  let port = null;
+  const start = Date.now();
+  while (!port && Date.now() - start < 8000) {
+    const m = stdout.match(/http:\/\/127\.0\.0\.1:(\d+)\//);
+    if (m) port = Number.parseInt(m[1], 10);
+    else await sleep(100);
+  }
+  assert.ok(port, "server must start");
+
+  const base = `http://127.0.0.1:${port}`;
+  const getStatus = async () => (await (await fetch(`${base}/api/auto-refresh`)).json());
+
+  const before = await getStatus();
+  assert.equal(before.enabled, false, "fresh invocation must start OFF");
+  assert.equal(before.configured, false);
+
+  const onRes = await fetch(`${base}/api/auto-refresh`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ enabled: true }),
+  });
+  assert.equal(onRes.status, 200);
+  const onStatus = await onRes.json();
+  // Unavailable capability must never report ON / operational.
+  assert.equal(onStatus.configured, false);
+  assert.equal(onStatus.enabled, false);
+  assert.equal(onStatus.running, false);
+  assert.equal(onStatus.lastResult, "not-configured");
+  assert.notEqual(onStatus.lastCheckAt, null);
+
+  // The truth is immediate: a second tab reads the same refused state,
+  // and the document was never mutated by the attempt.
+  const again = await getStatus();
+  assert.equal(again.enabled, false);
+  assert.equal(again.configured, false);
+  assert.equal(again.lastResult, "not-configured");
+  assert.equal(await fs.readFile(file, "utf-8"), initial);
+
+  const unconfiguredExit = new Promise((resolve) => proc.on("exit", resolve));
+  proc.kill("SIGTERM");
+  await unconfiguredExit;
 });
 
 test("auto-refresh: SSE carries refresh-status to every tab", async (t) => {
@@ -405,7 +529,7 @@ test("auto-refresh lifecycle: enabled scheduler does not block last-viewer shutd
     {
       cwd: REPO_ROOT,
       stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, COCKPIT_IDLE_SHUTDOWN_MS: "300", COCKPIT_REFRESH_COMMAND: "" },
+      env: { ...process.env, COCKPIT_IDLE_SHUTDOWN_MS: "300", COCKPIT_REFRESH_COMMAND: "true" },
     }
   );
   t.after(() => {
@@ -467,7 +591,7 @@ test("auto-refresh lifecycle: fresh invocation starts OFF with a clean scheduler
     spawn(process.execPath, [path.join(REPO_ROOT, "scripts", "serve.mjs"), file, "--port", "0", "--no-open"], {
       cwd: REPO_ROOT,
       stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, COCKPIT_IDLE_SHUTDOWN_MS: "300" },
+      env: { ...process.env, COCKPIT_IDLE_SHUTDOWN_MS: "300", COCKPIT_REFRESH_COMMAND: "true" },
     });
   const waitPort = async (proc, stdoutRef) => {
     const start = Date.now();
@@ -516,6 +640,7 @@ test("auto-refresh lifecycle: fresh invocation starts OFF with a clean scheduler
 });
 
 test("auto-refresh lifecycle: dispose clears timer and never writes the file", async (t) => {
+  withRefreshCommand(t);
   const { file, initial } = await makeProgressFile(t);
   const orch = createRefreshOrchestrator({
     progressFile: file,

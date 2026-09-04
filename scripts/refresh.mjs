@@ -252,6 +252,22 @@ export function createRefreshOrchestrator({
 
   function setEnabled(next) {
     const want = Boolean(next);
+    if (want && !resolveRefreshCommand()) {
+      // No external owner, no capability: never become operational.
+      // Refuse ON immediately so the reader never sees a waiting state
+      // that would need the first cadence tick to disprove. The canonical
+      // `configured` flag stays the single availability owner; the reader
+      // projection reuses it instead of inferring from `enabled` alone.
+      if (timer !== null) {
+        clearInterval(timer);
+        timer = null;
+      }
+      enabled = false;
+      lastCheckAt = nowFn();
+      lastResult = "not-configured";
+      emit();
+      return getStatus();
+    }
     if (want === enabled && (want === false || timer !== null)) {
       return getStatus();
     }
