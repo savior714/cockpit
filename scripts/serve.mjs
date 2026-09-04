@@ -65,8 +65,11 @@ function failOnStaleBinLink() {
     return;
   }
   let canonicalRel;
+  let installedRef = "v<version>";
   try {
-    canonicalRel = JSON.parse(readFileSync(path.join(PKG_ROOT, "package.json"), "utf-8"))?.bin?.cockpit;
+    const pkg = JSON.parse(readFileSync(path.join(PKG_ROOT, "package.json"), "utf-8"));
+    canonicalRel = pkg?.bin?.cockpit;
+    if (typeof pkg?.version === "string" && pkg.version) installedRef = `v${pkg.version}`;
   } catch {
     return;
   }
@@ -85,7 +88,7 @@ function failOnStaleBinLink() {
         `but package.json declares ${canonicalRel} as the canonical entry.\n` +
         `This bypasses the build freshness guard. Relink/reinstall so \`cockpit\` resolves to the canonical entry:\n` +
         `  (local checkout) npm link   # then verify: command -v cockpit && readlink "$(command -v cockpit)"\n` +
-        `  (global) npm install -g --install-links "github:savior714/cockpit#main"\n` +
+        `  (global) npm install -g --install-links "github:savior714/cockpit#${installedRef}"\n` +
         `Never symlink scripts/serve.mjs as \`cockpit\` directly; ` +
         `\`node scripts/serve.mjs ...\` is only for explicit direct-file checks.`
     );
@@ -306,6 +309,18 @@ async function main() {
     process.exit(2);
   }
 
+  if (args.command === "version") {
+    let version = "unknown";
+    try {
+      version =
+        JSON.parse(readFileSync(path.join(PKG_ROOT, "package.json"), "utf-8"))?.version ?? "unknown";
+    } catch {
+      /* missing/unreadable package.json reports unknown rather than crashing */
+    }
+    console.log(`cockpit ${version}`);
+    process.exit(0);
+  }
+
   if (args.command === "check") {
     if (args.help) {
       console.log(`Usage: cockpit check [path/to/PROGRESS.md]
@@ -361,6 +376,9 @@ Usage:
 
 Commands:
   check [path]       Check structural completeness of PROGRESS.md and exit (0 on PASS, 1 on FAIL)
+
+Options:
+  --version, -V      Print the installed Cockpit version (package.json) and exit
 
 Viewer:
   cockpit                  Open the current directory's project in the viewer.

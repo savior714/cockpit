@@ -84,6 +84,15 @@ test("Distribution artifact smoke: pack, install into isolated prefix, and verif
   assert.match(checkHelpOutput, /Usage: cockpit check \[path\/to\/PROGRESS\.md\]/);
   assert.match(checkHelpOutput, /Deterministically verifies that PROGRESS\.md is structurally complete/);
 
+  // 3b. Test: cockpit --version identifies the installed package version
+  const installedPkgJson = JSON.parse(
+    await fs.readFile(path.join(installedPkg, "package.json"), "utf-8")
+  );
+  const repoPkgJson = JSON.parse(await fs.readFile(path.join(REPO_ROOT, "package.json"), "utf-8"));
+  assert.equal(installedPkgJson.version, repoPkgJson.version);
+  const versionOutput = execSync(`"${binPath}" --version`, { encoding: "utf-8" }).trim();
+  assert.equal(versionOutput, `cockpit ${repoPkgJson.version}`);
+
   // 4. Test: cockpit check <valid fixture> -> exit 0 / PASS
   const validFixture = path.join(REPO_ROOT, "tests", "fixtures", "operational-system.md");
   const validOutput = execSync(`"${binPath}" check "${validFixture}"`, {

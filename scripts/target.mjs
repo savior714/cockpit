@@ -70,6 +70,8 @@ export function parseArgs(argv) {
       noOpen = true;
     } else if (a === "--help" || a === "-h") {
       return { command: "serve", help: true, target, port, noOpen };
+    } else if (a === "--version" || a === "-V") {
+      return { command: "version" };
     } else if (a.startsWith("--port=")) {
       port = parsePortValue(a.slice(7));
     } else if (a.startsWith("-")) {

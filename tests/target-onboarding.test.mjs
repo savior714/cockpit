@@ -80,6 +80,11 @@ test("parseArgs: port / no-open / help forms", () => {
   assert.equal(parseArgs(["check", "/tmp/proj"]).target, "/tmp/proj");
 });
 
+test("parseArgs: --version/-V resolves to the version command", () => {
+  assert.deepEqual(parseArgs(["--version"]), { command: "version" });
+  assert.deepEqual(parseArgs(["-V"]), { command: "version" });
+});
+
 test("parseArgs: regressions — unknown/extra/invalid inputs throw", () => {
   assert.throws(() => parseArgs(["--bogus"]), /unknown option/);
   assert.throws(() => parseArgs(["a", "b"]), /unexpected extra argument/);
