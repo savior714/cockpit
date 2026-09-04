@@ -13,7 +13,7 @@ Instruction precedence for the current task:
 3. the subject-specific owner documents routed from here;
 4. current code/test/config/runtime evidence.
 
-Tiers 1–3 are instructions; tier 4 is implementation evidence. When current evidence and an active contract differ, investigate the mismatch rather than silently rewriting either side.
+Tiers 1–3 are instructions; tier 4 is implementation evidence. When current evidence and an active contract differ, investigate the mismatch under the §2 expansion boundary rather than silently rewriting either side.
 
 ## 2. Authority routing
 
@@ -24,12 +24,13 @@ Tiers 1–3 are instructions; tier 4 is implementation evidence. When current ev
 | Reader-facing language / product vocabulary | `README.md` §5 `독자용 표시 언어` |
 | Actual implementation state | code, tests, config, runtime evidence |
 
-Read only the owners directly relevant to the current task. Concrete commands are in §5 below and in `README.md` §6 (Korean).
+Read the routed owner plus the exact claimed boundary. Expand one dependency/authority hop at a time only while a material CONFLICTED/UNKNOWN blocks the decision. Stop when resolved. Record exact owner/path with line-level pointers for conflict/boundary/review findings. Concrete commands are in §5 below and in `README.md` §6 (Korean).
 
 ## 3. Decision boundary
 
-- The agent may decide ordinary technical implementation choices from repository evidence.
-- Consequential product behavior, scope, acceptance meaning, or hard-to-reverse architecture remains a user decision unless already settled.
+- Ordinary technical choices include file-local naming, test wording, semantics-preserving refactor, proof-mechanism choice, settled-UX detail, and small non-meaning copy/layout; the agent may decide them from repository evidence.
+- Consequential choices include user-visible behavior/meaning, workflow/acceptance, public API/contract, safety/security/privacy/data, irreversible migration/data loss, cross-boundary scope, and promise-changing copy; they remain a user decision unless already settled.
+- Already settled means the `README.md` §5 table, `SETTLED` framing, or explicit instruction; escalate once at the decision point, and downstream must not re-ask.
 - Close one bounded failure domain / coherent state transition at a time; do not absorb newly discovered independent problems into the current task.
 - When Cockpit is being accepted against an external repository, target-project findings are testbed evidence rather than Cockpit work; do not remediate them unless the user explicitly switches the goal back to target-project development. The detailed boundary is in `README.md` §4.
 

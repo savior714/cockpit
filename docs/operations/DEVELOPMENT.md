@@ -6,7 +6,7 @@ This document owns the repository's **development execution contract**: how work
 ## 1. Before mutation
 
 - Inspect the current repository state and the directly applicable authority before editing.
-- If the prompt's premise conflicts with current evidence, investigate the mismatch rather than forcing the requested patch.
+- If the prompt's premise conflicts with current evidence, follow `AGENTS.md` §2 mismatch investigation. If the mismatch remains material, stop mutation and report `EVIDENCE` vs `CONTRACT` with exact files/lines. Escalate only when the remaining premise decision is genuinely user-owned.
 - Immediately before execution, re-read the relevant current truth; re-derive the task when a material premise (target ownership, contract, proof criterion) has changed. Unrelated upstream movement is information, not invalidation.
 
 ## 2. Work bounding
@@ -14,6 +14,7 @@ This document owns the repository's **development execution contract**: how work
 - Close one coherent bounded problem / safe state transition at a time.
 - Keep strongly coupled changes together when they close one root cause; split independent state transitions apart.
 - Do not absorb a newly discovered independent problem into the current task; report it instead.
+- A proof-blocking adjacent defect may be repaired in-task only when bounded, mechanically understood, semantics-preserving, and necessary to exercise the claimed proof boundary. If it requires a new product decision or its root cause is uncertain, do not absorb it.
 - No speculative abstraction, no unrelated cleanup, no manufactured follow-up work merely because improvement is possible.
 
 ### Complexity admission
@@ -24,7 +25,7 @@ This is a decision criterion, not a scoring system, registry, or governance proc
 
 ## 3. Workspace
 
-Agent-mutable Git identity, worktree isolation, and publication safety are owned by the Bootstrap Git Safety Baseline (`./scripts/git-safety`, contract `bootstrap-git-safety/1`); this document owns only repository-specific semantic/proof classification on top of its verdicts. An ordinary mutation task starts with `./scripts/git-safety create <task-id>` and works only in the admitted detached task-owned worktree it returns. No persistent task branch is needed merely to obtain isolation, and the dirty canonical checkout is never the mutation workspace and never shares concurrent WIP. Workspace mechanics are not semantic authority. Never reset, stash, clean, or overwrite state that another session or the user intends to preserve.
+Agent-mutable Git identity, worktree isolation, and publication safety are owned by the Bootstrap Git Safety Baseline (`./scripts/git-safety`, contract `bootstrap-git-safety/1`); this document owns only repository-specific semantic/proof classification on top of its verdicts. Mutations intended to become a candidate, commit, or publication start with `./scripts/git-safety create <task-id>` and work only in the admitted detached task-owned worktree it returns. Read-only/check/build/test verification does not require a task worktree. Explicitly local-only scratch edits may work in an already-isolated clean workspace when no candidate or commit is intended. A shared/user-owned canonical checkout is not made a mutation workspace merely because it is clean. No persistent task branch is needed merely to obtain isolation. Workspace mechanics are not semantic authority. Never reset, stash, clean, or overwrite state that another session or the user intends to preserve.
 
 ### BASE admission
 
