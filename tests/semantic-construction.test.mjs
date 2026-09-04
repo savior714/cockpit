@@ -288,8 +288,18 @@ test("Recent changes stay a bounded semantic transition window under one merged 
   assert.ok(foregroundRule !== -1, "the newest two Recent items need a foreground rule");
   assert.ok(backgroundRule !== -1, "older Recent items need a receding rule");
   assert.ok(foregroundRule < backgroundRule, "foreground styling must precede older-item styling");
-  assert.match(css.slice(foregroundRule, backgroundRule), /font-size: 0\.94rem/);
-  assert.match(css.slice(backgroundRule), /font-size: 0\.82rem/);
+  // Visual-hierarchy convergence: Recent sizes are owned by the :root scale
+  // tokens, not by local literals. The pinned contract is the ordering
+  // invariant plus the exact token values.
+  const foregroundSlice = css.slice(foregroundRule, backgroundRule);
+  assert.match(foregroundSlice, /var\(--text-recent-new/);
+  assert.match(css.slice(backgroundRule), /var\(--text-recent-old/);
+  const recentNew = css.match(/--text-recent-new:\s*([0-9.]+)rem/);
+  const recentOld = css.match(/--text-recent-old:\s*([0-9.]+)rem/);
+  assert.ok(recentNew && recentOld, "the :root scale must define both recent tokens");
+  assert.equal(recentNew[1], "0.94");
+  assert.equal(recentOld[1], "0.82");
+  assert.ok(Number(recentNew[1]) > Number(recentOld[1]), "newest items must foreground above older items");
 });
 
 test("Independent multi-rail mental-model axis invariants: single Current Stage ownership and neutral rail coexistence", () => {

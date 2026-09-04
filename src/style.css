@@ -42,6 +42,7 @@
   --badge-reopen-ink: #475569;
 
   /* Geometry & Typography */
+  --radius-xs: 3px;
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
@@ -49,6 +50,42 @@
 
   --font-sans: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  /* Visual hierarchy scale — the single canonical owner for reader-facing
+     typography, hierarchy spacing, and emphasis geometry (L0–L5).
+     Component selectors below reference these tokens instead of declaring
+     their own sizes. Intentional deviations carry a comment at the use site.
+     L0 project identity → L1 primary orientation (map) → L2 sections/rails →
+     L3 entities → L4 supporting content → L5 micro UI. */
+  --text-l0: clamp(1.25rem, 2vw, 1.55rem);
+  --text-l1: 1rem;
+  --text-l2-rail: 0.95rem;
+  --text-l2-section: 0.78rem;
+  --text-l3-entity: 0.85rem;
+  --text-l3-lead: 0.92rem;
+  --text-l3-body: 0.88rem;
+  --text-l3-inspector: 1.05rem;
+  --text-l4-support: 0.8rem;
+  --text-l4-desc: 0.75rem;
+  --text-l4-stable: 0.81rem;
+  --text-control: 0.78rem;
+  --text-chip: 0.74rem;
+  --text-micro: 0.68rem;
+  --text-kicker: 0.62rem;
+  /* Pinned by tests/semantic-construction.test.mjs: newest-two foreground vs
+     older-item recession, asserted through these tokens (values + ordering). */
+  --text-recent-new: 0.94rem;
+  --text-recent-old: 0.82rem;
+
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.45;
+  --leading-relaxed: 1.5;
+  --leading-loose: 1.6;
+
+  --pad-panel: 16px 18px;
+  --pad-focus: 14px 16px;
+  --pad-panel-quiet: 11px 14px;
 
   color-scheme: light dark;
 }
@@ -108,7 +145,7 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
-  line-height: 1.5;
+  line-height: var(--leading-relaxed);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -141,7 +178,7 @@ body {
 
 .app-tag {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: var(--text-micro);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -153,7 +190,7 @@ body {
 
 .project-title {
   margin: 0;
-  font-size: clamp(1.25rem, 2vw, 1.55rem);
+  font-size: var(--text-l0);
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--ink);
@@ -169,7 +206,7 @@ body {
   color: var(--accent);
   border: 1px solid var(--accent);
   font-family: var(--font-mono);
-  font-size: 0.74rem;
+  font-size: var(--text-chip);
   font-weight: 600;
 }
 
@@ -209,14 +246,14 @@ body {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  padding: 16px 18px;
+  padding: var(--pad-panel);
   min-width: 0;
 }
 
 .panel h2 {
   margin: 0 0 8px;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: var(--text-l2-section);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -226,7 +263,7 @@ body {
 /* Left Main Panel: Project Map */
 .panel-map {
   min-height: 70vh;
-  padding: 16px 18px;
+  padding: var(--pad-panel);
 }
 
 .panel-map > .panel-header {
@@ -241,7 +278,7 @@ body {
 }
 
 .panel-map > .panel-header h2 {
-  font-size: 0.9rem;
+  font-size: var(--text-l1);
   font-weight: 700;
   color: var(--ink);
   text-transform: uppercase;
@@ -255,7 +292,7 @@ body {
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: var(--text-micro);
   font-weight: 600;
   padding: 2px 7px;
   border-radius: var(--radius-sm);
@@ -313,7 +350,7 @@ body {
 
 .rail-title {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: var(--text-l2-rail);
   font-weight: 700;
   letter-spacing: -0.015em;
   color: var(--ink);
@@ -322,7 +359,7 @@ body {
 .group-name {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: var(--text-micro);
   font-weight: 700;
   color: var(--muted);
   text-transform: uppercase;
@@ -374,19 +411,19 @@ body {
 }
 
 .card-title {
-  font-size: 0.85rem;
+  font-size: var(--text-l3-entity);
   font-weight: 600;
   color: var(--ink);
   letter-spacing: -0.01em;
   word-break: break-word;
   overflow-wrap: break-word;
-  line-height: 1.35;
+  line-height: var(--leading-snug);
 }
 
 .card-desc {
-  font-size: 0.75rem;
+  font-size: var(--text-l4-desc);
   color: var(--muted);
-  line-height: 1.4;
+  line-height: var(--leading-normal);
   word-break: break-word;
   overflow-wrap: break-word;
 }
@@ -449,7 +486,7 @@ body {
 
 .stage-tag {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: var(--text-micro);
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--accent);
@@ -469,7 +506,9 @@ body {
 .card-current-stage .card-title {
   color: var(--ink);
   font-weight: 700;
-  font-size: 0.87rem;
+  /* Same entity size as every other map node: the current position is carried
+     by weight + ink + the frontier-track geometry below, not by extra size. */
+  font-size: var(--text-l3-entity);
 }
 
 .card-current-stage:hover {
@@ -518,7 +557,7 @@ body {
   color: var(--muted);
   border: 1px solid var(--line);
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: var(--text-kicker);
   font-weight: 700;
   border-radius: var(--radius-full);
   flex-shrink: 0;
@@ -536,7 +575,7 @@ body {
 .future-step-arrow {
   text-align: center;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--text-micro);
   line-height: 1;
   user-select: none;
   padding: 1px 0;
@@ -547,8 +586,10 @@ body {
 .panel-focus {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-left: 2px solid var(--muted);
-  padding: 13px 16px;
+  /* No accent border: the rendered truth was always a plain panel (a later
+     shorthand reset this rule), and the user-owned emphasis stays
+     typographic via the accent kicker/heading + lead size below. */
+  padding: var(--pad-focus);
 }
 
 .panel-focus .panel-header {
@@ -557,7 +598,7 @@ body {
 
 #slot-focus h2 {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: var(--text-l2-section);
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -568,17 +609,18 @@ body {
 }
 
 #slot-focus .panel-body {
-  font-size: 0.88rem;
-  line-height: 1.5;
+  font-size: var(--text-l3-body);
+  line-height: var(--leading-relaxed);
   color: var(--ink);
 }
 
 #slot-focus .panel-body p:first-child {
-  font-size: 1.05rem;
+  /* User-owned lead, capped at rail level so it never outranks the map anchor. */
+  font-size: var(--text-l2-rail);
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--ink);
-  line-height: 1.4;
+  line-height: var(--leading-normal);
   margin-bottom: 6px;
 }
 
@@ -599,7 +641,7 @@ body {
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   padding: 6px 12px;
-  font-size: 0.78rem;
+  font-size: var(--text-control);
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -635,7 +677,7 @@ body {
 
 .group-tag {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: var(--text-micro);
   font-weight: 700;
   color: var(--accent);
   text-transform: uppercase;
@@ -648,7 +690,7 @@ body {
   border: 1px solid var(--line);
   padding: 2px 7px;
   border-radius: var(--radius-sm);
-  font-size: 0.72rem;
+  font-size: var(--text-micro);
   font-weight: 600;
   color: var(--ink-secondary);
   cursor: pointer;
@@ -661,19 +703,23 @@ body {
   color: var(--ink);
 }
 
-.inspector-title {
+/* Specificity is load-bearing here: the inspector card also carries .panel,
+   so a bare class selector would lose to `.panel h2` and render the entity
+   title smaller than its own supporting text. */
+.inspector-card .inspector-title {
   margin: 0;
-  font-size: 1.14rem;
+  font-size: var(--text-l3-inspector);
   font-weight: 700;
   letter-spacing: -0.01em;
-  line-height: 1.3;
+  line-height: var(--leading-snug);
   color: var(--ink);
+  text-transform: none;
 }
 
 .inspector-summary .inspector-lead {
   margin: 0;
-  font-size: 0.84rem;
-  line-height: 1.5;
+  font-size: var(--text-l3-entity);
+  line-height: var(--leading-relaxed);
   color: var(--ink-secondary);
 }
 
@@ -702,12 +748,12 @@ body {
   display: inline-flex;
   align-items: center;
   font-family: var(--font-mono);
-  font-size: 0.63rem;
+  font-size: var(--text-kicker);
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--muted);
-  line-height: 1.2;
+  line-height: var(--leading-tight);
 }
 
 .sub-badge.tone-neutral {
@@ -737,8 +783,8 @@ body {
 
 .sub-body {
   margin-top: 4px;
-  font-size: 0.8rem;
-  line-height: 1.5;
+  font-size: var(--text-l4-support);
+  line-height: var(--leading-relaxed);
   color: var(--ink-secondary);
 }
 
@@ -766,7 +812,7 @@ body {
 }
 
 .copy-toast {
-  font-size: 0.74rem;
+  font-size: var(--text-chip);
   font-weight: 600;
   color: #1a7f37;
   text-align: center;
@@ -800,7 +846,7 @@ body {
    rules below foreground the newest two transitions). */
 .panel-recent {
   border-radius: var(--radius-md);
-  padding: 16px 18px;
+  padding: var(--pad-panel);
   background: var(--panel);
   border: 1px solid var(--line);
 }
@@ -811,7 +857,7 @@ body {
   flex-wrap: wrap;
   gap: 8px;
   font-family: var(--font-mono);
-  font-size: 0.74rem;
+  font-size: var(--text-l2-section);
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -822,8 +868,8 @@ body {
 }
 
 .panel-recent .panel-body {
-  font-size: 0.88rem;
-  line-height: 1.6;
+  font-size: var(--text-l3-body);
+  line-height: var(--leading-loose);
   color: var(--ink);
 }
 
@@ -836,7 +882,7 @@ body {
 .panel-recent .panel-body li {
   margin-bottom: 0.4em;
   color: var(--ink-secondary);
-  line-height: 1.55;
+  line-height: var(--leading-relaxed);
 }
 
 /* Recent Progress is a rolling transition window: foreground the newest two,
@@ -844,8 +890,8 @@ body {
 .panel-recent .panel-body > ul > li:nth-child(-n + 2),
 .panel-recent .panel-body > ol > li:nth-child(-n + 2) {
   color: var(--ink);
-  font-size: 0.94rem;
-  line-height: 1.6;
+  font-size: var(--text-recent-new);
+  line-height: var(--leading-loose);
 }
 
 .panel-recent .panel-body > ul > li:first-child,
@@ -863,8 +909,8 @@ body {
 .panel-recent .panel-body > ul > li:nth-child(n + 3),
 .panel-recent .panel-body > ol > li:nth-child(n + 3) {
   color: var(--muted);
-  font-size: 0.82rem;
-  line-height: 1.45;
+  font-size: var(--text-recent-old);
+  line-height: var(--leading-normal);
 }
 
 .panel-recent .panel-body > ul > li:nth-child(n + 3)::marker,
@@ -893,14 +939,16 @@ body {
 
 .panel-stable {
   border-radius: var(--radius-sm);
-  padding: 11px 14px;
+  padding: var(--pad-panel-quiet);
   background: var(--panel);
   border: 1px solid var(--line-subtle);
 }
 
 .panel-stable h2 {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  /* Intentional quiet exception: stable context is persistent background, not
+     orientation, so its headings sit one step below the section level. */
+  font-size: var(--text-micro);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -911,8 +959,8 @@ body {
 }
 
 .panel-stable .panel-body {
-  font-size: 0.81rem;
-  line-height: 1.45;
+  font-size: var(--text-l4-stable);
+  line-height: var(--leading-normal);
   color: var(--ink-secondary);
 }
 
@@ -1040,7 +1088,9 @@ body {
   justify-content: center;
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 0.95rem;
+  /* Arrow glyph sized for visibility, not running text; shares the rail size
+     so connectors never outrank surrounding headings. */
+  font-size: var(--text-l2-rail);
   font-weight: 700;
   user-select: none;
   flex-shrink: 0;
@@ -1075,7 +1125,7 @@ body {
 .flow-step-arrow {
   text-align: center;
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: var(--text-micro);
   line-height: 1;
   user-select: none;
   padding: 1px 0;
@@ -1169,17 +1219,17 @@ body {
   display: block;
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: var(--text-kicker);
   font-weight: 700;
   letter-spacing: 0.08em;
-  line-height: 1.2;
+  line-height: var(--leading-tight);
   text-transform: uppercase;
 }
 
 .surface-note {
   color: var(--muted);
-  font-size: 0.72rem;
-  line-height: 1.35;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
   text-align: right;
 }
 
@@ -1197,7 +1247,7 @@ body {
   border-radius: var(--radius-xs);
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: var(--text-kicker);
   font-weight: 700;
   letter-spacing: 0.04em;
   line-height: 1;
@@ -1234,8 +1284,8 @@ body {
   min-width: 0;
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 0.63rem;
-  line-height: 1.4;
+  font-size: var(--text-kicker);
+  line-height: var(--leading-normal);
 }
 
 .inspector-breadcrumb button {
@@ -1252,7 +1302,7 @@ body {
 }
 
 .breadcrumb-separator {
-  color: var(--muted-soft, var(--muted));
+  color: var(--muted);
 }
 
 .inspector-identity {
@@ -1271,7 +1321,7 @@ body {
   color: var(--accent);
   cursor: pointer;
   font: inherit;
-  font-size: 0.7rem;
+  font-size: var(--text-micro);
   font-weight: 600;
 }
 
@@ -1293,11 +1343,13 @@ body {
   }
 }
 
-/* Orientation panels: 지금 / 다음 / 막힘 (overview column companions to the map). */
+/* Orientation panels: 지금 / 다음 / 막힘 (overview column companions to the map).
+   Importance is carried by typography and geometry, not by identical card
+   chrome: only the primary surface (지금) keeps the accent edge. 다음 and
+   막힘 read as quieter companions; 막힘 signals through its heading ink
+   (existing failure token, no new accent) only when it is present. */
 .panel-status {
-  padding: 18px 22px;
-  border-left: 3px solid var(--accent);
-  box-shadow: var(--shadow-xs);
+  padding: var(--pad-panel);
 }
 
 .panel-status .panel-header {
@@ -1305,10 +1357,37 @@ body {
   border-bottom: 1px solid var(--line-subtle);
 }
 
+.panel-status .panel-body {
+  font-size: var(--text-l3-body);
+  line-height: var(--leading-loose);
+  color: var(--ink-secondary);
+}
+
+#slot-now {
+  border-left: 2px solid var(--accent);
+}
+
+#slot-now .panel-header h2 {
+  color: var(--ink);
+}
+
+#slot-now .panel-body {
+  font-size: var(--text-l3-lead);
+  color: var(--ink);
+}
+
+#slot-next .panel-header h2 {
+  color: var(--ink-secondary);
+}
+
+#slot-blocked .panel-header h2 {
+  color: var(--badge-remaining-ink);
+}
+
 /* Current-stage identity tag inside the native map (NOW · 현재 단계 group). */
 .stage-id-tag {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: var(--text-micro);
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--ink);
@@ -1322,7 +1401,7 @@ body {
 
 .handoff-hint {
   color: var(--muted);
-  font-size: 0.72rem;
-  line-height: 1.35;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
   margin: 4px 0 0;
 }
