@@ -70,6 +70,21 @@ test("publication relation uses identity and containment before any phase rule",
   );
 });
 
+test("a stale ancestor tip is contained, never DIVERGED", async (t) => {
+  const repoDir = await initRepo(t);
+  const staleCandidateSha = git(repoDir, "rev-parse", "HEAD");
+  const remoteSha = await commitFile(repoDir, "remote.txt", "remote\n", "remote advance");
+
+  assert.equal(
+    relationFor(repoDir, staleCandidateSha, remoteSha),
+    PUBLICATION_RELATIONS.PUBLISHED_IN_REMOTE_HISTORY
+  );
+  assert.notEqual(
+    relationFor(repoDir, staleCandidateSha, remoteSha),
+    PUBLICATION_RELATIONS.DIVERGED
+  );
+});
+
 test("bindingPhase is mandatory and cannot silently default to PRE_FINAL_JIT", () => {
   assert.throws(
     () => evaluateJitBindingEligibility({ remoteChangedFiles: ["remote.txt"] }),

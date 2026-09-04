@@ -24,13 +24,19 @@ This is a decision criterion, not a scoring system, registry, or governance proc
 
 ## 3. Workspace
 
-Use the simplest safe workspace. The current checkout is fine when ownership and dirty state make it safe; a branch or worktree is an optional implementation choice when isolation materially improves safety. Workspace mechanics are not semantic authority. Never reset, stash, clean, or overwrite state that another session or the user intends to preserve.
+Use the simplest safe workspace. The current checkout is fine when ownership and dirty state make it safe; an isolated worktree is an optional implementation choice when isolation materially improves safety. Task isolation and branch identity are separate: isolation never implies a branch. Workspace mechanics are not semantic authority. Never reset, stash, clean, or overwrite state that another session or the user intends to preserve.
 
 ### BASE admission
 
-- At task start, fetch fresh `origin/main` and record the BASE SHA the task actually starts from. A mutation-intended task starts from that fresh BASE in a task-owned worktree/branch; it never implicitly inherits canonical-checkout dirty state or a stale worktree HEAD.
+- At task start, fetch fresh `origin/main` and record the BASE SHA the task actually starts from. A mutation-intended task starts from that fresh BASE in a task-owned isolated workspace; it never implicitly inherits canonical-checkout dirty state or a stale worktree HEAD. The ordinary isolated workspace is branch-free by default (`git worktree add --detach <path> <BASE>` or an equivalent repository-native detached path). Do not create a local branch when branch identity is not required.
 - The canonical checkout is a user-owned reading/publishing point, not a task BASE. A task worktree that is behind `origin/main` is a stale base, not a publication candidate: re-base the work onto fresh main by preserving completed semantic work and reusable proof and performing only the minimal final binding required for publication (see §6), not by publishing the stale candidate and not as a from-scratch semantic restart.
 - `dist/` is regenerated build output (`npm run build`). Never hand-merge `dist/*` hashed-asset churn across candidates; stale `dist/*` differences alone are mechanical staleness, never semantic overlap.
+
+### Branch identity and closure
+
+- Ordinary publication is direct to canonical `main` as an ordinary non-force fast-forward plus remote read-back (see §6). Do not create or push a remote task branch as part of ordinary publication. A local branch exists only when it carries identity needed beyond the task attempt (for example an explicit PR/review workflow that actually requires it); a remote task branch exists only while that explicit PR/review workflow actually requires it.
+- A ref whose tip is a strict ancestor of fresh `origin/main` is stale/contained, never `DIVERGED`. Only neither-contains-the-other is `DIVERGED` (see §6 and `scripts/publication-relation.mjs`).
+- After `COMPLETE / PUBLISHED` (or an explicit terminal `COMPLETE / NO_CHANGE`, `COMPLETE / LOCAL_ONLY`, or a reported terminal disposition with its resume point recorded), the owning executor removes only its own disposable worktree (`git worktree remove`) and its own local branch (`git branch -d`) when no longer needed. Never remove foreign/user-owned state, a branch with unique unpublished commits, an open PR, or an active worktree on guess. When in doubt, leave the ref and report the residual.
 
 ### Worktree dependencies
 
@@ -81,7 +87,7 @@ When topology alone is stale and neither semantic-owner nor proof-owner movement
 
 For publication-intended work, when the current user instruction authorizes it and no local-only restriction exists:
 
-- ordinary safe non-force fast-forward publication plus remote read-back is part of normal closure;
+- ordinary safe non-force fast-forward publication directly to canonical `main` plus remote read-back is part of normal closure; publication never creates or pushes a remote task branch by default;
 - an unpublished local candidate is not the normal terminal success state.
 
 Canonical terminal outcomes:
