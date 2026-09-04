@@ -243,6 +243,20 @@ function renderInspector(entity: InspectorEntity): void {
   if (copyToast && entity.kind !== "area") hideCopyFeedback(copyToast);
 }
 
+function projectMapSelection(): void {
+  const current = selectedAreaId;
+  document.querySelectorAll(".map-card").forEach((card) => {
+    card.classList.toggle(
+      "selected",
+      current !== null && card.getAttribute("data-item-id") === current
+    );
+  });
+}
+
+function resolveSelectedAreaId(entity: InspectorEntity): string | null {
+  return entity.areaItem?.id ?? entity.evidenceParent?.areaItem?.id ?? null;
+}
+
 function openInspector(entity: InspectorEntity, replace = false): void {
   if (replace) {
     inspectorHistory = [entity];
@@ -254,10 +268,8 @@ function openInspector(entity: InspectorEntity, replace = false): void {
       inspectorHistory.push(entity);
     }
   }
-  selectedAreaId = entity.areaItem?.id ?? null;
-  document.querySelectorAll(".map-card.selected").forEach((card) => {
-    card.classList.toggle("selected", card.getAttribute("data-item-id") === selectedAreaId);
-  });
+  selectedAreaId = resolveSelectedAreaId(entity);
+  projectMapSelection();
   if (entity.areaItem) {
     document.querySelector(`[data-item-id="${CSS.escape(entity.areaItem.id)}"]`)?.scrollIntoView({
       behavior: "smooth",
@@ -273,7 +285,7 @@ function closeInspector(): void {
   selectedAreaId = null;
   const aside = document.getElementById("inspector-aside");
   if (aside) aside.hidden = true;
-  document.querySelectorAll(".map-card.selected").forEach((card) => card.classList.remove("selected"));
+  projectMapSelection();
 }
 
 function bindInspectorActions(): void {
@@ -289,6 +301,8 @@ function bindInspectorActions(): void {
       const entity = inspectorHistory[index];
       if (entity) {
         inspectorHistory = inspectorHistory.slice(0, index + 1);
+        selectedAreaId = resolveSelectedAreaId(entity);
+        projectMapSelection();
         renderInspector(entity);
       }
       return;

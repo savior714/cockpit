@@ -665,3 +665,40 @@ test("Contracted orientation invariant: map items drill to evidence, overview re
   assert.ok(entity.subsections.some((s) => s.tone === "danger"), "remaining problem reads as danger");
   assert.ok(entity.subsections.some((s) => s.tone === "evidence"), "evidence reads as evidence");
 });
+
+test("Map selection projection invariant: selected area marks exactly its own card", () => {
+  const mapDoc = `
+## 프로젝트 지도
+
+### 테스트 레일
+#### 또래 그룹
+- **항목 A** — 설명 A
+- **항목 B** — 설명 B
+`;
+  const map = parseProjectMap(splitSections(md.parse(mapDoc, {})).sections.get("project map"));
+  const items = map.rails.flatMap((r) => r.groups).flatMap((g) => g.items);
+  assert.equal(items.length, 2);
+  const buttonTags = (html) => html.match(/<button[^>]*>/g) ?? [];
+  const tagFor = (html, id) => buttonTags(html).find((tag) => tag.includes(`data-item-id="${id}"`));
+
+  // Selecting one area marks exactly its own card.
+  const selectedHtml = renderNativeMap(map, items[0].id);
+  assert.ok(tagFor(selectedHtml, items[0].id)?.includes("selected"), "selected area card carries .selected");
+  assert.equal(tagFor(selectedHtml, items[1].id)?.includes("selected"), false, "unselected card stays unmarked");
+  assert.equal(selectedHtml.match(/selected/g)?.length ?? 0, 1, "exactly one card is selected");
+
+  // No selection marks no card.
+  for (const empty of [renderNativeMap(map, null), renderNativeMap(map)]) {
+    assert.equal(empty.includes("selected"), false, "no selected area means no .selected card");
+  }
+
+  // main.ts must project selection over every map card: iterating only
+  // already-selected cards leaves the first click unmarked (no candidates).
+  const mainSource = fs.readFileSync(path.join(__dirname, "..", "src", "main.ts"), "utf-8");
+  assert.ok(mainSource.includes('querySelectorAll(".map-card")'), "selection projects over all map cards");
+  assert.equal(
+    mainSource.includes('querySelectorAll(".map-card.selected")'),
+    false,
+    "selection must not iterate only already-selected cards"
+  );
+});
