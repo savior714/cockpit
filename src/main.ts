@@ -1,7 +1,6 @@
 import type { Token } from "./markdown-structure.js";
 import mermaid from "mermaid";
 import "./style.css";
-import { HERE_MARKER } from "./authoring-grammar.js";
 import {
   escapeHtml,
   md,
@@ -440,19 +439,6 @@ async function renderDoc(source: string): Promise<void> {
       await mermaid.run({ nodes: diagrams, suppressErrors: true });
     } catch {
       /* Mermaid owns its own render errors. */
-    }
-  }
-
-  if (!currentParsedMap.hasCurrentStage) {
-    for (const element of diagrams) {
-      const sourceText = element.getAttribute("data-src") ?? "";
-      if (!element.closest("#slot-map")) continue;
-      const marker = HERE_MARKER.exec(sourceText);
-      if (!marker) continue;
-      const node = document.querySelector<SVGGElement>(
-        `#slot-map [id$="-flowchart-${marker[1]}"], #slot-map [id*="-flowchart-${marker[1]}-"]`
-      );
-      node?.classList.add("you-are-here");
     }
   }
 }

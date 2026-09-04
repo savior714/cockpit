@@ -34,7 +34,7 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const md = new MarkdownIt({ html: true, linkify: true });
 
-test("Native map rendering structural invariant across trajectory and neutral rails", () => {
+test("Native map rendering invariant: uniform project-vocabulary groups, single YOU ARE HERE highlight", () => {
   const filePath = path.join(__dirname, "fixtures", "operational-system.md");
   const markdown = fs.readFileSync(filePath, "utf-8");
 
@@ -46,22 +46,22 @@ test("Native map rendering structural invariant across trajectory and neutral ra
 
   const renderedHtml = renderNativeMap(parsedMap);
 
-  // 1. Structural containers
+  // 1. Structural containers: one neutral rail kind, no journey typology.
   assert.ok(renderedHtml.includes("native-project-map"));
   assert.ok(renderedHtml.includes("map-rail-neutral"));
-  assert.ok(renderedHtml.includes("map-rail-trajectory"));
-  assert.ok(renderedHtml.includes("trajectory-groups-container"));
+  assert.equal(renderedHtml.includes("map-rail-trajectory"), false, "journey rail typology must not leak");
+  assert.equal(renderedHtml.includes("trajectory-groups-container"), false, "journey container must not leak");
   assert.ok(renderedHtml.includes("neutral-groups-container"));
 
-  // 2. Trajectory sub-group components
-  assert.ok(renderedHtml.includes("group-foundation"));
+  // 2. Only the position group is special; former journey groups render uniformly.
   assert.ok(renderedHtml.includes("group-current-stage"));
-  assert.ok(renderedHtml.includes("group-future"));
+  assert.equal(renderedHtml.includes("group-foundation"), false, "no privileged foundation groups");
+  assert.equal(renderedHtml.includes("group-future"), false, "no privileged future groups");
 
   // 3. Card types and accessibility tags
-  assert.ok(renderedHtml.includes("card-foundation"));
   assert.ok(renderedHtml.includes("card-current-stage"));
-  assert.ok(renderedHtml.includes("card-future"));
+  assert.equal(renderedHtml.includes("card-foundation"), false, "no privileged foundation cards");
+  assert.equal(renderedHtml.includes("card-future"), false, "no privileged future cards");
   assert.ok(renderedHtml.includes("현재 단계"));
   assert.equal(renderedHtml.includes("NOW ·"), false, "map must not expose internal shorthand");
   assert.ok(renderedHtml.includes("영역 상세 보기"));
@@ -204,10 +204,14 @@ test("DOM and CSS containment invariant: primary workspace leads Map-first, stab
   assert.ok(slotFrameIdx !== -1, "index.html must have #slot-frame");
   assert.ok(slotSettledIdx !== -1, "index.html must have #slot-settled");
 
-  // MAP-FIRST: map renders before orientation; recent leads before stable context.
+  // MAP-FIRST: map opens the primary workspace; Now/Next/Blocked follow the
+  // anchor; Recent reads as secondary context after the context region opens.
+  const slotNowIdx = html.indexOf('id="slot-now"');
+  const slotBlockedIdx = html.indexOf('id="slot-blocked"');
   assert.ok(primaryIdx < slotMapIdx, "#slot-map must open the primary workspace");
-  assert.ok(slotMapIdx < slotRecentIdx, "orientation follows the map anchor");
-  assert.ok(slotRecentIdx < contextRegionIdx, "recent changes precede the context region");
+  assert.ok(slotMapIdx < slotNowIdx && slotNowIdx < slotBlockedIdx, "orientation follows the map anchor");
+  assert.ok(slotBlockedIdx < contextRegionIdx, "primary orientation precedes the context region");
+  assert.ok(contextRegionIdx < slotRecentIdx, "recent changes read as secondary context");
   assert.ok(contextRegionIdx < stableGridIdx, ".stable-context-grid must be inside #context-region");
   assert.ok(stableGridIdx < slotFrameIdx, "#slot-frame must be inside .stable-context-grid");
   assert.ok(stableGridIdx < slotSettledIdx, "#slot-settled must be inside .stable-context-grid");
@@ -335,8 +339,9 @@ test("DOM and CSS containment: focus copy action and toast elements exist inside
 
 test("Reader-visible DOM leads Map-first and exposes one area Inspector shell", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf-8");
-  // Map-first primary order: map anchor, then orientation, then inspector.
-  const ids = ["slot-map", "slot-now", "slot-next", "slot-blocked", "slot-recent", "inspector-aside"];
+  // Contracted hierarchy: map anchor, then Now/Next/Blocked orientation, then
+  // the Inspector drill-down; Recent/Focus/Frame/Settled read as secondary context.
+  const ids = ["slot-map", "slot-now", "slot-next", "slot-blocked", "inspector-aside", "slot-focus", "slot-recent", "slot-frame", "slot-settled"];
   const positions = ids.map((id) => html.indexOf(`id="${id}"`));
   assert.ok(positions.every((position) => position !== -1));
   assert.deepEqual([...positions].sort((a, b) => a - b), positions);
@@ -567,12 +572,14 @@ test("Contraction proof: no Stage/Posture/Frontier/Thread/Movement owners surviv
   const mainSource = fs.readFileSync(path.join(__dirname, "..", "src", "main.ts"), "utf-8");
   assert.equal(mainSource.includes("renderStatusSynthesis"), false);
   assert.equal(mainSource.includes("renderThreadsSecondary"), false);
+  assert.equal(mainSource.includes("HERE_MARKER"), false, "dead mermaid position fallback must not survive");
+  assert.ok(mainSource.includes("MAP-FIRST"));
   assert.equal(mainSource.includes("function stageEntity"), false);
   assert.equal(mainSource.includes("function frontierEntity"), false);
   assert.ok(mainSource.includes("MAP-FIRST"));
 
   const projectionSource = fs.readFileSync(path.join(__dirname, "..", "src", "inspector-projection.ts"), "utf-8");
-  for (const removed of ["stageEntity", "postureEntity", "frontierEntity", "threadEntity", "movementEntity", "relatedEntity", "renderStatusSynthesis", "renderThreadsSecondary", "stage-gate-reason", "판정 이유", "isActiveHeading", "entrycondition", "openswhen", "stageimpact", "whynow", "materialchange", "closedboundaries", "horizonText", "\"active\""]) {
+  for (const removed of ["stageEntity", "postureEntity", "frontierEntity", "threadEntity", "movementEntity", "relatedEntity", "renderStatusSynthesis", "renderThreadsSecondary", "stage-gate-reason", "판정 이유", "isActiveHeading", "entrycondition", "openswhen", "stageimpact", "whynow", "materialchange", "closedboundaries", "horizonText", "\"active\"", "isFoundationHeading", "isFutureHeading", "railType", "trajectory-groups-container", "group-foundation", "group-future", "card-foundation", "card-future", "future-steps-flow", "stage-id-tag", "currentStageLabel"]) {
     assert.equal(projectionSource.includes(removed), false, `projection must not contain: ${removed}`);
   }
 
@@ -586,10 +593,14 @@ test("Contraction proof: no Stage/Posture/Frontier/Thread/Movement owners surviv
   const grammarSource = fs.readFileSync(path.join(__dirname, "..", "src", "authoring-grammar.ts"), "utf-8");
   assert.equal(grammarSource.includes('"FAILED"'), false);
   assert.equal(grammarSource.includes("RELATION_GRAMMAR_RULES"), false);
+  for (const removed of ["isFoundationHeading", "isFutureHeading", "HERE_MARKER"]) {
+    assert.equal(grammarSource.includes(removed), false, `grammar must not contain: ${removed}`);
+  }
 
   const constructionSource = fs.readFileSync(path.join(__dirname, "..", "src", "semantic-construction.ts"), "utf-8");
   assert.equal(constructionSource.includes("decisionReason"), false);
   assert.equal(constructionSource.includes("parseMentalModel"), false);
+  assert.equal(constructionSource.includes("railType"), false, "construction must not assign journey typology");
 
   const domainSource = fs.readFileSync(path.join(__dirname, "..", "src", "domain.ts"), "utf-8");
   const domainCode = domainSource.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");

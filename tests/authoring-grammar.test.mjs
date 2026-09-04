@@ -9,8 +9,6 @@ import {
   normalizeTitle,
   HEADING_ALIAS,
   isCurrentStageHeading,
-  isFoundationHeading,
-  isFutureHeading,
 } from "../dist/authoring-grammar.js";
 import {
   normalizeHeading,
@@ -181,30 +179,15 @@ test("Exact canonical current stage heading matching", () => {
   assert.equal(isCurrentStageHeading("기반"), false);
 });
 
-test("Explicit foundation and future heading aliases", () => {
-  // Foundation aliases
-  assert.equal(isFoundationHeading("확보된 기반"), true);
-  assert.equal(isFoundationHeading("기반"), true);
-  assert.equal(isFoundationHeading("Secured Foundation"), true);
-  assert.equal(isFoundationHeading("Foundation"), true);
-
-  // False foundation matches (broad substring rejection)
-  assert.equal(isFoundationHeading("현재 확보된 기반"), false);
-  assert.equal(isFoundationHeading("기반 기술 조사"), false);
-  assert.equal(isFoundationHeading("완료된 작업"), false);
-
-  // Future aliases
-  assert.equal(isFutureHeading("앞으로의 도입 경로"), true);
-  assert.equal(isFutureHeading("앞으로의 경로"), true);
-  assert.equal(isFutureHeading("향후 여정"), true);
-  assert.equal(isFutureHeading("향후 계획"), true);
-  assert.equal(isFutureHeading("Future Trajectory"), true);
-  assert.equal(isFutureHeading("Roadmap"), true);
-  assert.equal(isFutureHeading("Next Steps"), true);
-
-  // False future matches (broad substring rejection)
-  assert.equal(isFutureHeading("다음 문제"), false);
-  assert.equal(isFutureHeading("경로 탐색"), false);
+test("Project-vocabulary groups carry no Cockpit privilege: only the Current Stage marker is special", async () => {
+  const grammar = await import("../dist/authoring-grammar.js");
+  for (const removed of ["isFoundationHeading", "isFutureHeading", "HERE_MARKER"]) {
+    assert.equal(removed in grammar, false, `grammar must not export: ${removed}`);
+  }
+  // Former journey headings are now ordinary project vocabulary.
+  for (const ordinary of ["확보된 기반", "기반", "향후 여정", "향후 계획", "Roadmap", "Foundation"]) {
+    assert.equal(isCurrentStageHeading(ordinary), false, `${ordinary} must not mark position`);
+  }
 });
 
 test("Heading aliases contract: Korean and English Area Details and Context slots", () => {

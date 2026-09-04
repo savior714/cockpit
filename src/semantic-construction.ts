@@ -13,8 +13,10 @@
  * Overview sections (situation / next / facing / recent / focus / frame /
  * settled) are intentionally NOT structured sub-ontologies here. They are
  * plain-text sections rendered directly from Tokens; this module owns no
- * Horizon/Stage/Posture/Frontier/Thread/Movement parsers and no relation
- * graph.
+ * Horizon/Stage/Posture/Frontier/Thread/Movement parsers, no
+ * trajectory/neutral rail typology, no privileged foundation/future
+ * group kinds, and no relation graph. The only position signal is the
+ * optional `현재 단계` (`Current Stage`) group marker.
  */
 
 import type { Token } from "./markdown-structure.js";
@@ -132,10 +134,6 @@ export function parseProjectMap(tokens: Token[]): ParsedMap {
   const flushRail = () => {
     flushGroup();
     if (currentRail && currentRail.groups.length > 0) {
-      const isTrajectory = currentRail.groups.some((g) =>
-        isCurrentStageHeading(g.title)
-      );
-      currentRail.railType = isTrajectory ? "trajectory" : "neutral";
       rails.push(currentRail);
       currentRail = null;
     }
@@ -148,7 +146,6 @@ export function parseProjectMap(tokens: Token[]): ParsedMap {
       const railTitle = tokens[i + 1]?.content.trim() ?? "지도 레일";
       currentRail = {
         title: railTitle,
-        railType: "neutral",
         groups: [],
       };
       i += 2;

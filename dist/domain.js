@@ -7,7 +7,12 @@
  * or DOM-oriented data.
  *
  * Canonical concepts (one owner per reader question):
- * - Project Map: what the project is made of + where the current position is
+ * - Project Map: what the project is made of + where the current position is.
+ *   Rails and groups carry the project's own vocabulary; the only
+ *   Cockpit-owned marker is the optional `현재 단계` (`Current Stage`)
+ *   group whose items read as YOU ARE HERE. There is no
+ *   trajectory/neutral rail typology and no privileged
+ *   foundation/future group kind.
  * - Area Detail: what an area means, its current level, and its evidence
  * - Overview sections (focus / situation / next / facing / recent /
  *   frame / settled) are plain-text sections owned by the Markdown

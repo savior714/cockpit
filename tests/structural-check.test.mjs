@@ -254,8 +254,7 @@ test("Structural check: Multi-rail independent Current Stages across different r
 
   const parsedMap = parseProjectMap(sections.get("project map"));
   assert.equal(parsedMap.rails.length, 2);
-  assert.equal(parsedMap.rails[0].railType, "trajectory");
-  assert.equal(parsedMap.rails[1].railType, "trajectory");
+  assert.ok(parsedMap.rails.every((rail) => !("railType" in rail)), "rails carry no journey typology");
 
   const result = checkProgressStructure(multiCurrentDoc);
   assert.equal(result.ok, true, "Multi-rail with independent Current Stages must PASS check");
@@ -697,11 +696,9 @@ test("Current Stage Canonical Semantics: Multi-rail independent Current Stages +
 
   assert.equal(parsedMap.rails.length, 3);
   assert.equal(parsedMap.rails[0].title, "데이터 수집 궤적");
-  assert.equal(parsedMap.rails[0].railType, "trajectory");
   assert.equal(parsedMap.rails[1].title, "서빙 및 추론 궤적");
-  assert.equal(parsedMap.rails[1].railType, "trajectory");
   assert.equal(parsedMap.rails[2].title, "시스템 인프라");
-  assert.equal(parsedMap.rails[2].railType, "neutral");
+  assert.ok(parsedMap.rails.every((rail) => !("railType" in rail)), "rails carry no journey typology");
 
   // Rail 1 has 1 current item, Rail 2 has 2 current items
   const r1Current = parsedMap.rails[0].groups.find((g) => isCurrentStageHeading(g.title));
@@ -713,7 +710,7 @@ test("Current Stage Canonical Semantics: Multi-rail independent Current Stages +
   assert.equal(r2Current?.items[0].title, "온라인 A/B 테스트");
   assert.equal(r2Current?.items[1].title, "실시간 피드백 루프");
 
-  // Neutral rail has no current group
+  // Plain rail has no position group
   const r3Current = parsedMap.rails[2].groups.find((g) => isCurrentStageHeading(g.title));
   assert.equal(r3Current, undefined);
 

@@ -9,7 +9,7 @@
  *
  * Structural PASS means: required map + area details exist, every map item
  * resolves to exactly one area detail (no missing/orphan/duplicates), at
- * most one Current Stage group per rail, at most one Current Focus, and
+ * most one Current Stage (YOU ARE HERE) group per map rail, at most one Current Focus, and
  * overview sections stay free of low-level telemetry dumps. It never
  * checks semantic truth (external-agent responsibility).
  *

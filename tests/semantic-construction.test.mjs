@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import MarkdownIt from "markdown-it";
-import { normalizeTitle, normalizeKey, isCurrentStageHeading, isFoundationHeading, isFutureHeading } from "../dist/authoring-grammar.js";
+import { normalizeTitle, normalizeKey, isCurrentStageHeading } from "../dist/authoring-grammar.js";
 import {
   splitSections,
   extractSectionRawText,
@@ -49,20 +49,20 @@ test("Synthetic Fixture 1: Operational and telemetry system topology verificatio
   assert.equal(parsedMap.isNativeMap, true);
   assert.equal(parsedMap.rails.length, 3);
 
-  // Rail 1: Neutral operational rail
+  // Rail 1: plain project vocabulary
   const rail1 = parsedMap.rails[0];
-  assert.equal(rail1.railType, "neutral");
+  assert.equal("railType" in rail1, false, "rails carry no journey typology");
   assert.equal(rail1.groups.length, 2);
 
-  // Rail 2: Trajectory rail owning '현재 단계' along with Foundation and Future groups
+  // Rail 2: rail owning '현재 단계'; other groups are ordinary project vocabulary
   const rail2 = parsedMap.rails[1];
-  assert.equal(rail2.railType, "trajectory");
+  assert.equal("railType" in rail2, false, "rails carry no journey typology");
   assert.equal(rail2.groups.length, 3);
-  assert.equal(parsedMap.hasCurrentStage, true, "Trajectory rail must set hasCurrentStage to true");
+  assert.equal(parsedMap.hasCurrentStage, true, "Current Stage group must set hasCurrentStage to true");
 
-  // Rail 3: Neutral cloud/control rail
+  // Rail 3: plain project vocabulary
   const rail3 = parsedMap.rails[2];
-  assert.equal(rail3.railType, "neutral");
+  assert.equal("railType" in rail3, false, "rails carry no journey typology");
   assert.equal(rail3.groups.length, 2);
 
   // 2. Area details parsing under '## 영역별 상세'
@@ -123,20 +123,20 @@ test("Synthetic Fixture 2: Distributed software architecture verification", () =
   assert.equal(parsedMap.isNativeMap, true);
   assert.equal(parsedMap.rails.length, 3);
 
-  // Rail 1: Storage Subsystem (Neutral rail)
+  // Rail 1: Storage Subsystem (plain project vocabulary)
   const rail1 = parsedMap.rails[0];
-  assert.equal(rail1.railType, "neutral");
+  assert.equal("railType" in rail1, false, "rails carry no journey typology");
   assert.equal(rail1.groups.length, 2);
 
-  // Rail 2: Distributed Consensus & Replication (Trajectory rail owning 'Current Stage')
+  // Rail 2: Distributed Consensus & Replication (rail owning 'Current Stage')
   const rail2 = parsedMap.rails[1];
-  assert.equal(rail2.railType, "trajectory");
+  assert.equal("railType" in rail2, false, "rails carry no journey typology");
   assert.equal(rail2.groups.length, 3);
-  assert.equal(parsedMap.hasCurrentStage, true, "Trajectory rail must set hasCurrentStage to true");
+  assert.equal(parsedMap.hasCurrentStage, true, "Current Stage group must set hasCurrentStage to true");
 
-  // Rail 3: Cloud Storage & WAN (Neutral rail)
+  // Rail 3: Cloud Storage & WAN (plain project vocabulary)
   const rail3 = parsedMap.rails[2];
-  assert.equal(rail3.railType, "neutral");
+  assert.equal("railType" in rail3, false, "rails carry no journey typology");
   assert.equal(rail3.groups.length, 2);
 
   // 2. Area details parsing under '## Area Details'
@@ -197,20 +197,20 @@ test("Synthetic Fixture 3: Multicenter clinical research pipeline verification",
   assert.equal(parsedMap.isNativeMap, true);
   assert.equal(parsedMap.rails.length, 3);
 
-  // Rail 1: Data collection and cohort cleaning (Neutral rail)
+  // Rail 1: Data collection and cohort cleaning
   const rail1 = parsedMap.rails[0];
-  assert.equal(rail1.railType, "neutral");
+  assert.equal("railType" in rail1, false, "rails carry no journey typology");
   assert.equal(rail1.groups.length, 2);
 
-  // Rail 2: Statistical analysis & modeling (Trajectory rail owning '현재 단계')
+  // Rail 2: Statistical analysis & modeling (rail owning '현재 단계')
   const rail2 = parsedMap.rails[1];
-  assert.equal(rail2.railType, "trajectory");
+  assert.equal("railType" in rail2, false, "rails carry no journey typology");
   assert.equal(rail2.groups.length, 2);
-  assert.equal(parsedMap.hasCurrentStage, true, "Trajectory rail must set hasCurrentStage to true");
+  assert.equal(parsedMap.hasCurrentStage, true, "Current Stage group must set hasCurrentStage to true");
 
-  // Rail 3: Multicenter clinical validation (Neutral rail)
+  // Rail 3: Multicenter clinical validation
   const rail3 = parsedMap.rails[2];
-  assert.equal(rail3.railType, "neutral");
+  assert.equal("railType" in rail3, false, "rails carry no journey typology");
   assert.equal(rail3.groups.length, 1);
 
   // 2. Area details parsing under '## 영역 상세'
@@ -304,8 +304,8 @@ test("Recent changes stay a bounded semantic transition window under one merged 
   assert.ok(Number(recentNew[1]) > Number(recentOld[1]), "newest items must foreground above older items");
 });
 
-test("Independent multi-rail mental-model axis invariants: single Current Stage ownership and neutral rail coexistence", () => {
-  // Case A: Multi-rail map with 1 neutral operational rail and 1 trajectory rollout rail
+test("Independent multi-rail mental-model axis invariants: single Current Stage ownership and plain-rail coexistence", () => {
+  // Case A: Multi-rail map with 1 plain operational rail and 1 rail owning the position marker
   const multiRailDoc = `
 ## 프로젝트 지도
 
@@ -334,15 +334,15 @@ test("Independent multi-rail mental-model axis invariants: single Current Stage 
   assert.equal(parsedMap.isNativeMap, true);
   assert.equal(parsedMap.rails.length, 2);
 
-  // Rail 1: Neutral operational rail
+  // Rail 1: plain operational rail
   assert.equal(parsedMap.rails[0].title, "도메인 및 운영 모델");
-  assert.equal(parsedMap.rails[0].railType, "neutral");
+  assert.equal("railType" in parsedMap.rails[0], false, "rails carry no journey typology");
   assert.equal(parsedMap.rails[0].groups.length, 1);
   assert.equal(parsedMap.rails[0].groups[0].items.length, 2);
 
-  // Rail 2: Trajectory adoption rail owning Current Stage
+  // Rail 2: rail owning Current Stage; sibling groups are ordinary vocabulary
   assert.equal(parsedMap.rails[1].title, "도입 및 검증 여정");
-  assert.equal(parsedMap.rails[1].railType, "trajectory");
+  assert.equal("railType" in parsedMap.rails[1], false, "rails carry no journey typology");
   assert.equal(parsedMap.rails[1].groups.length, 3);
   assert.equal(parsedMap.hasCurrentStage, true);
   const currentGroup = parsedMap.rails[1].groups.find((g) => isCurrentStageHeading(g.title));
@@ -351,13 +351,13 @@ test("Independent multi-rail mental-model axis invariants: single Current Stage 
 
   const renderedHtml = renderNativeMap(parsedMap);
   assert.ok(renderedHtml.includes("map-rail-neutral"));
-  assert.ok(renderedHtml.includes("map-rail-trajectory"));
+  assert.equal(renderedHtml.includes("map-rail-trajectory"), false, "journey rail typology must not leak into markup");
   assert.ok(renderedHtml.includes("도메인 및 운영 모델"));
   assert.ok(renderedHtml.includes("도입 및 검증 여정"));
   assert.ok(renderedHtml.includes("현재 단계"));
   assert.equal(renderedHtml.includes("NOW ·"), false, "map must not expose internal shorthand");
 
-  // Case B: Single neutral rail (no current stage anywhere)
+  // Case B: Single plain rail (no current stage anywhere)
   const singleNeutralDoc = `
 ## 프로젝트 지도
 
@@ -372,7 +372,7 @@ test("Independent multi-rail mental-model axis invariants: single Current Stage 
   const singleSections = splitSections(singleTokens).sections;
   const singleParsed = parseProjectMap(singleSections.get("project map"));
   assert.equal(singleParsed.rails.length, 1);
-  assert.equal(singleParsed.rails[0].railType, "neutral");
+  assert.equal("railType" in singleParsed.rails[0], false, "rails carry no journey typology");
   assert.equal(singleParsed.hasCurrentStage, false);
 });
 
@@ -395,12 +395,10 @@ test("Fixture verification: visual-test-focus.md (Current Focus + multi-rail Cur
 
   const parsedMap = parseProjectMap(sections.get("project map"));
   assert.equal(parsedMap.rails.length, 3);
-  assert.equal(parsedMap.rails[0].railType, "trajectory");
-  assert.equal(parsedMap.rails[1].railType, "trajectory");
-  assert.equal(parsedMap.rails[2].railType, "neutral");
+  assert.ok(parsedMap.rails.every((rail) => !("railType" in rail)), "rails carry no journey typology");
 });
 
-test("Fixture verification: visual-test-nofocus.md (No Current Focus + single trajectory rail)", () => {
+test("Fixture verification: visual-test-nofocus.md (No Current Focus + single position-marked rail)", () => {
   const filePath = path.join(__dirname, "fixtures", "visual-test-nofocus.md");
   const content = fs.readFileSync(filePath, "utf-8");
 
@@ -531,13 +529,13 @@ test("Cockpit self fixture restores orientation from the primary surface", () =>
   assert.equal(parsedMap.isNativeMap, true);
 });
 
-test("Native map links its single current-stage group to the declared current stage", () => {
+test("Native map marks its single current-stage group as YOU ARE HERE with no journey label", () => {
   const markdown = `
-# Stage Linked Map
+# Position Marked Map
 
 ## 프로젝트 지도
 
-### Product trajectory
+### Product areas
 #### 현재 단계
 - **Release proof** — Exact release-level convergence
 `;
@@ -546,31 +544,34 @@ test("Native map links its single current-stage group to the declared current st
   const { sections } = splitSections(tokens);
   const parsedMap = parseProjectMap(sections.get("project map"));
 
-  const linked = renderNativeMap(parsedMap, null, undefined, "Stage 1A: Primary Care Baseline RC");
-  assert.ok(linked.includes("stage-id-tag"));
-  assert.ok(linked.includes("Stage 1A: Primary Care Baseline RC"));
-
-  const unlinked = renderNativeMap(parsedMap);
-  assert.ok(!unlinked.includes("stage-id-tag"));
+  const html = renderNativeMap(parsedMap);
+  assert.ok(html.includes("group-current-stage"), "position group highlights");
+  assert.ok(html.includes("card-current-stage"), "position items highlight");
+  assert.ok(html.includes("현재 단계"), "position tag reads plainly");
+  assert.equal(html.includes("stage-id-tag"), false, "no Stage-Gate label survives");
+  assert.equal(html.includes("trajectory"), false, "no journey typology leaks into markup");
+  assert.equal(html.includes("card-foundation"), false, "no privileged foundation cards");
+  assert.equal(html.includes("card-future"), false, "no privileged future cards");
 
   const ambiguousMarkdown = `
 # Two Current Stages
 
 ## 프로젝트 지도
 
-### Product trajectory
+### Product areas
 #### 현재 단계
 - **Release proof** — One
 
-### Delivery trajectory
+### Delivery areas
 #### 현재 단계
 - **Ops readiness** — Two
 `;
 
   const ambiguousTokens = md.parse(ambiguousMarkdown, {});
   const ambiguousMap = parseProjectMap(splitSections(ambiguousTokens).sections.get("project map"));
-  const ambiguousHtml = renderNativeMap(ambiguousMap, null, undefined, "Stage 1A: Primary Care Baseline RC");
-  assert.ok(!ambiguousHtml.includes("stage-id-tag"));
+  const ambiguousHtml = renderNativeMap(ambiguousMap);
+  assert.ok(ambiguousHtml.includes("group-current-stage"));
+  assert.equal(ambiguousHtml.includes("stage-id-tag"), false);
 });
 
 test("RECONSTRUCT regression: evidence-rich map/details with blank stable context is structural PASS, not semantic acceptance", () => {

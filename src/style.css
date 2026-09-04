@@ -15,21 +15,9 @@
   --accent-soft: #f0f6ff;
   --accent-border: #79b8ff;
 
-  /* Current Frontier Signature */
+  /* YOU ARE HERE position marker */
   --frontier-track: #0969da;
-  --stage-bg: #ffffff;
   --stage-border: #0969da;
-  --stage-ink: #0969da;
-
-  /* Foundation / Past */
-  --foundation-bg: #ffffff;
-  --foundation-border: #e2e8f0;
-  --foundation-ink: #334155;
-
-  /* Future Trajectory */
-  --future-bg: #ffffff;
-  --future-border: #cbd5e1;
-  --future-ink: #64748b;
 
   /* Inspector Sub-Badges (Cool / Functional) */
   --badge-bg: #f1f5f9;
@@ -107,17 +95,7 @@
     --accent-border: #0284c7;
 
     --frontier-track: #38bdf8;
-    --stage-bg: #121820;
     --stage-border: #38bdf8;
-    --stage-ink: #38bdf8;
-
-    --foundation-bg: #121820;
-    --foundation-border: #1e293b;
-    --foundation-ink: #94a3b8;
-
-    --future-bg: #121820;
-    --future-border: #334155;
-    --future-ink: #64748b;
 
     --badge-bg: #1e293b;
     --badge-ink: #94a3b8;
@@ -414,57 +392,14 @@ body {
   overflow-wrap: break-word;
 }
 
-/* Rail: Project Trajectory Grid (B1.2 Frontier Grid) */
-.trajectory-groups-container {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr) minmax(0, 1fr);
-  gap: 12px;
-  align-items: stretch;
-  position: relative;
-}
-
-.trajectory-group {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: 9px 11px;
-  min-width: 0;
-  position: relative;
-}
-
-.trajectory-group .group-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 5px;
-  border-bottom: 1px solid var(--line-subtle);
-}
-
-/* Foundation Group (Past / Settled) */
-.group-foundation {
-  background: var(--panel);
-}
-
+/* Map groups: uniform project-vocabulary containers. */
 .group-items-grid {
   display: flex;
   flex-direction: column;
   gap: 5px;
 }
 
-.card-foundation {
-  background: var(--panel);
-  border-color: var(--line);
-}
-
-.card-foundation .card-title {
-  color: var(--ink-secondary);
-  font-weight: 600;
-}
-
-/* CURRENT STAGE (Frontier Track Signature) */
+/* YOU ARE HERE (Current Stage position marker) */
 .group-current-stage {
   background: var(--panel);
   border-left: 2px solid var(--frontier-track);
@@ -508,31 +443,6 @@ body {
   border-left: 3px solid var(--accent) !important;
 }
 
-/* Future Group */
-.group-future {
-  background: var(--panel);
-}
-
-.future-steps-flow {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.card-future {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 7px;
-  background: var(--panel);
-  border: 1px dashed var(--line-strong);
-}
-
-.card-future .card-title {
-  color: var(--muted);
-  font-weight: 500;
-}
-
 .step-num {
   display: inline-flex;
   align-items: center;
@@ -556,16 +466,6 @@ body {
   gap: 2px;
   flex: 1;
   min-width: 0;
-}
-
-.future-step-arrow {
-  text-align: center;
-  color: var(--muted);
-  font-size: var(--text-micro);
-  line-height: 1;
-  user-select: none;
-  padding: 1px 0;
-  font-family: var(--font-mono);
 }
 
 /* Current Focus Section (Typography-Led Emphasis) */
@@ -1028,16 +928,7 @@ body {
   height: auto;
 }
 
-.you-are-here > rect,
-.you-are-here > polygon,
-.you-are-here > circle,
-.you-are-here > path.node-bkg {
-  stroke: var(--stage-border) !important;
-  stroke-width: 2px !important;
-  fill: var(--stage-bg) !important;
-}
-
-/* Neutral / Native Map Rail Groups & Explicit Relationship Flow */
+/* Neutral / Native Map Rail Groups */
 .neutral-groups-container {
   gap: 10px;
   align-items: stretch;
@@ -1158,10 +1049,6 @@ body {
 
   .stable-context-grid {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .trajectory-groups-container {
-    grid-template-columns: 1fr;
   }
 
   .neutral-groups-container.peer-track {
@@ -1339,19 +1226,4 @@ body {
 
 #slot-blocked .panel-header h2 {
   color: var(--badge-remaining-ink);
-}
-
-/* Current-stage identity tag inside the native map (현재 단계 group). */
-.stage-id-tag {
-  font-family: var(--font-mono);
-  font-size: var(--text-micro);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--ink);
-  background: var(--panel);
-  border: 1px solid var(--stage-border);
-  border-radius: 999px;
-  padding: 2px 8px;
-  margin-left: 8px;
-  white-space: nowrap;
 }

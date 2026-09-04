@@ -28,8 +28,10 @@
  *   next / facing / recent) are plain-text sections, not structured
  *   sub-ontologies. Legacy rich headings resolve into the merged plain
  *   slot via `HEADING_ALIAS`.
- * - The SemanticRelation graph was removed; Inspector navigates
- *   overview → area → evidence only.
+ * - The trajectory journey model (trajectory/neutral rails, privileged
+ *   foundation/future groups, the mermaid `%% YOU ARE HERE` fallback, and
+ *   the Stage-Gate `currentStageLabel`) was contracted away. The only
+ *   position signal is the optional `현재 단계` (`Current Stage`) group.
  * - Handoff owns project-context transport only. Execution Wave,
  *   admission, BASE, SEMANTIC_READY/PUBLISHABLE, JIT phases, freshness
  *   axes, WATCH_SURFACES, and publication race vocabulary were removed;
@@ -49,13 +51,10 @@ export {
 
 // Deterministic authoring vocabulary (implementation of README §5).
 export {
-  HERE_MARKER,
   HEADING_ALIAS,
   normalizeKey,
   normalizeTitle,
   isCurrentStageHeading,
-  isFoundationHeading,
-  isFutureHeading,
 } from "./authoring-grammar.js";
 
 // Clean presentation-free domain model (map + area details only).

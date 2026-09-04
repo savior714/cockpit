@@ -17,7 +17,7 @@ const md = new MarkdownIt({ html: true, linkify: true });
  * structure, position, next step, and material blockers from the primary
  * surface alone — without studying a Cockpit-specific ontology.
  */
-const FIXTURES = ["canonical-minimal.md", "cockpit-self.md", "nextchart-emr.md"];
+const FIXTURES = ["canonical-minimal.md", "cockpit-self.md", "nextchart-emr.md", "project-vocabulary.md"];
 
 for (const fixture of FIXTURES) {
   test(`Reader orientation restores from primary surface: ${fixture}`, () => {
@@ -71,10 +71,14 @@ for (const fixture of FIXTURES) {
   });
 }
 
-test("Primary DOM order anchors orientation: map before Now/Next/Blocked", () => {
+test("Primary DOM order anchors orientation: map before Now/Next/Blocked; Recent reads as secondary context", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf-8");
-  const order = ["slot-map", "slot-now", "slot-next", "slot-blocked", "slot-recent"]
+  const primary = ["slot-map", "slot-now", "slot-next", "slot-blocked"]
     .map((id) => html.indexOf(`id="${id}"`));
-  assert.ok(order.every((i) => i !== -1));
-  assert.deepEqual([...order].sort((a, b) => a - b), order);
+  assert.ok(primary.every((i) => i !== -1));
+  assert.deepEqual([...primary].sort((a, b) => a - b), primary);
+  const recent = html.indexOf('id="slot-recent"');
+  const context = html.indexOf('id="context-region"');
+  assert.ok(recent !== -1 && context !== -1 && recent > context, "Recent must live in the secondary context region");
+  assert.ok(recent > primary[primary.length - 1], "Recent must follow the primary Now/Next/Blocked surface");
 });

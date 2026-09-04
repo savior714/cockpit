@@ -8,10 +8,7 @@ import {
   normalizeTitle,
   normalizeHeading,
   HEADING_ALIAS,
-  HERE_MARKER,
   isCurrentStageHeading,
-  isFoundationHeading,
-  isFutureHeading,
   parseProjectMap,
   splitSections,
   parseAreaDetails,
@@ -62,7 +59,6 @@ test("Handoff context extraction: sibling module owns implementation, parser fac
 test("Parser facade compatibility: public dist/parser.js surface exposes required legacy symbols", () => {
   for (const [label, value] of [
     ["md", md],
-    ["HERE_MARKER", HERE_MARKER],
     ["HEADING_ALIAS", HEADING_ALIAS],
     ["normalizeKey", normalizeKey],
     ["normalizeTitle", normalizeTitle],
@@ -88,8 +84,6 @@ test("Parser facade compatibility: public dist/parser.js surface exposes require
     ["parseDocument", parseDocument],
     ["classifySubsectionTone", classifySubsectionTone],
     ["isCurrentStageHeading", isCurrentStageHeading],
-    ["isFoundationHeading", isFoundationHeading],
-    ["isFutureHeading", isFutureHeading],
   ]) {
     assert.equal(typeof value, typeof value === "string" ? "string" : typeof value, label);
     assert.ok(value !== undefined, `${label} must be exposed`);
@@ -110,6 +104,9 @@ test("Parser facade compatibility: public dist/parser.js surface exposes require
 test("Parser facade exposes no contracted canonical owners", async () => {
   const facade = await import("../dist/parser.js");
   for (const removed of [
+    "HERE_MARKER",
+    "isFoundationHeading",
+    "isFutureHeading",
     "parseProjectHorizon",
     "parseStageJourney",
     "parseProjectPosture",

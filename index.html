@@ -57,16 +57,6 @@
             </div>
             <div class="panel-body"></div>
           </section>
-
-          <!-- 최근 업데이트: 핵심 의미 전환만, 작업 나열이 아님. -->
-          <section id="slot-recent" class="panel panel-movement panel-recent" aria-label="최근 업데이트" hidden>
-            <div class="panel-header">
-              <div>
-                <h2>최근 업데이트</h2>
-              </div>
-            </div>
-            <div class="panel-body"></div>
-          </section>
         </div>
 
         <aside id="inspector-aside" class="universal-inspector-drawer" aria-label="상세 정보 창" hidden>
@@ -109,6 +99,16 @@
             </button>
             <span id="focus-copy-toast" class="copy-toast" role="status" aria-live="polite" hidden>✓ 에이전트에게 전달할 내용이 복사되었습니다</span>
           </div>
+        </section>
+
+        <!-- 최근 업데이트: 핵심 의미 전환만, 작업 나열이 아님. 보조 맥락으로 읽힌다. -->
+        <section id="slot-recent" class="panel panel-context panel-movement panel-recent" aria-label="최근 업데이트" hidden>
+          <div class="panel-header">
+            <div>
+              <h2>최근 업데이트</h2>
+            </div>
+          </div>
+          <div class="panel-body"></div>
         </section>
 
         <div class="stable-context-grid">

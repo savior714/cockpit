@@ -6,17 +6,28 @@
  * string normalization). One canonical slot per reader question:
  * map / area details / focus / situation / next / facing / recent /
  * frame / settled. Rich dual owners (Horizon-vs-Situation,
- * Frontier-vs-Next, Movement-vs-Recent) and the Stage/Posture/Thread
- * gate-maturity ontology were removed as off-mission canonical owners.
- * Legacy rich headings still resolve into the single merged slot so old
- * documents render as secondary context instead of failing.
+ * Frontier-vs-Next, Movement-vs-Recent), the Stage/Posture/Thread
+ * gate-maturity ontology, and the trajectory journey model
+ * (trajectory/neutral rails, foundation/future privileged groups) were
+ * removed as off-mission canonical owners. Legacy rich headings still
+ * resolve into the single merged slot so old documents render as
+ * secondary context instead of failing.
+ *
+ * Map position uses exactly one marker: an optional group titled exactly
+ * `현재 단계` (`Current Stage`) highlights its items as YOU ARE HERE.
+ * Every other group title is the project's own vocabulary and renders
+ * uniformly; no foundation/future heading carries privilege.
  *
  * Must not import markdown-it Token, rendered HTML, tone, or DOM.
  */
 
 import type { Token } from "./markdown-structure.js";
 
-export const HERE_MARKER = /^\s*%%\s*YOU\s+ARE\s+HERE\s*:\s*(\S+)/im;
+/** Exact canonical YOU ARE HERE group heading: the single position marker. */
+export function isCurrentStageHeading(rawTitle: string): boolean {
+  const norm = normalizeKey(rawTitle);
+  return norm === "현재단계" || norm === "currentstage";
+}
 
 /** Korean & English heading text → single canonical slot key per question. */
 export const HEADING_ALIAS: Record<string, string> = {
@@ -103,39 +114,6 @@ export function normalizeTitle(str: string): string {
     .trim()
     .replace(/\s+/g, " ")
     .toLowerCase();
-}
-
-/** Exact canonical current stage heading */
-export function isCurrentStageHeading(rawTitle: string): boolean {
-  const norm = normalizeKey(rawTitle);
-  return norm === "현재단계" || norm === "currentstage";
-}
-
-/** Explicit supported foundation aliases */
-export function isFoundationHeading(rawTitle: string): boolean {
-  const norm = normalizeKey(rawTitle);
-  return (
-    norm === "확보된기반" ||
-    norm === "기반" ||
-    norm === "securedfoundation" ||
-    norm === "foundation"
-  );
-}
-
-/** Explicit supported future aliases */
-export function isFutureHeading(rawTitle: string): boolean {
-  const norm = normalizeKey(rawTitle);
-  return (
-    norm === "앞으로의도입경로" ||
-    norm === "앞으로의경로" ||
-    norm === "향후여정" ||
-    norm === "향후계획" ||
-    norm === "도입경로" ||
-    norm === "futuretrajectory" ||
-    norm === "future" ||
-    norm === "roadmap" ||
-    norm === "nextsteps"
-  );
 }
 
 export function stripInlineMarkup(value: string): string {
