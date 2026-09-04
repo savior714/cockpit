@@ -1,5 +1,4 @@
 import type { Token } from "./markdown-structure.js";
-import mermaid from "mermaid";
 import "./style.css";
 import {
   escapeHtml,
@@ -32,19 +31,13 @@ import {
   buildFocusHandoffContext,
 } from "./handoff-context.js";
 import { getAreaCompleteness } from "./structural-check.js";
+import { renderMermaidDiagrams } from "./mermaid-loader.js";
 import type { AreaCompleteness } from "./structural-check.js";
 import type {
   AreaDetail,
   MapItem,
   ParsedMap,
 } from "./domain.js";
-
-mermaid.initialize({
-  startOnLoad: false,
-  securityLevel: "strict",
-  theme: "neutral",
-  flowchart: { useMaxWidth: false },
-});
 
 let activeProjectTitle = "Cockpit";
 let currentSections = new Map<string, Token[]>();
@@ -448,13 +441,7 @@ async function renderDoc(source: string): Promise<void> {
   }
 
   const diagrams = Array.from(document.querySelectorAll<HTMLElement>(".mermaid"));
-  if (diagrams.length) {
-    try {
-      await mermaid.run({ nodes: diagrams, suppressErrors: true });
-    } catch {
-      /* Mermaid owns its own render errors. */
-    }
-  }
+  await renderMermaidDiagrams(diagrams);
 }
 
 async function fetchAndRender(): Promise<void> {
