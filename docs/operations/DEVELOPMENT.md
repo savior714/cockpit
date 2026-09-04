@@ -96,6 +96,15 @@ Canonical terminal outcomes:
 - `COMPLETE / NO_CHANGE` — proof shows no mutation was required; this is a legitimate terminal result;
 - `COMPLETE / LOCAL_ONLY` — only when the task explicitly requested local-only work.
 
+Local implementation/proof completion alone never closes a publication-intended task as `COMPLETE`. When the local semantic delta and its required proof are complete but remote publication/read-back remains, report `CONTINUABLE` with the local/publication distinction kept explicit; do not close as `COMPLETE / LOCAL_ONLY` merely because a local change exists. `COMPLETE / LOCAL_ONLY` stays allowed only when the task explicitly restricted the work to local-only.
+
+Reporting shape only (not a new lifecycle state, enum, or schema):
+
+  RESULT: CONTINUABLE
+  LOCAL_CHANGE: COMPLETE
+  PUBLICATION: PENDING
+  RESUME_FROM: <exact next publication step>
+
 If publication cannot safely complete, report `CONTINUABLE` or `BLOCKED` with the concrete cause and exact resume point. `CONTINUABLE` means topology-only staleness: the semantic result and reusable proof stand, and the exact resume point is the minimal final JIT topology binding plus directly affected proof under fresh remote authority — not a semantic restart. If another writer advances the remote again after final binding, the current publication attempt lost the race: preserve `SEMANTIC_READY`, reusable proof, and candidate/reference, end the attempt as `CONTINUABLE`, and do not repeat rematerialization inside the same attempt. `BLOCKED` means proven semantic-owner overlap, superseded meaning, or a safety invariant (unclear ownership, foreign dirty state, required authority missing): the candidate must not be rematerialized blindly. Destructive or history-rewriting Git operations, force pushes, and external side effects (deployment, provider mutations) require explicit user authority.
 
 ## 7. Concurrency
