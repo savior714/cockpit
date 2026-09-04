@@ -2,105 +2,23 @@
 
 > Frozen testbed snapshot for Cockpit acceptance. This is not live EMR authority.
 
-## 프로젝트 지평
+## 현재 상황
 
-NextChart is beyond prototype work: representative primary-care delivery is established and the project is now in release-acceptance closure. The main direction is to turn strong core workflows and bounded reliability into a defensible production-ready stage, while security and external breadth remain partial.
+NextChart는 프로토타입을 넘어섰다. 대표 외래 진료 흐름과 핵심 회복 경계는 확립되어 있고, 현재 무게중심은 Stage 1A의 release-acceptance closure 증명에 있다. 보안과 외부 확장은 부분 상태로 남는다.
 
-## 단계 여정
+## 다음 전환
 
-### 현재 — Stage 1A: Primary Care Baseline RC
-- **CLOSED — Representative outpatient workflow**
-- **CLOSED — Clinician usability**
-- **CLOSED — Recovery / degraded continuity**
-- **IN PROOF — Exact release proof**
+Release-proof 미확정 상태 → Stage 1A release-acceptance 확정 상태. 정확한 release 경계에서 증거가 인정되면 닫히며, 이미 닫힌 대표 진료·회복 계열을 다시 열지 않는다. 그 이후 보안 closure와 외부 확장으로 넘어간다.
 
-### 다음 — Stage 1B
-NOT OPEN
-진입 조건: Stage 1A cannot be promoted until the exact release proof is admitted at the required boundary.
+## 직면한 문제
 
-## 프로젝트 상태
+- **Release proof 미확정** — 정확한 release 경계의 증거가 아직 인정되지 않아 다음 전환을 제한한다. 핵심 진료·회복 흐름 자체의 결함이 아니다.
+- **운영 보안 closure 잔여** — 기초 identity·세션은 확립되었으나 운영 보안 closure가 남아 Stage 1A 이후 과제로 제한된다.
 
-### Core Product — STRONG
-역할: CORE CAPABILITY
-Representative outpatient product paths are strong enough to anchor the current release candidate.
-관련 영역: Representative outpatient workflow
+## 최근 변화
 
-### Production Truth — PARTIAL
-Live-provider evidence has materially advanced, but the full release-level boundary is not yet closed.
-관련 영역: Production truth, Release proof
-
-### Reliability — STRONG
-Representative recovery and degraded-continuity boundaries are strong.
-관련 영역: Reliability & recovery
-
-### Security — PARTIAL
-Identity and session foundations are established while operational security closure remains.
-관련 영역: Security
-
-### External Breadth — PARTIAL
-The core outpatient boundary is stronger than the wider provider and external-network surface.
-관련 영역: External breadth
-
-### Delivery Readiness — PARTIAL
-역할: DELIVERY READINESS
-Stage 1A cannot be promoted until the exact release proof is admitted at the required boundary.
-관련 최전선: Exact release convergence
-관련 단계: Stage 1A: Primary Care Baseline RC
-
-## 현재 최전선
-
-### Exact release convergence
-현재: NOT PROVEN
-목표: PROVEN
-
-#### 왜 지금
-Core product and representative reliability are already strong; the nearest consequential transition is the release-level proof that can close Stage 1A.
-
-#### 완료 의미
-Stage 1A can be treated as accepted at the exact release boundary without reopening already closed representative families.
-
-#### 이미 닫힌 것
-- HIRA sentinel boundary
-- Golden Path workflow
-- clinician UX family
-- WAN recovery family
-
-관련 단계: Stage 1A: Primary Care Baseline RC
-관련 상태: Delivery Readiness
-관련 영역: Release proof, Production truth
-
-#### 근거
-- Frozen acceptance oracle records the exact release convergence boundary as the remaining transition.
-
-## 전략적 흐름
-
-### Security / certification readiness — PARTIAL
-Durable security closure remains important but does not own the nearest release transition.
-관련 상태: Security
-
-### External breadth — PARTIAL
-Broader provider and network coverage remains a parallel direction after the core boundary is stable.
-관련 상태: External Breadth
-
-## 최근 실질적 변화
-
-### Production truth
-이전: NOT PROVEN
-변경: A bounded real-provider sentinel was admitted into the project model.
-이후: PARTIAL
-관련 상태: Production Truth
-관련 영역: Production truth
-#### 근거
-- Frozen testbed snapshot records a narrow provider-truth transition, not broad external capability.
-
-### Reliability / recovery
-이전: PARTIAL
-변경: Representative degraded-continuity boundaries were closed.
-이후: STRONG
-관련 상태: Reliability
-관련 영역: Reliability & recovery
-#### 근거
-- Acceptance snapshot preserves the representative recovery boundary as closed.
+- **Provider sentinel 인정** → 한정된 실제 provider 경계 증거가 모델에 들어와 production truth가 부분 상태가 됨.
+- **저하-지속 복구 closure** → 대표 degraded-continuity 경계가 닫혀 reliability가 강한 상태가 됨.
 
 ## 프로젝트 지도
 
@@ -125,7 +43,7 @@ The representative primary-care journey that makes the product useful to clinici
 #### 현재 수준
 Strong in the frozen acceptance model.
 #### 근거
-- Representative workflow is marked CLOSED in the Stage 1A gate family.
+- Representative outpatient paths anchor the current release candidate.
 
 ### Production truth
 #### 의미
@@ -133,7 +51,7 @@ The boundary where provider-facing behavior is shown to work against the real ex
 #### 현재 수준
 Partial: the frozen snapshot admits a bounded sentinel, not the complete release boundary.
 #### 근거
-- The Production truth movement records NOT PROVEN → PARTIAL.
+- Recent progress records the narrow provider-truth transition.
 
 ### Reliability & recovery
 #### 의미
@@ -141,23 +59,25 @@ Recovery and degraded-continuity behavior that protects representative clinical 
 #### 현재 수준
 Strong for the representative boundaries in this snapshot.
 #### 근거
-- The Reliability / recovery movement records PARTIAL → STRONG.
+- Representative degraded-continuity boundaries are closed.
 
 ### Security
 #### 의미
 Identity, session, and operational security closure across the product boundary.
 #### 현재 수준
 Partial; foundational controls are stronger than remaining operational closure.
+#### 남은 문제
+- Operational security closure remains before the post-1A trajectory.
 #### 근거
-- Security is a partial Posture axis and a strategic thread.
+- Foundational identity and session controls are established.
 
 ### External breadth
 #### 의미
 Coverage beyond the representative primary-care and provider boundary.
 #### 현재 수준
-Partial and intentionally not represented as Stage 1A closure.
+Partial and intentionally not part of the nearest transition.
 #### 근거
-- External breadth remains a strategic thread rather than the Primary Frontier.
+- Wider provider and network coverage is declared as future trajectory.
 
 ### Release proof
 #### 의미
@@ -167,4 +87,8 @@ Not proven at the complete release boundary.
 #### 남은 문제
 - Exact release convergence remains open in the frozen acceptance model.
 #### 근거
-- Current Frontier declares NOT PROVEN → PROVEN.
+- The next transition above names this exact transition.
+
+## 제품 목표
+
+NextChart는 외래 진료 흐름을 검증 게이트가 걸린 5분 이내 신선도로 제공하는 근실시간 EMR 파이프라인으로, 레거시 야간 배치를 대체하는 것이 목표다.

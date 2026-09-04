@@ -17,34 +17,7 @@
       </header>
 
       <div id="primary-workspace" class="primary-workspace">
-        <div id="overview-panel" class="overview-panel" aria-label="프로젝트 개요">
-          <!-- Primary 1/3 — 프로젝트 현황: Horizon + Stage + salient Posture +
-               Primary Frontier를 하나의 reader-oriented 흐름으로 합성. 각 카드는
-               기존 semantic-card/Inspector drill-down을 그대로 재사용한다. -->
-          <section id="slot-status" class="panel panel-status" aria-label="프로젝트 현황" hidden>
-            <div class="panel-header">
-              <div>
-                <h2>프로젝트 현황</h2>
-              </div>
-              <span class="surface-note">현재 위치 · 주목할 상태 · 가장 가까운 핵심 전환</span>
-            </div>
-            <div class="panel-body status-synthesis"></div>
-          </section>
-
-          <!-- Primary 2/3 — 최근 변화: Material Movement 중심. Strategic Threads는
-               별도 primary panel이 아니라 내부 secondary로 낮춰 둔다. -->
-          <section id="slot-movement" class="panel panel-movement" aria-label="최근 변화" hidden>
-            <div class="panel-header">
-              <div>
-                <h2>최근 변화</h2>
-              </div>
-              <span class="surface-note">현재 진행 문서 기준 · 단순 작업 나열이 아닌 프로젝트 상태의 핵심 전환</span>
-            </div>
-            <div class="panel-body"></div>
-            <div class="threads-secondary-slot"></div>
-          </section>
-        </div>
-
+        <!-- MAP-FIRST: the project map is the mental anchor and comes first. -->
         <section id="slot-map" class="panel panel-map" aria-label="프로젝트 지도">
           <div class="panel-header">
             <div>
@@ -54,6 +27,52 @@
           </div>
           <div class="panel-body map-body"></div>
         </section>
+
+        <div id="overview-panel" class="overview-panel" aria-label="프로젝트 개요">
+          <!-- 지금: 프로젝트 전체가 현재 어떤 상태인지. -->
+          <section id="slot-now" class="panel panel-status" aria-label="지금" hidden>
+            <div class="panel-header">
+              <div>
+                <h2>지금</h2>
+              </div>
+              <span class="surface-note">프로젝트 전체의 현재 상태</span>
+            </div>
+            <div class="panel-body"></div>
+          </section>
+
+          <!-- 다음: 가장 가까운 의미 있는 상태 전환. -->
+          <section id="slot-next" class="panel panel-status" aria-label="다음" hidden>
+            <div class="panel-header">
+              <div>
+                <h2>다음</h2>
+              </div>
+              <span class="surface-note">가장 가까운 상태 전환</span>
+            </div>
+            <div class="panel-body"></div>
+          </section>
+
+          <!-- 막힘: 다음 전환을 제한하는 것이 있을 때만. -->
+          <section id="slot-blocked" class="panel panel-status" aria-label="막힘" hidden>
+            <div class="panel-header">
+              <div>
+                <h2>막힘</h2>
+              </div>
+              <span class="surface-note">다음 전환을 제한하는 제약</span>
+            </div>
+            <div class="panel-body"></div>
+          </section>
+
+          <!-- 최근 변화: 핵심 의미 전환만, 작업 나열이 아님. -->
+          <section id="slot-recent" class="panel panel-movement panel-recent" aria-label="최근 변화" hidden>
+            <div class="panel-header">
+              <div>
+                <h2>최근 변화</h2>
+              </div>
+              <span class="surface-note">현재 진행 문서 기준 · 프로젝트 상태의 핵심 전환</span>
+            </div>
+            <div class="panel-body"></div>
+          </section>
+        </div>
 
         <aside id="inspector-aside" class="universal-inspector-drawer" aria-label="상세 정보 창" hidden>
           <div id="universal-inspector-panel" class="inspector-card panel">
@@ -67,11 +86,9 @@
               <span id="inspector-group-tag" class="group-tag"></span>
               <span id="inspector-state" class="inspector-state" hidden></span>
             </div>
-            <div id="inspector-stage-context" class="inspector-stage-context" hidden></div>
             <h2 id="inspector-title" class="inspector-title"></h2>
             <div id="inspector-summary" class="inspector-summary"></div>
             <div id="inspector-sections" class="inspector-subsections"></div>
-            <div id="inspector-related" class="inspector-related" hidden></div>
             <div class="inspector-actions">
               <button id="inspector-copy-btn" class="btn-handoff" type="button" hidden
                 title="클릭하면 에이전트에게 전달할 검토 내용이 클립보드에 복사됩니다">
@@ -101,17 +118,6 @@
           </div>
         </section>
 
-        <!-- Legacy Recent Progress remains available when a document has not adopted Recent Material Movement. -->
-        <section id="slot-recent" class="panel panel-context panel-recent" aria-label="최근 진척" hidden>
-          <div class="panel-header">
-            <div>
-              <span class="surface-kicker">이전 형식</span>
-              <h2>최근 진척</h2>
-            </div>
-          </div>
-          <div class="panel-body"></div>
-        </section>
-
         <div class="stable-context-grid">
           <section id="slot-frame" class="panel panel-context panel-stable" aria-label="제품 목표">
             <h2>제품 목표</h2>
@@ -125,13 +131,6 @@
         </div>
 
         <section id="slot-extra" class="panel-context-stack" hidden aria-label="추가 맥락"></section>
-
-        <!-- DOM compatibility anchors for older integrations; canonical rendering uses the mental-model slots above. -->
-        <div id="legacy-overview-slots" hidden>
-          <section id="slot-now"><div class="panel-body"></div></section>
-          <section id="slot-next"><div class="panel-body"></div></section>
-          <section id="slot-blocked"><div class="panel-body"></div></section>
-        </div>
       </div>
 
       <p id="empty-state" class="empty-state" hidden></p>

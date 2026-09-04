@@ -1,115 +1,33 @@
 # Cockpit
 
-## 프로젝트 지평
+## 현재 상황
 
-Cockpit은 사람 손으로 작성한 `PROGRESS.md`를 결정론적으로 읽어 프로젝트의 구조와 상태를 보여주는 로컬 읽기 전용 뷰어다. 현재 핵심 파싱·지도·영역 근거·Handoff 기반은 확립되어 있으며, 다음 무게중심은 세부 증거를 보존하면서도 처음 보는 독자가 프로젝트의 위치·자세·다음 전환을 한 번에 이해하는 mental-model-first presentation을 수용하는 데 있다.
+Cockpit은 사람 손으로 작성한 `PROGRESS.md`를 결정론적으로 읽어 프로젝트의 구조와 상태를 보여주는 로컬 읽기 전용 뷰어다. 지도·영역 근거·Handoff 기반은 확립되어 있고, 이번 contraction으로 Horizon/Stage/Posture/Frontier/Thread/Movement 이중 소유와 실행·발행 handoff 어휘를 제거해 Map-first 단일 책임으로 수렴했다. 현재 무게중심은 수렴된 뷰어의 독립 reader 수용 증명에 있다.
 
-## 단계 여정
+## 다음 전환
 
-### 현재 — Stage 0.3: Mental Model Cockpit
-- **CLOSED — Human-readable source contract**
-- **CLOSED — Deterministic map and area integrity**
-- **CLOSED — Local read-only runtime**
-- **IN PROOF — Reader-level comprehension**
+수렴된 Map-first 뷰어 → 독립 reader 수용 확정 상태. 처음 보는 독자가 primary surface만으로 목적·구조·위치·다음·제약을 복원하면 닫힌다. 그 이후에는 portable multi-project adoption으로 넘어간다.
 
-### 다음 — Stage 0.4: Portable multi-project adoption
-NOT OPEN
+## 직면한 문제
 
-## 프로젝트 상태
+- **독립 reader proof 잔여** — 수렴 구조의 fixture·브라우저 검증은 이번 작업에서 닫지만, 저장소 설명 없는 fresh-reader 판정은 다음 전환의 열린 검증으로 남는다.
 
-### Core Viewer — STRONG
-역할: CORE CAPABILITY
-PROGRESS.md를 읽고 지도와 개요를 보여주는 핵심 viewer capability가 현재 코드와 기존 회귀 검증으로 확립되어 있다.
-관련 영역: Core viewer runtime
+## 최근 변화
 
-### Model Fidelity — STRONG
-사람이 읽는 Markdown의 지도·Area Detail·Handoff 의미를 보존하는 파싱과 1:1 구조 검사가 확립되어 있다.
-관련 영역: Model parser, Project map
-
-### Presentation Synthesis — PARTIAL
-새로운 Horizon/Stage/Posture/Frontier/Movement 해상도 계층은 구현되었지만, 독립적인 zero-context reader가 이를 이해하는 acceptance는 아직 남아 있다.
-관련 최전선: Reader comprehension closure
-
-### Universal Inspection — PARTIAL
-하나의 Inspector shell이 posture·stage gate·frontier·movement·area·evidence를 연결하지만 실제 브라우저 상호작용 수용은 별도 확인 범위다.
-관련 영역: Universal inspector
-
-### Operational Simplicity — STRONG
-런타임은 로컬·읽기 전용·결정론적이며 AI, 데이터베이스, queue, scheduler 없이 현재 문서를 다시 렌더링한다.
-관련 영역: Core viewer runtime
-
-### Adoption Readiness — PARTIAL
-역할: DELIVERY READINESS
-다른 프로젝트가 자체 vocabulary로 같은 mental model을 표현하는 범용성은 fixture 수준에서 확인 중이며 독립 reader proof가 다음 단계 진입을 제한한다.
-관련 최전선: Reader comprehension closure
-관련 단계: Stage 0.3: Mental Model Cockpit
-
-## 현재 최전선
-
-### Reader comprehension closure
-현재: DRAFT
-목표: INDEPENDENTLY ACCEPTED
-
-#### 왜 지금
-Model fidelity와 구조적 기반은 강해졌으므로, 가장 가까운 consequential transition은 세부 evidence를 읽지 않고도 처음 보는 독자가 프로젝트의 전체 의미를 복원하는지 확인하는 것이다.
-
-#### 완료 의미
-독자가 제품 목표, 전체 여정의 위치, 강하게 닫힌 부분, partial/unknown posture, Primary Frontier, 다음 Stage를 막는 제약, 닫힌 항목, evidence drill-down 경로를 한 번에 설명할 수 있다.
-
-#### 이미 닫힌 것
-- Human-readable source contract
-- Deterministic Project Map ↔ Area Detail correspondence
-- Local read-only rendering boundary
-
-관련 단계: Stage 0.3: Mental Model Cockpit
-관련 상태: Presentation Synthesis, Adoption Readiness
-관련 영역: Mental-model renderer, Universal inspector
-
-#### 근거
-- EMR 및 Cockpit의 서로 다른 project-model acceptance fixture가 동일 parser/guardrail 경계를 통과한다.
-- 독립 cold-read 판정은 이 문서의 현재 release boundary에서 아직 수행되지 않았다.
-
-## 전략적 흐름
-
-### Portable package — PARTIAL
-로컬 package와 loopback 실행 경계는 단순하지만, 여러 외부 project model에서의 설치·운영 루프는 아직 별도 proof다.
-관련 상태: Adoption Readiness
-
-### Handoff fidelity — STRONG
-Problem Framer Handoff는 fresh evidence 대조와 evidence assimilation과 reader-level projection의 분리를 전달하며 Cockpit runtime의 판단 범위를 확장하지 않는다.
-관련 상태: Model Fidelity
-
-## 최근 실질적 변화
-
-### Presentation synthesis
-이전: MAP-FIRST
-변경: Project Horizon과 Stage/Posture joint view를 Project Map보다 앞에 둔 presentation synthesis 계층을 도입했다.
-이후: HORIZON-FIRST
-관련 최전선: Reader comprehension closure
-관련 영역: Mental-model renderer
-#### 근거
-- Canonical mental-model sections와 legacy fallback parser가 함께 구현되었다.
-
-### Universal inspector
-이전: AREA-ONLY
-변경: authored relation을 따라 posture·stage·frontier·movement·area에서 evidence까지 이동하는 하나의 Inspector shell을 도입했다.
-이후: UNIVERSAL INSPECTOR
-관련 상태: Universal Inspection
-관련 영역: Universal inspector
-#### 근거
-- Breadcrumb/back navigation과 evidence-depth action이 공통 Inspector surface에 연결되어 있다.
+- **제품 의미 수렴** → Horizon/Stage/Posture/Frontier/Thread/Movement 이중 canonical owner와 Execution Wave·BASE·JIT·freshness handoff 어휘를 제거하고 질문당 하나의 plain-text 섹션으로 수렴함.
+- **Map-first 복원** → 프로젝트 지도가 다시 첫 화면의 mental anchor가 되고, 지금/다음/막힘이 ontology 학습 없이 읽히는 평문 개요가 됨.
+- **Handoff 수렴** → Problem Framer handoff가 프로젝트 맥락 전달로 수렴하고, 실행·발행·Git 절차는 repository 자체 계약에 위임함.
 
 ## 프로젝트 지도
 
 ### Cockpit product journey
 #### 확보된 기반
 - **Core viewer runtime** — Local read-only rendering and loopback serving
-- **Model parser** — Human-readable semantic parsing and legacy aliases
-- **Project map** — Deterministic structural map and Area Detail matching
+- **Model parser** — Human-readable semantic parsing and map matching
 
 #### 현재 단계
-- **Mental-model renderer** — Horizon, Stage, Posture, Frontier, Threads, and Movement synthesis
-- **Universal inspector** — Shared contextual drill-down shell
+- **Map-first renderer** — Map-anchored orientation projection
+- **Area inspector** — Shared contextual drill-down shell
 
 #### 향후 여정
 1. **Portable package** — Broader installation and project vocabulary coverage
@@ -127,51 +45,43 @@ Problem Framer Handoff는 fresh evidence 대조와 evidence assimilation과 read
 
 ### Model parser
 #### 의미
-사람이 작성한 Markdown을 semantic sections와 map/detail 모델로 변환하는 parser.
+사람이 작성한 Markdown을 지도/영역 모델과 평문 개요 섹션으로 변환하는 parser.
 #### 현재 수준
-새 mental-model sections, 한·영 aliases, legacy fallback, relation/guardrail 모델을 표현할 수 있다.
+지도·영역·개요 단일 소유 구조를 표현할 수 있다. 이중 canonical owner와 relation graph는 제거되었다.
 #### 근거
-- `src/parser.ts`와 parser regression fixtures.
+- `src/parser.ts` 파사드와 parser regression fixtures.
 
-### Project map
+### Map-first renderer
 #### 의미
-프로젝트가 무엇으로 구성되고 어떻게 조직되는지를 보여주는 구조적 지도.
+지도를 mental anchor로 먼저 보여주고 지금/다음/막힘 평문 개요로 방향을 전달하는 top-level presentation.
 #### 현재 수준
-목록 문법의 순차/대등 의미와 map item ↔ Area Detail 대응을 보존한다.
+수렴 구조를 렌더링한다. 독립 reader 수용은 다음 전환의 열린 검증이다.
 #### 근거
-- `renderNativeMap` 및 deterministic structural check.
+- `src/main.ts` Map-first 셸과 `index.html` 지도 우선 슬롯.
 
-### Mental-model renderer
+### Area inspector
 #### 의미
-세부 evidence를 제거하지 않고 Horizon→Stage/Posture→Frontier→Movement→Map 해상도로 독자에게 투영하는 top-level presentation.
+영역의 의미·현재 수준·남은 문제·근거를 context-preserving shell에서 탐색하는 drill-down surface.
 #### 현재 수준
-canonical fixture에서 선언된 model을 읽고 joint Stage/Posture hierarchy로 렌더링한다. 독립 reader comprehension은 아직 proof gap이다.
+영역→근거 탐색과 area Handoff를 지원한다. Stage/Posture/Frontier/Thread/Movement entity는 제거되었다.
 #### 근거
-- `src/main.ts`, `src/style.css`, EMR/Cockpit acceptance fixtures.
-
-### Universal inspector
-#### 의미
-Posture, Stage Gate, Frontier, Strategic Thread, Material Movement, Area, Evidence를 하나의 context-preserving shell에서 탐색하는 drill-down surface.
-#### 현재 수준
-relation navigation, breadcrumb/back, area Handoff, evidence depth를 지원한다.
-#### 근거
-- `index.html`의 Universal Inspector shell과 semantic-card interaction path.
+- `index.html`의 Inspector shell과 영역 카드 interaction path.
 
 ### Portable package
 #### 의미
-다른 project의 `PROGRESS.md`를 자체 vocabulary로 표시할 수 있는 배포·실행 경계.
+다른 project의 `PROGRESS.md`를 표시할 수 있는 배포·실행 경계.
 #### 현재 수준
 package/loopback 기반은 검증되었지만 다중 외부 project의 실제 adoption은 부분 상태다.
 #### 근거
-- package smoke 경계와 Cockpit 자체 fixture의 비-EMR posture vocabulary.
+- package smoke 경계와 단순 스키마 fixture.
 
 ### Independent comprehension proof
 #### 의미
 repository 설명이나 raw evidence 없이 reader-visible Cockpit output만 보고 mental model을 복원하는 acceptance.
 #### 현재 수준
-다음 stage를 여는 proof boundary로 정의되었고 현재 독립 판정은 수행되지 않았다.
+다음 전환의 열린 검증으로 정의되었고 수렴된 뷰어에서의 독립 판정은 아직 수행되지 않았다.
 #### 근거
-- `tests/fixtures/nextchart-emr.md`와 `tests/fixtures/cockpit-self.md`의 oracle contract.
+- `tests/fixtures/nextchart-emr.md`와 `tests/fixtures/cockpit-self.md`의 수렴 스키마 oracle.
 
 ## 제품 목표
 
@@ -180,7 +90,8 @@ Cockpit은 외부 capable agent가 정리한 신뢰 가능한 `PROGRESS.md`를 �
 ## 확정된 방향
 
 - Cockpit은 읽기 전용 renderer이며 project truth를 추론하거나 `PROGRESS.md`를 수정하지 않는다.
-- `Evidence Assimilation != Presentation Abstraction`: 외부 capable agent가 evidence를 재구성·재입장한 뒤, 각 surface의 해상도에 맞게 별도로 투영한다.
-- Stage는 maturity가 아니며, Posture의 `STRONG | PARTIAL | WEAK | UNKNOWN`과 Stage Blocker 관계를 분리한다.
-- Current Focus는 사용자 소유이고 Current Stage, Current Frontier, Current Executor Task와 합치지 않는다.
-- Project Map과 Area Detail은 유지한다. Posture는 Map Area의 복제본이 아니라 cross-cutting 상태를 표현한다.
+- 질문 하나에 섹션 하나: 같은 질문에 답하는 이중 canonical owner를 만들지 않는다.
+- Project Map은 mental anchor로 유지하며, Map ↔ Area Detail 대응을 결정론적으로 보존한다.
+- Inspector는 overview → area → evidence로 깊어지는 secondary drill-down이다.
+- Current Focus는 사용자 소유이고 executor task와 합치지 않는다.
+- Handoff는 프로젝트 맥락 전달만 소유하고, 실행·발행·Git 절차는 repository 자체 계약에 위임한다.

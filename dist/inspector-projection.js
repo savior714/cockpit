@@ -1,25 +1,26 @@
 /**
- * Presentation / UI projection owner: domain -> Universal Inspector/view-model.
+ * Presentation / UI projection owner: domain -> Inspector/view-model.
  *
- * Sole owner for deterministic view derivation: semantic tone classification,
- * InspectorEntity construction, relation resolution, synthetic subsection
- * construction, and map/text/HTML projection (renderNativeMap,
- * formatProjectMapText/formatAreaDetailsText, card/Inspector rendering).
- * Consumes the clean domain model (`./domain.js`), the authoring grammar
- * (`./authoring-grammar.js`), and string rendering from the Markdown
- * structural layer (`./markdown-structure.js`). Never traverses Tokens and
- * never imports the compatibility facade (`./parser.js`).
+ * Sole owner for deterministic view derivation: semantic tone
+ * classification, area InspectorEntity construction, evidence drill-down,
+ * and map/text projection (renderNativeMap,
+ * formatProjectMapText/formatAreaDetailsText). Consumes the clean domain
+ * model (`./domain.js`), the authoring grammar (`./authoring-grammar.js`),
+ * and string rendering from the Markdown structural layer
+ * (`./markdown-structure.js`). Never traverses Tokens and never imports
+ * the compatibility facade (`./parser.js`).
+ *
+ * The Inspector is a secondary drill-down (overview → area → evidence),
+ * not a primary taxonomy surface. There are no Stage/Posture/Frontier/
+ * Thread/Movement entities and no relation graph: map cards open areas,
+ * evidence buttons open evidence depth. That is the whole navigation.
  */
-import { isFrontierSubsectionAlias, isCurrentStageHeading, isFoundationHeading, isFutureHeading, normalizeKey, normalizeTitle, } from "./authoring-grammar.js";
+import { isCurrentStageHeading, isFoundationHeading, isFutureHeading, normalizeKey, normalizeTitle, } from "./authoring-grammar.js";
 import { escapeHtml, renderMarkdownString, } from "./markdown-structure.js";
 /**
  * Conservative veto for evidence promotion.
  * Returns true only when the ENTIRE subsection content clearly states that no
  * verifiable evidence exists yet (absent / unverified / planned-only).
- * Phrase-level anchored matching only: the whole normalized line must be a
- * placeholder phrase. A single concrete evidence clause anywhere keeps the
- * subsection at evidence, so mixed "concrete evidence + future plan" content
- * is never demoted by a broad substring rule.
  */
 function isClearlyUnverifiedOrPlannedEvidence(cleanText) {
     if (cleanText === "")
@@ -37,11 +38,9 @@ function isClearlyUnverifiedOrPlannedEvidence(cleanText) {
         const core = withoutLabel.replace(/[.．。;；!！]+$/, "").trim();
         if (!core)
             return true;
-        // Korean absent / unverified — whole-line anchored only.
         if (/^(?:없음|해당\s*없음|아직\s*없음|아직\s*근거\s*없음|근거\s*없음|증거\s*없음|근거\s*미확보|미확인|미검증|미작성|미수립|예정|향후\s*과제|추후\s*과제|향후\s*작업|추후\s*작업)$/.test(core)) {
             return true;
         }
-        // Korean planned-only — whole-line anchored only.
         if (/^(?:아직\s*|추가\s*|추후\s*|향후\s*)?(?:테스트|검증|확인|작성|수립|확보|측정)\s*예정(?:입니다|임)?$/.test(core)) {
             return true;
         }
@@ -51,11 +50,9 @@ function isClearlyUnverifiedOrPlannedEvidence(cleanText) {
         if (/^(?:아직\s*|추가\s*|추후\s*)?(?:테스트|검증|확인|작성)\s*(?:필요|요망|요구)(?:함|입니다|임)?$/.test(core)) {
             return true;
         }
-        // English absent / unverified — whole-line anchored only.
         if (/^(?:none|no\s*evidence|not\s*verified|not\s*proven|unverified|unconfirmed|unknown|tbd|n\/a|planned|future\s*work|future-work)$/i.test(core)) {
             return true;
         }
-        // English planned / required — whole-line anchored only.
         if (/^(?:verification|confirmation|test(?:s|ing)?)\s*(?:required|needed|pending|planned)$/i.test(core)) {
             return true;
         }
@@ -66,24 +63,18 @@ function isClearlyUnverifiedOrPlannedEvidence(cleanText) {
     });
 }
 /**
- * Canonical semantic tone classifier for Universal Inspector subsections.
- * Resolves deterministic visual tone based on semantic role and concrete content state.
+ * Canonical semantic tone classifier for Inspector subsections.
  */
-export function classifySubsectionTone(subheading, rawText, contextState) {
+export function classifySubsectionTone(subheading, rawText, _contextState) {
     const normKey = normalizeKey(subheading);
     const cleanText = (rawText || "").trim();
     const firstLine = cleanText
         .split(/\r?\n/)
         .map((l) => l.replace(/^\s*[-*+]\s+/, "").trim())
         .filter(Boolean)[0] ?? "";
-    // 1. Explicitly closed, resolved, empty, or 'none' states:
-    // Must NOT be classified as danger even if subheading is "남은 문제" / "remaining issues"
     const isExplicitlyClosedOrNone = cleanText === "" ||
         /^(?:없음|해당\s*없음|해결됨|완료됨|닫힘|특이\s*사항\s*없음|none|n\/a|closed|resolved|all\s+resolved|no\s+remaining\s+issues?|no\s+issues?)\.?$/i.test(firstLine) ||
         /^(?:남은\s*문제|remaining\s*issues?)\s*[:：]\s*(?:없음|해당\s*없음|none|n\/a|closed|해결됨)\.?$/i.test(firstLine);
-    // 2. Evidence / Proof verification:
-    // Must NOT claim positive/evidence state without actual supporting content.
-    // UNKNOWN, unverified, or empty evidence remains neutral.
     const isEvidenceHeading = normKey.includes("근거") ||
         normKey.includes("증거") ||
         normKey.includes("evidence") ||
@@ -94,7 +85,6 @@ export function classifySubsectionTone(subheading, rawText, contextState) {
         }
         return "evidence";
     }
-    // 3. Unresolved issues / blockers (Danger):
     const isIssueHeading = normKey.includes("남은문제") ||
         normKey.includes("직면한문제") ||
         normKey.includes("막힌것") ||
@@ -109,7 +99,6 @@ export function classifySubsectionTone(subheading, rawText, contextState) {
         }
         return "danger";
     }
-    // 4. Transitions / Entry conditions / In-progress conditions (Active):
     const isActiveHeading = normKey.includes("진입조건") ||
         normKey.includes("개시조건") ||
         normKey.includes("entrycondition") ||
@@ -129,24 +118,11 @@ export function classifySubsectionTone(subheading, rawText, contextState) {
     if (isActiveHeading) {
         return "active";
     }
-    // Context-level active state if entity is explicitly in-progress
-    if (contextState) {
-        const normState = normalizeKey(contextState);
-        if (normState.includes("inproof") ||
-            normState.includes("inreview") ||
-            normState.includes("partial")) {
-            if (normKey.includes("조건") || normKey.includes("condition")) {
-                return "active";
-            }
-        }
-    }
-    // 5. Explicitly closed boundaries:
     if (normKey.includes("이미닫힌") ||
         normKey.includes("closedboundaries") ||
         normKey.includes("closed")) {
         return "neutral";
     }
-    // 6. Neutral fallback (Meaning, Current Level, Info, Custom subsections)
     return "neutral";
 }
 /** Enrich a clean domain subsection into a view subsection (HTML + tone). */
@@ -159,20 +135,6 @@ export function toViewSubsection(clean, contextState) {
     };
 }
 export const entityKey = (kind, title) => `${kind}:${normalizeTitle(title)}`;
-function renderRawMarkdown(rawText) {
-    return renderMarkdownString(rawText);
-}
-function syntheticSubsection(title, rawText, html = renderRawMarkdown(rawText)) {
-    return {
-        subheading: title,
-        rawText,
-        html,
-        tone: classifySubsectionTone(title, rawText),
-    };
-}
-function getSubsection(subsections, labels) {
-    return subsections.find((item) => labels.some((label) => normalizeKey(item.subheading).includes(normalizeKey(label))));
-}
 function findAreaDetailIn(item, areaDetails) {
     const title = typeof item === "string" ? item : item.title;
     return areaDetails.get(normalizeTitle(title));
@@ -181,7 +143,7 @@ export function areaEntity(item, areaDetails) {
     const detail = findAreaDetailIn(item, areaDetails);
     const cleanSections = detail?.subsections ?? [];
     const viewSections = cleanSections.map((s) => toViewSubsection(s));
-    const meaning = getSubsection(viewSections, ["의미", "meaning"]);
+    const meaning = viewSections.find((s) => ["의미", "meaning"].some((label) => normalizeKey(s.subheading).includes(normalizeKey(label))));
     return {
         key: entityKey("area", item.title),
         kind: "area",
@@ -190,178 +152,18 @@ export function areaEntity(item, areaDetails) {
         html: viewSections.map((section) => section.html).join(""),
         rawText: viewSections.map((section) => section.rawText).join("\n"),
         subsections: viewSections,
-        relations: [],
         areaItem: item,
     };
 }
-export function stageEntity(gate, segment) {
-    const base = gate.subsections.map((s) => toViewSubsection(s, gate.state));
-    const subsections = base.slice();
-    if (gate.entryCondition) {
-        subsections.unshift(syntheticSubsection("진입 조건", gate.entryCondition));
-    }
-    if (gate.decisionReason) {
-        subsections.unshift(syntheticSubsection("판정 이유", gate.decisionReason));
-    }
-    return {
-        key: entityKey("stage", gate.title),
-        kind: "stage",
-        title: gate.title,
-        state: gate.state,
-        summaryText: gate.summaryText || segment.title,
-        html: renderMarkdownString(gate.rawText),
-        rawText: gate.rawText,
-        subsections,
-        relations: gate.relations,
-        isStageBlocker: gate.isStageBlocker,
-        stageContext: segment.title,
-    };
-}
-export function stageSegmentEntity(segment) {
-    const fallbackGate = segment.gates.find((gate) => gate.entryCondition);
-    const subsections = [];
-    if (fallbackGate?.entryCondition) {
-        subsections.push(syntheticSubsection("진입 조건", fallbackGate.entryCondition));
-    }
-    return {
-        key: entityKey("stage", segment.title),
-        kind: "stage",
-        title: segment.title,
-        state: segment.gates.length === 1 ? segment.gates[0].state || undefined : undefined,
-        summaryText: segment.role === "current" ? "현재 진행 중인 단계" : "다음으로 예정된 단계",
-        html: renderMarkdownString(segment.rawText),
-        rawText: segment.rawText,
-        subsections,
-        relations: [],
-    };
-}
-export function postureEntity(axis) {
-    return {
-        key: entityKey("posture", axis.title),
-        kind: "posture",
-        title: axis.title,
-        state: axis.state ?? axis.declaredState,
-        summaryText: axis.summaryText,
-        html: renderMarkdownString(axis.rawText),
-        rawText: axis.rawText,
-        subsections: axis.subsections.map((s) => toViewSubsection(s, axis.state ?? axis.declaredState)),
-        relations: axis.relations,
-        isStageBlocker: axis.isStageBlocker,
-    };
-}
-export function frontierSubsections(frontier) {
-    const sections = [];
-    if (frontier.whyNow)
-        sections.push(syntheticSubsection("왜 지금", frontier.whyNow));
-    if (frontier.successMeaning)
-        sections.push(syntheticSubsection("완료 의미", frontier.successMeaning));
-    if (frontier.stageImpact)
-        sections.push(syntheticSubsection("단계 영향", frontier.stageImpact));
-    if (frontier.closedBoundaries)
-        sections.push(syntheticSubsection("이미 닫힌 것", frontier.closedBoundaries));
-    if (frontier.evidence)
-        sections.push(syntheticSubsection("근거", frontier.evidence));
-    return sections.concat(frontier.subsections
-        .filter((item) => !isFrontierSubsectionAlias(item.subheading))
-        .map((s) => toViewSubsection(s)));
-}
-export function frontierEntity(frontier) {
-    const transition = `${frontier.currentState || "UNDECLARED"} → ${frontier.targetState || "UNDECLARED"}`;
-    return {
-        key: entityKey("frontier", frontier.title),
-        kind: "frontier",
-        title: frontier.title,
-        state: transition,
-        summaryText: frontier.summaryText,
-        html: renderMarkdownString(frontier.rawText),
-        rawText: frontier.rawText,
-        subsections: frontierSubsections(frontier),
-        relations: frontier.relations,
-    };
-}
-export function threadEntity(thread) {
-    return {
-        key: entityKey("thread", thread.title),
-        kind: "thread",
-        title: thread.title,
-        state: thread.state,
-        summaryText: thread.summaryText,
-        html: renderMarkdownString(thread.rawText),
-        rawText: thread.rawText,
-        subsections: thread.subsections.map((s) => toViewSubsection(s, thread.state)),
-        relations: thread.relations,
-    };
-}
-export function movementSubsections(movement) {
-    const sections = [];
-    if (movement.before)
-        sections.push(syntheticSubsection("변경 전", movement.before));
-    if (movement.change)
-        sections.push(syntheticSubsection("주요 변경", movement.change));
-    if (movement.after)
-        sections.push(syntheticSubsection("변경 후", movement.after));
-    return sections.concat(movement.subsections.filter((item) => !sections.some((existing) => normalizeKey(existing.subheading) === normalizeKey(item.subheading))).map((s) => toViewSubsection(s)));
-}
-export function movementEntity(movement) {
-    return {
-        key: entityKey("movement", movement.title),
-        kind: "movement",
-        title: movement.title,
-        state: `${movement.before || "UNDECLARED"} → ${movement.after || "UNDECLARED"}`,
-        summaryText: movement.change || movement.summaryText,
-        html: renderMarkdownString(movement.rawText),
-        rawText: movement.rawText,
-        subsections: movementSubsections(movement),
-        relations: movement.relations,
-    };
-}
 export function findEntity(kind, title, lookup) {
+    if (kind !== "area")
+        return null;
     const target = normalizeTitle(title);
-    if (kind === "area") {
-        const item = lookup.map?.rails
-            .flatMap((rail) => rail.groups)
-            .flatMap((group) => group.items)
-            .find((candidate) => normalizeTitle(candidate.title) === target);
-        return item ? areaEntity(item, lookup.areaDetails) : null;
-    }
-    if (kind === "posture") {
-        const axis = lookup.posture?.axes.find((candidate) => normalizeTitle(candidate.title) === target);
-        return axis ? postureEntity(axis) : null;
-    }
-    if (kind === "frontier") {
-        const frontier = lookup.frontiers.find((candidate) => normalizeTitle(candidate.title) === target);
-        return frontier ? frontierEntity(frontier) : null;
-    }
-    if (kind === "thread") {
-        const thread = lookup.strategicThreads.find((candidate) => normalizeTitle(candidate.title) === target);
-        return thread ? threadEntity(thread) : null;
-    }
-    if (kind === "movement") {
-        const movement = lookup.movements.find((candidate) => normalizeTitle(candidate.title) === target);
-        return movement ? movementEntity(movement) : null;
-    }
-    if (kind === "stage") {
-        for (const segment of lookup.stageJourney?.segments ?? []) {
-            const gate = segment.gates.find((candidate) => normalizeTitle(candidate.title) === target);
-            if (gate)
-                return stageEntity(gate, segment);
-            if (normalizeTitle(segment.title) === target)
-                return stageSegmentEntity(segment);
-        }
-    }
-    return null;
-}
-export function relatedEntity(relation, lookup) {
-    const kind = relation.kind === "area"
-        ? "area"
-        : relation.kind === "stage"
-            ? "stage"
-            : relation.kind === "posture"
-                ? "posture"
-                : relation.kind === "frontier"
-                    ? "frontier"
-                    : "movement";
-    return findEntity(kind, relation.target, lookup);
+    const item = lookup.map?.rails
+        .flatMap((rail) => rail.groups)
+        .flatMap((group) => group.items)
+        .find((candidate) => normalizeTitle(candidate.title) === target);
+    return item ? areaEntity(item, lookup.areaDetails) : null;
 }
 export function evidenceEntity(parent, section) {
     return {
@@ -372,181 +174,11 @@ export function evidenceEntity(parent, section) {
         html: section.html,
         rawText: section.rawText,
         subsections: [],
-        relations: [],
         evidenceParent: parent,
     };
 }
-export function semanticCardAttributes(kind, title) {
-    return `data-entity-kind="${escapeHtml(kind)}" data-entity-title="${escapeHtml(title)}"`;
-}
 export function stateClass(state) {
     return normalizeKey(state ?? "").replace(/[^a-z0-9]+/g, "-") || "unknown";
-}
-export function renderHorizon(horizon) {
-    return `<div class="horizon-copy ${horizon.isLegacyFallback ? "legacy-fallback" : ""}">
-    ${renderMarkdownString(horizon.rawText)}
-  </div>`;
-}
-export function renderStageJourney(journey) {
-    return `<div class="stage-journey-view">
-    ${journey.segments.map((segment) => `
-      <section class="stage-segment stage-segment-${segment.role}">
-        <div class="stage-segment-header">
-          <span class="stage-role">${segment.role === "current" ? "현재 단계" : segment.role === "next" ? "다음 단계" : "단계"}</span>
-          <h3>${escapeHtml(segment.title)}</h3>
-        </div>
-        <div class="stage-gate-list">
-          ${segment.gates.map((gate) => `
-            <button type="button" class="semantic-card stage-gate-card ${gate.isStageBlocker ? "has-stage-blocker" : ""}" ${semanticCardAttributes("stage", gate.title)}>
-              <span class="semantic-card-top">
-                <span class="stage-gate-state state-${stateClass(gate.state)}">${escapeHtml(gate.state || "UNDECLARED")}</span>
-                ${gate.isStageBlocker ? '<span class="stage-blocker-marker">단계 진입 차단</span>' : ""}
-              </span>
-              <strong>${escapeHtml(gate.title)}</strong>
-              ${gate.summaryText ? `<span>${escapeHtml(gate.summaryText)}</span>` : ""}
-              ${gate.decisionReason ? `<span class="stage-gate-reason">${escapeHtml(gate.decisionReason)}</span>` : ""}
-              ${!gate.decisionReason && gate.state === "NOT PROVEN" ? `<span class="stage-gate-fallback">현재 admissible proof가 확인되지 않음 — failure와 동일한 의미는 아님</span>` : ""}
-              ${gate.entryCondition ? `<span class="stage-gate-entry">진입 조건: ${escapeHtml(gate.entryCondition)}</span>` : ""}
-            </button>
-          `).join("")}
-        </div>
-      </section>
-    `).join("")}
-  </div>`;
-}
-export function renderPosture(posture) {
-    return `<div class="posture-grid">
-    ${posture.axes.map((axis) => `
-      <button type="button" class="semantic-card posture-card posture-${stateClass(axis.state ?? axis.declaredState)}" ${semanticCardAttributes("posture", axis.title)}>
-        <span class="posture-card-top">
-          <strong>${escapeHtml(axis.title)}</strong>
-          <span class="maturity-badge maturity-${stateClass(axis.state ?? axis.declaredState)}">${escapeHtml((axis.state ?? axis.declaredState) || "UNDECLARED")}</span>
-        </span>
-        ${axis.summaryText ? `<span class="posture-summary">${escapeHtml(axis.summaryText)}</span>` : ""}
-        ${axis.isStageBlocker ? '<span class="stage-blocker-marker">단계 진입 차단</span>' : ""}
-      </button>
-    `).join("")}
-  </div>`;
-}
-export function renderFrontiers(frontiers) {
-    return `<div class="frontier-list">
-    ${frontiers.map((frontier) => `
-      <button type="button" class="semantic-card frontier-card ${frontier.isPrimary ? "frontier-primary" : "frontier-secondary"}" ${semanticCardAttributes("frontier", frontier.title)}>
-        <span class="semantic-card-top">
-          <span class="frontier-role">${frontier.isCoPrimary ? "공동 핵심 전환" : frontier.isPrimary ? "핵심 전환" : "전략 방향"}</span>
-          <span class="frontier-transition">${escapeHtml(frontier.currentState || "UNDECLARED")} <b>→</b> ${escapeHtml(frontier.targetState || "UNDECLARED")}</span>
-        </span>
-        <strong>${escapeHtml(frontier.title)}</strong>
-        ${frontier.summaryText ? `<span>${escapeHtml(frontier.summaryText)}</span>` : ""}
-      </button>
-    `).join("")}
-  </div>`;
-}
-export function renderThreads(threads) {
-    return `<div class="thread-list">
-    ${threads.map((thread) => `
-      <button type="button" class="semantic-card thread-card" ${semanticCardAttributes("thread", thread.title)}>
-        <span class="semantic-card-top">
-          <strong>${escapeHtml(thread.title)}</strong>
-          ${thread.state ? `<span class="thread-state">${escapeHtml(thread.state)}</span>` : ""}
-        </span>
-        ${thread.summaryText ? `<span>${escapeHtml(thread.summaryText)}</span>` : ""}
-      </button>
-    `).join("")}
-  </div>`;
-}
-export function renderMovements(movements) {
-    return `<div class="movement-list">
-    ${movements.map((movement) => `
-      <button type="button" class="semantic-card movement-card" ${semanticCardAttributes("movement", movement.title)}>
-        <span class="semantic-card-top">
-          <span class="movement-transition">${escapeHtml(movement.before || "UNDECLARED")} <b>→</b> ${escapeHtml(movement.after || "UNDECLARED")}</span>
-        </span>
-        <strong>${escapeHtml(movement.title)}</strong>
-        ${movement.change ? `<span>${escapeHtml(movement.change)}</span>` : ""}
-      </button>
-    `).join("")}
-  </div>`;
-}
-/**
- * Reader-oriented status synthesis for the compressed `프로젝트 현황` surface.
- *
- * Presentation-only selection over the canonical domain model: Horizon text,
- * the full Stage Journey, salient Posture axes, and Primary Frontier cards
- * are composed into one flow (현재 위치 / 주목할 상태 / 가장 가까운 핵심
- * 전환). Canonical distinctions (Stage/Posture/Frontier) are preserved —
- * every card reuses the same `semantic-card` + `data-entity-kind` markup as
- * the dedicated renderers, so Inspector drill-down reaches all entities.
- * No Token traversal, no new semantic interpretation.
- */
-export function renderStatusSynthesis(model, legacyFrontierHtml = "") {
-    const blocks = [];
-    if (model.horizon) {
-        blocks.push(`<div class="status-horizon">${renderHorizon(model.horizon)}</div>`);
-    }
-    if (model.stageJourney && model.stageJourney.segments.length > 0) {
-        blocks.push(`
-      <section class="status-block status-block-where" aria-label="현재 위치">
-        <h3 class="status-block-title">현재 위치</h3>
-        ${renderStageJourney(model.stageJourney)}
-      </section>
-    `);
-    }
-    if (model.posture && model.posture.axes.length > 0) {
-        const attention = model.posture.axes.filter((axis) => axis.isStageBlocker || (axis.state ?? axis.declaredState) !== "STRONG");
-        const established = model.posture.axes.filter((axis) => !axis.isStageBlocker && (axis.state ?? axis.declaredState) === "STRONG");
-        const attentionHtml = attention.length > 0
-            ? renderPosture({ axes: attention, rawText: model.posture.rawText })
-            : "";
-        const establishedHtml = established.length > 0
-            ? `<p class="status-established">확립됨 ${established.length} · ${established.map((axis) => `
-          <button type="button" class="status-established-link" ${semanticCardAttributes("posture", axis.title)}>${escapeHtml(axis.title)}</button>
-        `).join(" · ")}</p>`
-            : "";
-        blocks.push(`
-      <section class="status-block status-block-state" aria-label="주목할 상태">
-        <h3 class="status-block-title">주목할 상태</h3>
-        ${attentionHtml || `<p class="muted">주목할 상태가 없습니다. 전부 확립됨으로 기록되어 있습니다.</p>`}
-        ${establishedHtml}
-      </section>
-    `);
-    }
-    const frontierHtml = model.frontiers.length > 0
-        ? renderFrontiers(model.frontiers)
-        : legacyFrontierHtml;
-    if (frontierHtml) {
-        blocks.push(`
-      <section class="status-block status-block-next" aria-label="가장 가까운 핵심 전환">
-        <h3 class="status-block-title">가장 가까운 핵심 전환</h3>
-        ${frontierHtml}
-      </section>
-    `);
-    }
-    if (blocks.length === 0)
-        return "";
-    const [first, ...rest] = blocks;
-    if (rest.length === 0)
-        return first;
-    return `${first}<div class="status-flow">${rest.join("")}</div>`;
-}
-/**
- * Demoted presentation for Strategic Threads inside `최근 변화`.
- * Same thread cards (same Inspector drill-down), lowered hierarchy via a
- * collapsed secondary block — never a top-level primary surface.
- */
-export function renderThreadsSecondary(threads) {
-    if (threads.length === 0)
-        return "";
-    return `<details class="threads-secondary">
-    <summary class="threads-secondary-summary">전략적 흐름 ${threads.length} · 병행 추진 방향 <span class="threads-secondary-hint">펼치기</span></summary>
-    <div class="threads-secondary-body">${renderThreads(threads)}</div>
-  </details>`;
-}
-export function renderLegacyFrontier(nextHtml, issueHtml) {
-    return `<div class="legacy-frontier-view">
-    <div><span class="surface-kicker">이전 형식: 다음 전환</span>${nextHtml}</div>
-    ${issueHtml ? `<div class="legacy-frontier-issue"><span class="surface-kicker">이전 형식: 제약 사항</span>${issueHtml}</div>` : ""}
-  </div>`;
 }
 /** Render Native HTML Map */
 export function renderNativeMap(parsedMap, selectedAreaId = null, _areaDetails, currentStageLabel) {
@@ -661,7 +293,6 @@ export function renderNativeMap(parsedMap, selectedAreaId = null, _areaDetails, 
                     html += `</div></div>`;
                 }
                 else {
-                    // Other group inside trajectory
                     const isGroupOrdered = Boolean(group.isOrdered);
                     html += `
             <div class="trajectory-group neutral-group ${isGroupOrdered ? "group-ordered" : "group-peer"}">
@@ -723,7 +354,6 @@ export function renderNativeMap(parsedMap, selectedAreaId = null, _areaDetails, 
             html += `</div>`;
         }
         else {
-            // Neutral rail: support sequential vs peer tracks and ordered vs peer groups
             const isSequentialRail = rail.groups.length > 1 && rail.groups.every((g) => g.isOrdered);
             html += `<div class="neutral-groups-container ${isSequentialRail ? "sequential-track" : "peer-track"}">`;
             rail.groups.forEach((group, gIdx) => {

@@ -6,13 +6,14 @@
  * it must not import markdown-it Token, rendered HTML, CSS/display tone,
  * or DOM-oriented data.
  *
- * - `rawText` is authoring plain-text (for text projection/handoff),
- *   not rendered HTML.
- * - `summaryText` is a deterministic plain-text lead sentence, not HTML.
- * - View concerns (HTML rendering, SemanticTone, Inspector view-model)
- *   live in `./inspector-projection.js`.
- * - Legacy presentation-contaminated shapes (html/tone/rawTokens/rawHtml)
- *   are preserved only as documented compatibility adapters in the
- *   projection/facade boundary, never as dependencies of new internal code.
+ * Canonical concepts (one owner per reader question):
+ * - Project Map: what the project is made of + where the current position is
+ * - Area Detail: what an area means, its current level, and its evidence
+ * - Overview sections (focus / situation / next / facing / recent /
+ *   frame / settled) are plain-text sections owned by the Markdown
+ *   structural layer, not structured sub-ontologies. There is exactly one
+ *   owner per question: no Horizon-vs-Situation, Frontier-vs-Next, or
+ *   Movement-vs-Recent dual canonical models, and no Stage/Posture/Thread
+ *   gate or maturity ontology.
  */
 export {};

@@ -11,7 +11,7 @@
  * - `./authoring-grammar.js` implements the deterministic vocabulary
  * - `./markdown-structure.js` owns markdown-it Token mechanics
  * - `./domain.js` owns the clean presentation-free semantic model
- *   (no Token, no rendered HTML, no tone, no DOM)
+ *   (map + area details; no Token, no rendered HTML, no tone, no DOM)
  * - `./semantic-construction.js` builds the domain model
  * - `./structural-check.js` owns structural validation (never semantic truth)
  * - `./inspector-projection.js` owns domain -> view projection (tone/HTML)
@@ -21,19 +21,19 @@
  * owners directly and must not route ordinary dependencies through this
  * facade.
  *
- * Compatibility notes (documented adapters/removals):
- * - Legacy `ParsedMap.rawTokens` (Token leak) is replaced by clean
- *   `ParsedMap.fallbackText` (plain text). `formatProjectMapText` preserves
- *   the non-native fallback behavior via that string.
- * - Legacy `MapItem.rawHtml` was dead (no reader/test consumer) and is
- *   removed; card rendering uses title/description via projection.
- * - Legacy `html`/`tone` fields on domain subsections/entities were
- *   presentation contamination. The clean domain carries `rawText`;
- *   HTML/tone derivation lives in `./inspector-projection.js`
- *   (`toViewSubsection`, `classifySubsectionTone`, `renderMarkdownString`).
- *   This facade re-exports the projection-owned `SemanticTone` and
- *   `classifySubsectionTone` so existing `dist/parser.js` importers keep
- *   resolving them.
+ * Contraction notes (removed canonical owners):
+ * - Project Horizon / Stage Journey / Project Posture / Current Frontier /
+ *   Strategic Threads / Recent Material Movement structured parsers and
+ *   their guardrails were contracted away. Overview sections (situation /
+ *   next / facing / recent) are plain-text sections, not structured
+ *   sub-ontologies. Legacy rich headings resolve into the merged plain
+ *   slot via `HEADING_ALIAS`.
+ * - The SemanticRelation graph was removed; Inspector navigates
+ *   overview → area → evidence only.
+ * - Handoff owns project-context transport only. Execution Wave,
+ *   admission, BASE, SEMANTIC_READY/PUBLISHABLE, JIT phases, freshness
+ *   axes, WATCH_SURFACES, and publication race vocabulary were removed;
+ *   execution mechanics defer to the repository's own development contract.
  */
 
 // Markdown structural layer (Token mechanics stay here).
@@ -58,7 +58,7 @@ export {
   isFutureHeading,
 } from "./authoring-grammar.js";
 
-// Clean presentation-free domain model.
+// Clean presentation-free domain model (map + area details only).
 export type {
   MapItem,
   MapGroup,
@@ -66,21 +66,6 @@ export type {
   ParsedMap,
   AreaDetailSubsection,
   AreaDetail,
-  MaturityState,
-  SemanticRelationKind,
-  SemanticRelation,
-  SemanticSubsection,
-  ProjectHorizon,
-  StageGate,
-  StageSegment,
-  StageJourney,
-  PostureRole,
-  PostureAxis,
-  ProjectPosture,
-  Frontier,
-  StrategicThread,
-  MaterialMovement,
-  ParsedMentalModel,
   ParsedDocument,
 } from "./domain.js";
 
@@ -90,13 +75,6 @@ export {
   parseProjectMap,
   parseAreaDetails,
   findAreaDetail,
-  parseProjectHorizon,
-  parseStageJourney,
-  parseProjectPosture,
-  parseCurrentFrontiers,
-  parseStrategicThreads,
-  parseMaterialMovements,
-  parseMentalModel,
   parseDocument,
 } from "./semantic-construction.js";
 
@@ -130,8 +108,6 @@ export type {
   FocusHandoffParams,
 } from "./handoff-context.js";
 export {
-  formatAdmissionPublicationContractLines,
   formatAreaHandoffInstruction,
-  formatExecutionWaveContractLines,
   formatFocusHandoffInstruction,
 } from "./handoff-contract.js";

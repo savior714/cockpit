@@ -1,19 +1,23 @@
 /**
  * Semantic/domain construction owner.
  *
- * Owns Project Map construction, Area Detail construction,
- * Stage/Posture/Frontier/Thread/Movement construction, semantic relation
- * construction, and root PROGRESS document construction.
- *
- * Consumes the Markdown structural layer (`./markdown-structure.js`) and the
- * authoring grammar (`./authoring-grammar.js`) to build the explicit
- * Cockpit domain model (`./domain.js`). Produces presentation-free data
- * only: no Token, no rendered HTML, no tone. HTML/tone derivation lives in
+ * Owns Project Map construction, Area Detail construction, and root
+ * PROGRESS document construction. Consumes the Markdown structural layer
+ * (`./markdown-structure.js`) and the authoring grammar
+ * (`./authoring-grammar.js`) to build the explicit Cockpit domain model
+ * (`./domain.js`). Produces presentation-free data only: no Token, no
+ * rendered HTML, no tone. HTML/tone derivation lives in
  * `./inspector-projection.js`; structural validation lives in
  * `./structural-check.js`.
+ *
+ * Overview sections (situation / next / facing / recent / focus / frame /
+ * settled) are intentionally NOT structured sub-ontologies here. They are
+ * plain-text sections rendered directly from Tokens; this module owns no
+ * Horizon/Stage/Posture/Frontier/Thread/Movement parsers and no relation
+ * graph.
  */
-import { extractSectionRawText, md, parseHeadingBlocks, splitSections, } from "./markdown-structure.js";
-import { STAGE_DECISION_REASON_LABELS, STAGE_ENTRY_CONDITION_LABELS, RELATION_GRAMMAR_RULES, extractLabeledValue, firstSemanticSentence, isCurrentStageHeading, isStageBlockerText, normalizeTitle, normalizeKey, parseArrowTransition, parseFrontierRole, parseHeadingState, parsePostureRole, parseStageGateLine, parseStageSegmentTitle, parseStageStateLine, parseStateLine, splitRelationTargets, stripInlineMarkup, subsectionText, } from "./authoring-grammar.js";
+import { extractSectionRawText, md, splitSections, } from "./markdown-structure.js";
+import { isCurrentStageHeading, normalizeKey, normalizeTitle, } from "./authoring-grammar.js";
 /** Parse list items under an H4 heading into MapItems */
 export function parseListItems(tokens, railTitle, groupTitle, isCurrentStageGroup) {
     const items = [];
@@ -188,305 +192,10 @@ export function findAreaDetail(item, areaDetails) {
     const title = typeof item === "string" ? item : item.title;
     return areaDetails.get(normalizeTitle(title));
 }
-function splitSemanticContent(tokens) {
-    const leadTokens = [];
-    const subsections = [];
-    let currentSubsection = null;
-    const flushSubsection = () => {
-        if (!currentSubsection)
-            return;
-        const rawText = extractSectionRawText(currentSubsection.tokens);
-        subsections.push({
-            subheading: currentSubsection.subheading,
-            rawText,
-        });
-        currentSubsection = null;
-    };
-    for (let i = 0; i < tokens.length; i++) {
-        const token = tokens[i];
-        if (token.type === "heading_open" && token.tag === "h4") {
-            flushSubsection();
-            currentSubsection = {
-                subheading: tokens[i + 1]?.content.trim() ?? "",
-                tokens: [],
-            };
-            i += 2;
-        }
-        else if (currentSubsection) {
-            currentSubsection.tokens.push(token);
-        }
-        else {
-            leadTokens.push(token);
-        }
-    }
-    flushSubsection();
-    const leadText = extractSectionRawText(leadTokens);
-    const rawText = extractSectionRawText(tokens);
-    return {
-        leadText,
-        rawText,
-        summaryText: firstSemanticSentence(leadText || rawText),
-        subsections,
-        relations: parseRelations(rawText),
-    };
-}
-function parseRelations(rawText) {
-    const relations = [];
-    for (const rawLine of rawText.split(/\r?\n/)) {
-        const line = stripInlineMarkup(rawLine.replace(/^\s*[-*+]\s+/, ""));
-        if (!line)
-            continue;
-        for (const rule of RELATION_GRAMMAR_RULES) {
-            const match = rule.pattern.exec(line);
-            if (!match)
-                continue;
-            for (const target of splitRelationTargets(match[1])) {
-                if (!target)
-                    continue;
-                if (!relations.some((relation) => relation.kind === rule.kind && relation.target === target)) {
-                    relations.push({ kind: rule.kind, target });
-                }
-            }
-            break;
-        }
-    }
-    return relations;
-}
-function parseStageGateList(tokens, segmentTitle) {
-    const gates = [];
-    let listDepth = 0;
-    for (let i = 0; i < tokens.length; i++) {
-        const token = tokens[i];
-        if (token.type === "bullet_list_open" || token.type === "ordered_list_open") {
-            listDepth++;
-            continue;
-        }
-        if (token.type === "bullet_list_close" || token.type === "ordered_list_close") {
-            listDepth = Math.max(0, listDepth - 1);
-            continue;
-        }
-        if (token.type !== "list_item_open")
-            continue;
-        // Only outer gate items own a StageGate; nested list items and
-        // continuation paragraphs never become phantom gates.
-        if (listDepth !== 1)
-            continue;
-        let openCount = 1;
-        let end = i + 1;
-        while (end < tokens.length) {
-            if (tokens[end].type === "list_item_open")
-                openCount++;
-            else if (tokens[end].type === "list_item_close") {
-                openCount--;
-                if (openCount === 0)
-                    break;
-            }
-            end++;
-        }
-        if (end >= tokens.length)
-            continue;
-        const slice = tokens.slice(i + 1, end);
-        const inline = slice.find((candidate) => candidate.type === "inline");
-        if (!inline)
-            continue;
-        const parsed = parseStageGateLine(inline.content);
-        const rawText = extractSectionRawText(slice);
-        const decisionReason = extractLabeledValue(rawText, STAGE_DECISION_REASON_LABELS) || undefined;
-        gates.push({
-            title: parsed.title,
-            state: parsed.state,
-            // The gate line itself ("Title — STATE") is already rendered as the
-            // card title + state badge; reusing it as summary duplicates the card.
-            // The decision reason owns the third line via its own field.
-            summaryText: "",
-            entryCondition: extractLabeledValue(rawText, STAGE_ENTRY_CONDITION_LABELS) || undefined,
-            decisionReason,
-            rawText,
-            subsections: [],
-            relations: parseRelations(rawText),
-            isStageBlocker: isStageBlockerText(rawText) || isStageBlockerText(segmentTitle),
-        });
-    }
-    return gates;
-}
-export function parseProjectHorizon(tokens, isLegacyFallback = false) {
-    if (!tokens || tokens.length === 0)
-        return undefined;
-    const content = splitSemanticContent(tokens);
-    return {
-        title: isLegacyFallback ? "현재 상황" : "프로젝트 지평",
-        rawText: content.rawText,
-        summaryText: content.summaryText,
-        isLegacyFallback,
-    };
-}
-export function parseStageJourney(tokens) {
-    if (!tokens || tokens.length === 0)
-        return undefined;
-    const segments = [];
-    for (const block of parseHeadingBlocks(tokens, "h3")) {
-        const segmentInfo = parseStageSegmentTitle(block.title);
-        const content = splitSemanticContent(block.tokens);
-        let gates = parseStageGateList(block.tokens, segmentInfo.title);
-        if (gates.length === 0) {
-            const stateLine = parseStateLine(content.rawText);
-            const stageState = parseStageStateLine(content.rawText);
-            gates = [
-                {
-                    title: segmentInfo.title,
-                    state: stageState || stateLine.declaredState,
-                    summaryText: content.summaryText,
-                    entryCondition: extractLabeledValue(content.rawText, STAGE_ENTRY_CONDITION_LABELS) || undefined,
-                    decisionReason: extractLabeledValue(content.rawText, STAGE_DECISION_REASON_LABELS) || undefined,
-                    rawText: content.rawText,
-                    subsections: content.subsections,
-                    relations: content.relations,
-                    isStageBlocker: isStageBlockerText(content.rawText),
-                },
-            ];
-        }
-        segments.push({
-            role: segmentInfo.role,
-            title: segmentInfo.title,
-            rawText: content.rawText,
-            gates,
-        });
-    }
-    const current = segments.find((segment) => segment.role === "current");
-    const next = segments.find((segment) => segment.role === "next");
-    return {
-        segments,
-        currentStage: current?.title,
-        nextStage: next?.title,
-        currentGates: current?.gates ?? [],
-        nextGates: next?.gates ?? [],
-        rawText: extractSectionRawText(tokens),
-    };
-}
-export function parseProjectPosture(tokens) {
-    if (!tokens || tokens.length === 0)
-        return undefined;
-    const axes = [];
-    for (const block of parseHeadingBlocks(tokens, "h3")) {
-        const heading = parseHeadingState(block.title);
-        const content = splitSemanticContent(block.tokens);
-        const bodyState = parseStateLine(content.rawText);
-        const state = heading.state ?? bodyState.state;
-        const declaredState = heading.declaredState || bodyState.declaredState;
-        axes.push({
-            title: heading.title,
-            state,
-            declaredState,
-            role: parsePostureRole(heading.title, content.rawText),
-            summaryText: firstSemanticSentence(content.leadText || content.rawText),
-            rawText: content.rawText,
-            subsections: content.subsections,
-            relations: content.relations,
-            isStageBlocker: isStageBlockerText(content.rawText),
-        });
-    }
-    return { axes, rawText: extractSectionRawText(tokens) };
-}
-export function parseCurrentFrontiers(tokens) {
-    if (!tokens || tokens.length === 0)
-        return [];
-    const blocks = parseHeadingBlocks(tokens, "h3");
-    const frontiers = [];
-    for (const block of blocks) {
-        const role = parseFrontierRole(block.title);
-        const content = splitSemanticContent(block.tokens);
-        const transition = parseArrowTransition(content.rawText) ?? parseArrowTransition(block.title);
-        const currentState = extractLabeledValue(content.rawText, ["현재", "current", "from"]) || transition?.before || "";
-        const targetState = extractLabeledValue(content.rawText, ["목표", "target", "to"]) || transition?.after || "";
-        frontiers.push({
-            title: role.title,
-            currentState,
-            targetState,
-            whyNow: subsectionText(content.subsections, ["왜 지금", "why now"]),
-            successMeaning: subsectionText(content.subsections, ["완료 의미", "success", "성공"]),
-            stageImpact: subsectionText(content.subsections, ["단계 영향", "stage impact"]),
-            closedBoundaries: subsectionText(content.subsections, ["이미 닫힌", "closed"]),
-            evidence: subsectionText(content.subsections, ["근거", "evidence"]),
-            summaryText: content.summaryText,
-            rawText: content.rawText,
-            subsections: content.subsections,
-            relations: content.relations,
-            isPrimary: role.isPrimary,
-            isCoPrimary: role.isCoPrimary,
-        });
-    }
-    return frontiers;
-}
-export function parseStrategicThreads(tokens) {
-    if (!tokens || tokens.length === 0)
-        return [];
-    return parseHeadingBlocks(tokens, "h3").map((block) => {
-        const heading = parseHeadingState(block.title);
-        const content = splitSemanticContent(block.tokens);
-        const bodyState = parseStateLine(content.rawText);
-        return {
-            title: heading.title,
-            state: heading.declaredState || bodyState.declaredState,
-            summaryText: content.summaryText,
-            rawText: content.rawText,
-            subsections: content.subsections,
-            relations: content.relations,
-        };
-    });
-}
-export function parseMaterialMovements(tokens) {
-    if (!tokens || tokens.length === 0)
-        return [];
-    return parseHeadingBlocks(tokens, "h3").map((block) => {
-        const content = splitSemanticContent(block.tokens);
-        const transition = parseArrowTransition(content.rawText) ?? parseArrowTransition(block.title);
-        const before = extractLabeledValue(content.rawText, ["이전", "before", "from"]) || transition?.before || "";
-        const after = extractLabeledValue(content.rawText, ["이후", "after", "to"]) || transition?.after || "";
-        const change = extractLabeledValue(content.rawText, ["변경", "material change", "change"]) || firstSemanticSentence(content.leadText) || stripInlineMarkup(block.title);
-        const title = stripInlineMarkup(block.title).replace(/\s*(?:—|–|-)\s*[^—–>-]+\s*(?:→|->)\s*[^\n]+$/, "").trim();
-        return {
-            title: title || stripInlineMarkup(block.title),
-            before,
-            change,
-            after,
-            summaryText: content.summaryText,
-            rawText: content.rawText,
-            subsections: content.subsections,
-            relations: content.relations,
-            hasStateTransition: Boolean(before && after),
-        };
-    });
-}
-function sectionWithFallback(sections, canonical, legacy = []) {
-    const canonicalTokens = sections.get(canonical);
-    if (canonicalTokens && canonicalTokens.length > 0) {
-        return { tokens: canonicalTokens, isLegacyFallback: false };
-    }
-    for (const legacyKey of legacy) {
-        const legacyTokens = sections.get(legacyKey);
-        if (legacyTokens && legacyTokens.length > 0) {
-            return { tokens: legacyTokens, isLegacyFallback: true };
-        }
-    }
-    return { isLegacyFallback: false };
-}
-export function parseMentalModel(sections) {
-    const horizon = sectionWithFallback(sections, "project horizon", ["current situation"]);
-    const movement = sectionWithFallback(sections, "recent material movement", ["recently completed"]);
-    return {
-        horizon: parseProjectHorizon(horizon.tokens, horizon.isLegacyFallback),
-        stageJourney: parseStageJourney(sections.get("stage journey")),
-        posture: parseProjectPosture(sections.get("project posture")),
-        frontiers: parseCurrentFrontiers(sections.get("current frontier")),
-        strategicThreads: parseStrategicThreads(sections.get("strategic threads")),
-        movements: parseMaterialMovements(movement.tokens),
-    };
-}
 /**
  * High-level production entrypoint: Markdown/string -> parsed Cockpit document.
- * Ordinary production code (viewer shell, checks via tokens) should prefer
- * this over lower-level token functions, which remain for genuinely useful
- * or compatibility-required cases.
+ * Title + map + area details. Overview sections stay as plain-text Tokens
+ * owned by the structural layer and rendered directly by the viewer shell.
  */
 export function parseDocument(markdown) {
     const tokens = md.parse(markdown, {});
@@ -495,6 +204,5 @@ export function parseDocument(markdown) {
         title,
         map: parseProjectMap(sections.get("project map") ?? []),
         areaDetails: parseAreaDetails(sections.get("area details") ?? []),
-        model: parseMentalModel(sections),
     };
 }

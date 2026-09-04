@@ -10,12 +10,12 @@ import {
   extractSectionRawText,
   renderTokens,
   withMermaidPlaceholders,
+  escapeHtml,
 } from "../dist/markdown-structure.js";
 import {
   parseProjectMap,
   parseAreaDetails,
   findAreaDetail,
-  parseMentalModel,
 } from "../dist/semantic-construction.js";
 import {
   checkProgressStructure,
@@ -28,8 +28,7 @@ import {
   classifySubsectionTone,
   toViewSubsection,
   findEntity,
-  renderStatusSynthesis,
-  renderThreadsSecondary,
+  areaEntity,
 } from "../dist/inspector-projection.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -184,25 +183,29 @@ test("DOM and CSS containment invariant: primary-workspace isolates sticky aside
   assert.ok(css.includes(".completeness-badge"), "CSS must style .completeness-badge");
 });
 
-test("DOM and CSS containment invariant: context-region prioritizes Recent Progress over compact stable context grid", () => {
+test("DOM and CSS containment invariant: primary workspace leads Map-first, stable grid stays in context-region", () => {
   const htmlPath = path.join(__dirname, "..", "index.html");
   const html = fs.readFileSync(htmlPath, "utf-8");
 
-  const contextRegionIdx = html.indexOf('id="context-region"');
+  const primaryIdx = html.indexOf('id="primary-workspace"');
+  const slotMapIdx = html.indexOf('id="slot-map"');
   const slotRecentIdx = html.indexOf('id="slot-recent"');
+  const contextRegionIdx = html.indexOf('id="context-region"');
   const stableGridIdx = html.indexOf('class="stable-context-grid"');
   const slotFrameIdx = html.indexOf('id="slot-frame"');
   const slotSettledIdx = html.indexOf('id="slot-settled"');
 
+  assert.ok(primaryIdx !== -1 && slotMapIdx !== -1 && slotRecentIdx !== -1);
   assert.ok(contextRegionIdx !== -1, "index.html must have #context-region");
-  assert.ok(slotRecentIdx !== -1, "index.html must have #slot-recent");
   assert.ok(stableGridIdx !== -1, "index.html must have .stable-context-grid");
   assert.ok(slotFrameIdx !== -1, "index.html must have #slot-frame");
   assert.ok(slotSettledIdx !== -1, "index.html must have #slot-settled");
 
-  // slot-recent must come before stable-context-grid, slot-frame, and slot-settled
-  assert.ok(contextRegionIdx < slotRecentIdx, "#slot-recent must be inside #context-region");
-  assert.ok(slotRecentIdx < stableGridIdx, "#slot-recent must precede .stable-context-grid");
+  // MAP-FIRST: map renders before orientation; recent leads before stable context.
+  assert.ok(primaryIdx < slotMapIdx, "#slot-map must open the primary workspace");
+  assert.ok(slotMapIdx < slotRecentIdx, "orientation follows the map anchor");
+  assert.ok(slotRecentIdx < contextRegionIdx, "recent changes precede the context region");
+  assert.ok(contextRegionIdx < stableGridIdx, ".stable-context-grid must be inside #context-region");
   assert.ok(stableGridIdx < slotFrameIdx, "#slot-frame must be inside .stable-context-grid");
   assert.ok(stableGridIdx < slotSettledIdx, "#slot-settled must be inside .stable-context-grid");
 
@@ -310,15 +313,15 @@ test("DOM and CSS containment: focus copy action and toast elements exist inside
   const slotFocusIdx = html.indexOf('id="slot-focus"');
   const focusCopyBtnIdx = html.indexOf('id="focus-copy-btn"');
   const focusCopyToastIdx = html.indexOf('id="focus-copy-toast"');
-  const slotNowIdx = html.indexOf('id="slot-now"');
+  const slotFrameIdx = html.indexOf('id="slot-frame"');
 
   assert.ok(slotFocusIdx !== -1, "index.html must have #slot-focus");
   assert.ok(focusCopyBtnIdx !== -1, "index.html must have #focus-copy-btn");
   assert.ok(focusCopyToastIdx !== -1, "index.html must have #focus-copy-toast");
 
-  // focus-copy-btn and focus-copy-toast must be strictly inside #slot-focus before #slot-now
-  assert.ok(slotFocusIdx < focusCopyBtnIdx && focusCopyBtnIdx < slotNowIdx, "#focus-copy-btn must be inside #slot-focus");
-  assert.ok(slotFocusIdx < focusCopyToastIdx && focusCopyToastIdx < slotNowIdx, "#focus-copy-toast must be inside #slot-focus");
+  // focus-copy-btn and focus-copy-toast must be strictly inside #slot-focus before #slot-frame
+  assert.ok(slotFocusIdx < focusCopyBtnIdx && focusCopyBtnIdx < slotFrameIdx, "#focus-copy-btn must be inside #slot-focus");
+  assert.ok(slotFocusIdx < focusCopyToastIdx && focusCopyToastIdx < slotFrameIdx, "#focus-copy-toast must be inside #slot-focus");
 
   const cssPath = path.join(__dirname, "..", "src", "style.css");
   const css = fs.readFileSync(cssPath, "utf-8");
@@ -327,29 +330,28 @@ test("DOM and CSS containment: focus copy action and toast elements exist inside
   assert.ok(css.includes(".btn-focus-copy"), "CSS must style .btn-focus-copy");
 });
 
-test("Reader-visible DOM compresses overview to 현황 → 변화 → 지도 and exposes one Inspector shell", () => {
+test("Reader-visible DOM leads Map-first and exposes one area Inspector shell", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf-8");
-  // Compressed primary taxonomy: exactly three primary surfaces.
-  const ids = ["slot-status", "slot-movement", "slot-map"];
+  // Map-first primary order: map anchor, then orientation, then inspector.
+  const ids = ["slot-map", "slot-now", "slot-next", "slot-blocked", "slot-recent", "inspector-aside"];
   const positions = ids.map((id) => html.indexOf(`id="${id}"`));
   assert.ok(positions.every((position) => position !== -1));
   assert.deepEqual([...positions].sort((a, b) => a - b), positions);
-  // Over-differentiated primary panels must not return as top-level surfaces.
-  for (const retired of ["slot-horizon", "slot-stage", "slot-posture", "slot-frontier", "slot-threads"]) {
-    assert.equal(html.indexOf(`id="${retired}"`), -1, `${retired} must not be a primary surface`);
+  // Removed primary surfaces must not return under any id.
+  for (const retired of ["slot-status", "slot-movement", "slot-horizon", "slot-stage", "slot-posture", "slot-frontier", "slot-threads", "legacy-overview-slots", "inspector-related", "inspector-stage-context"]) {
+    assert.equal(html.indexOf(`id="${retired}"`), -1, `${retired} must not exist`);
   }
-  // Reader headings carry one name each: no kicker+heading double naming on primaries.
-  const statusSection = html.slice(html.indexOf('id="slot-status"'), html.indexOf('id="slot-movement"'));
-  const mapSection = html.slice(html.indexOf('id="slot-map"'), html.indexOf('id="inspector-aside"'));
-  assert.equal(statusSection.includes("surface-kicker"), false, "프로젝트 현황 must not duplicate kicker+heading");
-  assert.equal(mapSection.includes("surface-kicker"), false, "프로젝트 지도 must not duplicate kicker+heading");
+  // Reader headings stay plain outcome language, not internal architecture terms.
+  for (const jargon of ["HORIZON-FIRST", "Stage Journey", "Project Posture", "Current Frontier", "Strategic Threads", "Material Movement"]) {
+    assert.equal(html.includes(jargon), false, `primary surface must not expose internal jargon: ${jargon}`);
+  }
   assert.ok(html.includes('id="inspector-aside"'));
   assert.ok(html.includes('id="universal-inspector-panel"'));
   assert.ok(html.includes('id="inspector-breadcrumb"'));
-  assert.ok(html.includes('id="inspector-related"'));
+  assert.ok(html.includes("이 영역 검토하기"));
 
   const css = fs.readFileSync(path.join(__dirname, "..", "src", "style.css"), "utf-8");
-  for (const selector of [".panel-status", ".status-flow", ".status-block", ".threads-secondary", ".panel-movement", ".universal-inspector-drawer"]) {
+  for (const selector of [".panel-map", ".panel-movement", ".universal-inspector-drawer", ".map-card"]) {
     assert.ok(css.includes(selector), `${selector} must have a presentation rule`);
   }
 });
@@ -547,113 +549,87 @@ test("Semantic Tone Repair: incidental keywords never promote custom subsections
   // Existing regression: real unresolved issues stay danger
   assert.equal(classifySubsectionTone("남은 문제", "대용량 동시 요청 시 쿼리 타임아웃 발생"), "danger");
 });
-
-test("Stage proof disposition: card and inspector surfaces expose reason with FAILED danger reuse", () => {
+test("Contraction proof: no Stage/Posture/Frontier/Thread/Movement owners survive in source", () => {
   const mainSource = fs.readFileSync(path.join(__dirname, "..", "src", "main.ts"), "utf-8");
-  // main.ts is orchestration only: it delegates semantic interpretation to
-  // the projection owner and no longer defines its own stage entities.
-  assert.ok(mainSource.includes("inspector-projection"));
-  assert.ok(mainSource.includes("renderStatusSynthesis"));
-  assert.ok(mainSource.includes("renderThreadsSecondary"));
+  assert.equal(mainSource.includes("renderStatusSynthesis"), false);
+  assert.equal(mainSource.includes("renderThreadsSecondary"), false);
   assert.equal(mainSource.includes("function stageEntity"), false);
   assert.equal(mainSource.includes("function frontierEntity"), false);
+  assert.ok(mainSource.includes("MAP-FIRST"));
+
   const projectionSource = fs.readFileSync(path.join(__dirname, "..", "src", "inspector-projection.ts"), "utf-8");
-  assert.ok(projectionSource.includes("판정 이유"));
-  assert.ok(projectionSource.includes("stage-gate-reason"));
-  assert.ok(projectionSource.includes("현재 admissible proof가 확인되지 않음 — failure와 동일한 의미는 아님"));
-  assert.ok(projectionSource.includes('gate.state === "NOT PROVEN"'));
-
-  const css = fs.readFileSync(path.join(__dirname, "..", "src", "style.css"), "utf-8");
-  assert.ok(css.includes(".state-failed"));
-  const dangerIdx = css.indexOf(".state-failed");
-  assert.ok(css.slice(Math.max(0, dangerIdx - 200), dangerIdx + 200).includes("#fecaca"));
-
-  const grammarSource = fs.readFileSync(path.join(__dirname, "..", "src", "authoring-grammar.ts"), "utf-8");
-  assert.ok(grammarSource.includes('"FAILED"'));
-  assert.ok(grammarSource.includes("판정 이유"));
-  const constructionSource = fs.readFileSync(path.join(__dirname, "..", "src", "semantic-construction.ts"), "utf-8");
-  assert.ok(constructionSource.includes("decisionReason"));
-  const parserSource = fs.readFileSync(path.join(__dirname, "..", "src", "parser.ts"), "utf-8");
-  assert.ok(parserSource.includes("Compatibility/public API facade"));
-
-  const readme = fs.readFileSync(path.join(__dirname, "..", "README.md"), "utf-8");
-  assert.ok(readme.includes("FAILED"));
-  assert.ok(readme.includes("판정 이유:"));
-  assert.ok(readme.includes("Decision reason:"));
-  assert.ok(readme.includes("stage-gate-proof-disposition.md"));
-});
-
-
-test("Information compression invariant: semantic richness preserved while primary visual taxonomy shrinks", () => {
-  for (const fixtureName of ["cockpit-self.md", "nextchart-emr.md"]) {
-    const content = fs.readFileSync(path.join(__dirname, "fixtures", fixtureName), "utf-8");
-    const { sections } = splitSections(md.parse(content, {}));
-    const model = parseMentalModel(sections);
-    const map = parseProjectMap(sections.get("project map"));
-    const areaDetails = parseAreaDetails(sections.get("area details"));
-    const lookup = {
-      map,
-      areaDetails,
-      stageJourney: model.stageJourney,
-      posture: model.posture,
-      frontiers: model.frontiers,
-      strategicThreads: model.strategicThreads,
-      movements: model.movements,
-    };
-
-    // 1. Semantic richness: canonical entities exist in the domain model.
-    const gateCount = (model.stageJourney?.segments ?? []).reduce((n, s) => n + s.gates.length, 0);
-    assert.ok(gateCount > 0, `${fixtureName}: stage gates must exist`);
-    assert.ok((model.posture?.axes.length ?? 0) >= 5, `${fixtureName}: posture axes must exist`);
-    assert.ok(model.frontiers.length > 0, `${fixtureName}: frontiers must exist`);
-    assert.ok(model.strategicThreads.length > 0, `${fixtureName}: threads must exist`);
-    assert.ok(model.movements.length > 0, `${fixtureName}: movements must exist`);
-
-    // 2. Every canonical entity stays reachable through Inspector navigation.
-    for (const segment of model.stageJourney?.segments ?? []) {
-      for (const gate of segment.gates) {
-        assert.ok(findEntity("stage", gate.title, lookup), `${fixtureName}: stage gate reachable: ${gate.title}`);
-      }
-    }
-    for (const axis of model.posture?.axes ?? []) {
-      assert.ok(findEntity("posture", axis.title, lookup), `${fixtureName}: posture axis reachable: ${axis.title}`);
-    }
-    for (const frontier of model.frontiers) {
-      assert.ok(findEntity("frontier", frontier.title, lookup), `${fixtureName}: frontier reachable: ${frontier.title}`);
-    }
-    for (const thread of model.strategicThreads) {
-      assert.ok(findEntity("thread", thread.title, lookup), `${fixtureName}: thread reachable: ${thread.title}`);
-    }
-    for (const movement of model.movements) {
-      assert.ok(findEntity("movement", movement.title, lookup), `${fixtureName}: movement reachable: ${movement.title}`);
-    }
-
-    // 3. One synthesis surface reads current position + salient state + nearest transition.
-    const synthesis = renderStatusSynthesis(model);
-    assert.ok(synthesis.includes("현재 위치"), `${fixtureName}: synthesis must read current position`);
-    assert.ok(synthesis.includes("주목할 상태"), `${fixtureName}: synthesis must read salient state`);
-    assert.ok(synthesis.includes("가장 가까운 핵심 전환"), `${fixtureName}: synthesis must read nearest transition`);
-    assert.ok(synthesis.includes(model.stageJourney?.currentStage ?? "") || synthesis.includes("stage-gate-card"), `${fixtureName}: synthesis must carry stage gates`);
-    const salientAxis = (model.posture?.axes ?? []).find((a) => (a.state ?? a.declaredState) !== "STRONG");
-    assert.ok(salientAxis && synthesis.includes(salientAxis.title), `${fixtureName}: salient posture must stay visible`);
-    assert.ok(synthesis.includes(model.frontiers[0].title), `${fixtureName}: primary frontier must stay visible`);
-    // Established STRONG axes are summarized, never deleted: still Inspector-linked.
-    const strongAxis = (model.posture?.axes ?? []).find((a) => (a.state ?? a.declaredState) === "STRONG");
-    if (strongAxis) {
-      assert.ok(synthesis.includes(strongAxis.title), `${fixtureName}: established posture must stay reachable`);
-      assert.ok(synthesis.includes('data-entity-kind="posture"'), `${fixtureName}: posture drill-down must survive`);
-    }
-
-    // 4. Threads are demoted, not deleted: secondary block keeps cards + drill-down.
-    const secondary = renderThreadsSecondary(model.strategicThreads);
-    assert.ok(secondary.includes("threads-secondary"), `${fixtureName}: threads must render as secondary`);
-    assert.ok(secondary.includes(model.strategicThreads[0].title), `${fixtureName}: thread meaning must survive`);
-    assert.ok(secondary.includes('data-entity-kind="thread"'), `${fixtureName}: thread drill-down must survive`);
+  for (const removed of ["stageEntity", "postureEntity", "frontierEntity", "threadEntity", "movementEntity", "relatedEntity", "renderStatusSynthesis", "renderThreadsSecondary", "stage-gate-reason", "판정 이유"]) {
+    assert.equal(projectionSource.includes(removed), false, `projection must not contain: ${removed}`);
   }
 
-  // 5. Primary visual taxonomy is exactly three: 현황 / 변화 / 지도.
-  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf-8");
-  const overview = html.slice(html.indexOf('id="overview-panel"'), html.indexOf('id="slot-map"'));
-  const primarySections = [...overview.matchAll(/<section[^>]*id="(slot-[^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(primarySections, ["slot-status", "slot-movement"]);
+  const grammarSource = fs.readFileSync(path.join(__dirname, "..", "src", "authoring-grammar.ts"), "utf-8");
+  assert.equal(grammarSource.includes('"FAILED"'), false);
+  assert.equal(grammarSource.includes("RELATION_GRAMMAR_RULES"), false);
+
+  const constructionSource = fs.readFileSync(path.join(__dirname, "..", "src", "semantic-construction.ts"), "utf-8");
+  assert.equal(constructionSource.includes("decisionReason"), false);
+  assert.equal(constructionSource.includes("parseMentalModel"), false);
+
+  const domainSource = fs.readFileSync(path.join(__dirname, "..", "src", "domain.ts"), "utf-8");
+  const domainCode = domainSource.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  for (const removed of ["StageJourney", "ProjectPosture", "Frontier", "StrategicThread", "MaterialMovement", "SemanticRelation", "ParsedMentalModel"]) {
+    assert.equal(domainCode.includes(removed), false, `domain must not contain: ${removed}`);
+  }
+
+  const readme = fs.readFileSync(path.join(__dirname, "..", "README.md"), "utf-8");
+  assert.equal(readme.includes("판정 이유:"), false);
+  assert.equal(readme.includes("stage-gate-proof-disposition.md"), false);
+  assert.ok(readme.includes("질문 하나에 섹션 하나가 대응합니다"));
+});
+
+test("Contracted orientation invariant: map items drill to evidence, overview restores reader questions", () => {
+  for (const fixtureName of ["cockpit-self.md", "nextchart-emr.md", "canonical-minimal.md"]) {
+    const content = fs.readFileSync(path.join(__dirname, "fixtures", fixtureName), "utf-8");
+    const { sections } = splitSections(md.parse(content, {}));
+    const map = parseProjectMap(sections.get("project map"));
+    const areaDetails = parseAreaDetails(sections.get("area details"));
+    const lookup = { map, areaDetails };
+
+    // Every map item stays reachable through area drill-down.
+    for (const rail of map.rails) {
+      for (const group of rail.groups) {
+        for (const item of group.items) {
+          const entity = findEntity("area", item.title, lookup);
+          assert.ok(entity, `${fixtureName}: area reachable: ${item.title}`);
+          assert.equal(entity.kind, "area");
+          assert.ok(entity.subsections.length > 0, `${fixtureName}: area has drill-down content: ${item.title}`);
+        }
+      }
+    }
+    // Non-area kinds no longer resolve: no parallel taxonomy.
+    assert.equal(findEntity("evidence", "anything", lookup), null);
+
+    // Primary surface restores the reader questions from plain text.
+    const situation = extractSectionRawText(sections.get("situation"));
+    const next = extractSectionRawText(sections.get("next"));
+    assert.ok(situation.length > 0, `${fixtureName}: Now restorable`);
+    assert.ok(next.length > 0, `${fixtureName}: Next restorable`);
+
+    // Map cards render for every item (mental anchor intact).
+    const html = renderNativeMap(map);
+    for (const rail of map.rails) {
+      for (const group of rail.groups) {
+        for (const item of group.items) {
+          assert.ok(html.includes(escapeHtml(item.title)), `${fixtureName}: map card renders: ${item.title}`);
+        }
+      }
+    }
+  }
+
+  // areaEntity exposes meaning/level/evidence with tone for the Inspector.
+  const content = fs.readFileSync(path.join(__dirname, "fixtures", "canonical-minimal.md"), "utf-8");
+  const { sections } = splitSections(md.parse(content, {}));
+  const map = parseProjectMap(sections.get("project map"));
+  const areaDetails = parseAreaDetails(sections.get("area details"));
+  const item = map.rails.flatMap((r) => r.groups).flatMap((g) => g.items).find((i) => i.title === "수령 카운터");
+  assert.ok(item);
+  const entity = areaEntity(item, areaDetails);
+  assert.equal(entity.kind, "area");
+  assert.ok(entity.subsections.some((s) => s.tone === "danger"), "remaining problem reads as danger");
+  assert.ok(entity.subsections.some((s) => s.tone === "evidence"), "evidence reads as evidence");
 });

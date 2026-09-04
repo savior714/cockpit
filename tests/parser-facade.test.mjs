@@ -27,15 +27,6 @@ import {
   buildAreaHandoffContext,
   formatFocusHandoffInstruction,
   formatAreaHandoffInstruction,
-  formatExecutionWaveContractLines,
-  formatAdmissionPublicationContractLines,
-  parseProjectHorizon,
-  parseStageJourney,
-  parseProjectPosture,
-  parseCurrentFrontiers,
-  parseStrategicThreads,
-  parseMaterialMovements,
-  parseMentalModel,
   parseDocument,
   classifySubsectionTone,
   md,
@@ -46,16 +37,18 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-test("README RECONSTRUCT contract requires final synthesis beyond cockpit check", () => {
+test("README authoring contract stays a short human contract, not a governance manual", () => {
   const readme = fs.readFileSync(path.join(__dirname, "..", "README.md"), "utf-8");
 
-  assert.ok(readme.includes("RECONSTRUCT 또는 full rebuild라면 최종 project-model synthesis와 reader-facing semantic acceptance 완료"));
-  assert.ok(readme.includes("evidence collection/subagent exploration을 completion으로 취급하지 말고"));
-  assert.ok(readme.includes("Product Goal / Project Frame, Settled Direction"));
-  assert.ok(readme.includes("blank/placeholder로 남기면 acceptance failure"));
-  assert.ok(readme.includes("`cockpit check` PASS는 구조적 사전 검사일 뿐 semantic acceptance가 아니다."));
-  assert.ok(readme.includes("`COLD_READ_JUDGE_REQUIRED`"));
-  assert.ok(readme.includes("BLANK != UNKNOWN"));
+  assert.ok(readme.includes("질문 하나에 섹션 하나가 대응합니다"));
+  assert.ok(readme.includes("Fresh evidence first"));
+  assert.ok(readme.includes("STRUCTURALLY VALID != EVIDENCE-GROUNDED"));
+  assert.ok(readme.includes("`cockpit check` PASS는 구조 검사이지 사실 증명이 아니다"));
+  // Contracted: no execution/publication governance in the product contract.
+  assert.equal(readme.includes("WATCH_SURFACES"), false);
+  assert.equal(readme.includes("ADMITTED_BASE"), false);
+  assert.equal(readme.includes("PRE_FINAL_JIT"), false);
+  assert.equal(readme.includes("SECOND_ADVANCE_CIRCUIT_BREAKER"), false);
 });
 
 test("Handoff context extraction: sibling module owns implementation, parser facade re-exports it", async () => {
@@ -92,15 +85,6 @@ test("Parser facade compatibility: public dist/parser.js surface exposes require
     ["buildAreaHandoffContext", buildAreaHandoffContext],
     ["formatFocusHandoffInstruction", formatFocusHandoffInstruction],
     ["formatAreaHandoffInstruction", formatAreaHandoffInstruction],
-    ["formatExecutionWaveContractLines", formatExecutionWaveContractLines],
-    ["formatAdmissionPublicationContractLines", formatAdmissionPublicationContractLines],
-    ["parseProjectHorizon", parseProjectHorizon],
-    ["parseStageJourney", parseStageJourney],
-    ["parseProjectPosture", parseProjectPosture],
-    ["parseCurrentFrontiers", parseCurrentFrontiers],
-    ["parseStrategicThreads", parseStrategicThreads],
-    ["parseMaterialMovements", parseMaterialMovements],
-    ["parseMentalModel", parseMentalModel],
     ["parseDocument", parseDocument],
     ["classifySubsectionTone", classifySubsectionTone],
     ["isCurrentStageHeading", isCurrentStageHeading],
@@ -112,7 +96,6 @@ test("Parser facade compatibility: public dist/parser.js surface exposes require
   }
   assert.equal(typeof checkProgressStructure, "function");
   assert.equal(typeof classifySubsectionTone, "function");
-
   // Legacy behavior spot-checks through the facade (not a second implementation).
   assert.equal(normalizeTitle("  Patient  Registration  "), "patient registration");
   assert.equal(classifySubsectionTone("남은 문제", "없음"), "neutral");
@@ -122,6 +105,23 @@ test("Parser facade compatibility: public dist/parser.js surface exposes require
   const doc = parseDocument(canonical);
   assert.ok(doc.title);
   assert.equal(doc.map.isNativeMap, true);
+});
+
+test("Parser facade exposes no contracted canonical owners", async () => {
+  const facade = await import("../dist/parser.js");
+  for (const removed of [
+    "parseProjectHorizon",
+    "parseStageJourney",
+    "parseProjectPosture",
+    "parseCurrentFrontiers",
+    "parseStrategicThreads",
+    "parseMaterialMovements",
+    "parseMentalModel",
+    "formatExecutionWaveContractLines",
+    "formatAdmissionPublicationContractLines",
+  ]) {
+    assert.equal(facade[removed], undefined, `${removed} must stay removed from the facade`);
+  }
 });
 
 test("Parser facade is genuinely thin: no canonical definitions live in parser.ts", () => {

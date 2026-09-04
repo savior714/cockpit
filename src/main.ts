@@ -13,7 +13,6 @@ import {
 import {
   findAreaDetail,
   parseAreaDetails,
-  parseMentalModel,
   parseProjectMap,
 } from "./semantic-construction.js";
 import {
@@ -21,12 +20,7 @@ import {
   classifySubsectionTone,
   evidenceEntity,
   findEntity,
-  relatedEntity,
-  renderLegacyFrontier,
-  renderMovements,
   renderNativeMap,
-  renderStatusSynthesis,
-  renderThreadsSecondary,
   stateClass,
   formatAreaDetailsText,
   formatProjectMapText,
@@ -44,7 +38,6 @@ import type {
   AreaDetail,
   MapItem,
   ParsedMap,
-  ParsedMentalModel,
 } from "./domain.js";
 
 mermaid.initialize({
@@ -58,7 +51,6 @@ let activeProjectTitle = "Cockpit";
 let currentSections = new Map<string, Token[]>();
 let currentAreaDetails = new Map<string, AreaDetail>();
 let currentParsedMap: ParsedMap | null = null;
-let currentModel: ParsedMentalModel = { frontiers: [], strategicThreads: [], movements: [] };
 let selectedAreaId: string | null = null;
 let inspectorHistory: InspectorEntity[] = [];
 
@@ -66,20 +58,10 @@ function currentLookup(): EntityLookup {
   return {
     map: currentParsedMap,
     areaDetails: currentAreaDetails,
-    stageJourney: currentModel.stageJourney,
-    posture: currentModel.posture,
-    frontiers: currentModel.frontiers,
-    strategicThreads: currentModel.strategicThreads,
-    movements: currentModel.movements,
   };
 }
 
 const INSPECTOR_LABELS: Record<InspectorKind, string> = {
-  posture: "프로젝트 상태",
-  stage: "진행 단계",
-  frontier: "전환 과제",
-  thread: "전략적 흐름",
-  movement: "중요한 변화",
   area: "프로젝트 영역",
   evidence: "근거",
 };
@@ -96,12 +78,15 @@ function findMapItemById(id: string): MapItem | null {
   return null;
 }
 
-function setPanelHtml(panelId: string, html: string, visible: boolean): void {
+function setSectionPanel(sectionKey: string, panelId: string): boolean {
+  const tokens = currentSections.get(sectionKey);
   const panel = document.getElementById(panelId);
-  if (!panel) return;
+  if (!panel) return false;
   const body = panel.querySelector<HTMLElement>(".panel-body");
-  if (body) body.innerHTML = html || `<p class="muted">아직 기록된 내용이 없습니다.</p>`;
+  if (body) body.innerHTML = tokens ? withMermaidPlaceholders(renderTokens(tokens)) : "";
+  const visible = Boolean(tokens?.length);
   panel.hidden = !visible;
+  return visible;
 }
 
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -182,13 +167,6 @@ function renderInspector(entity: InspectorEntity): void {
     state.className = `inspector-state state-${stateClass(entity.state)}`;
     state.hidden = !entity.state;
   }
-  const stageContextEl = document.getElementById("inspector-stage-context");
-  if (stageContextEl) {
-    stageContextEl.innerHTML = entity.stageContext
-      ? `소속 단계: <button type="button" class="stage-context-link" data-related-kind="stage" data-related-title="${escapeHtml(entity.stageContext)}">${escapeHtml(entity.stageContext)}</button>`
-      : "";
-    stageContextEl.hidden = !entity.stageContext;
-  }
   const title = document.getElementById("inspector-title");
   if (title) title.textContent = entity.title;
   const summary = document.getElementById("inspector-summary");
@@ -215,17 +193,6 @@ function renderInspector(entity: InspectorEntity): void {
       : (entity.html ? `<section class="inspector-sub-card"><div class="sub-body">${entity.html}</div></section>` : `<p class="muted">추가 세부 기록이 없습니다.</p>`);
   }
 
-  const related = document.getElementById("inspector-related");
-  if (related) {
-    const validRelations = entity.relations.filter((relation) => relatedEntity(relation, currentLookup()));
-    related.innerHTML = validRelations.length > 0
-      ? `<div class="related-title">관련 항목</div><div class="related-links">${validRelations.map((relation) => `
-          <button type="button" class="related-link" data-related-kind="${relation.kind}" data-related-title="${escapeHtml(relation.target)}">${escapeHtml(relation.target)}</button>
-        `).join("")}</div>`
-      : "";
-    related.hidden = validRelations.length === 0;
-  }
-
   const copyButton = document.getElementById("inspector-copy-btn") as HTMLButtonElement | null;
   const copyToast = document.getElementById("copy-toast");
   const handoffHint = document.getElementById("handoff-hint");
@@ -243,9 +210,9 @@ function renderInspector(entity: InspectorEntity): void {
         areaDescription: entity.areaItem.description,
         areaDetail: detail,
         focusText: extractSectionRawText(currentSections.get("current focus")),
-        situationText: extractSectionRawText(currentSections.get("project horizon") ?? currentSections.get("current situation")),
-        nextTransitionText: extractSectionRawText(currentSections.get("current frontier") ?? currentSections.get("next transition")),
-        facingIssuesText: extractSectionRawText(currentSections.get("facing issues")),
+        situationText: extractSectionRawText(currentSections.get("situation")),
+        nextTransitionText: extractSectionRawText(currentSections.get("next")),
+        facingIssuesText: extractSectionRawText(currentSections.get("facing")),
         projectFrameText: extractSectionRawText(currentSections.get("project frame")),
         settledDirectionText: extractSectionRawText(currentSections.get("settled direction")),
       });
@@ -296,17 +263,6 @@ function closeInspector(): void {
   document.querySelectorAll(".map-card.selected").forEach((card) => card.classList.remove("selected"));
 }
 
-function goBackInspector(): void {
-  if (inspectorHistory.length <= 1) {
-    closeInspector();
-    return;
-  }
-  inspectorHistory.pop();
-  const entity = inspectorHistory[inspectorHistory.length - 1];
-  selectedAreaId = entity.areaItem?.id ?? null;
-  renderInspector(entity);
-}
-
 function bindInspectorActions(): void {
   const aside = document.getElementById("inspector-aside");
   const close = document.getElementById("inspector-close-btn");
@@ -324,13 +280,6 @@ function bindInspectorActions(): void {
       }
       return;
     }
-    const relation = target.closest<HTMLButtonElement>("[data-related-kind]");
-    if (relation) {
-      const kind = relation.dataset.relatedKind as InspectorKind;
-      const related = findEntity(kind, relation.dataset.relatedTitle ?? "", currentLookup());
-      if (related) openInspector(related);
-      return;
-    }
     const evidenceButton = target.closest<HTMLButtonElement>("[data-subsection-index]");
     if (evidenceButton && inspectorHistory.length > 0) {
       const index = Number(evidenceButton.dataset.subsectionIndex);
@@ -341,81 +290,6 @@ function bindInspectorActions(): void {
   });
 }
 
-function bindSemanticCards(container: HTMLElement): void {
-  container.querySelectorAll<HTMLButtonElement>("[data-entity-kind]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const kind = button.dataset.entityKind as InspectorKind;
-      const title = button.dataset.entityTitle ?? "";
-      const entity = findEntity(kind, title, currentLookup());
-      if (entity) openInspector(entity, false);
-    });
-  });
-}
-
-function setLegacyContextSections(sections: Map<string, Token[]>): void {
-  const focusTokens = sections.get("current focus");
-  const focusPanel = document.getElementById("slot-focus");
-  if (focusPanel) {
-    const body = focusPanel.querySelector<HTMLElement>(".panel-body");
-    if (body) body.innerHTML = focusTokens ? withMermaidPlaceholders(renderTokens(focusTokens)) : "";
-    focusPanel.hidden = !focusTokens?.length;
-  }
-
-  const recentTokens = sections.get("recently completed");
-  const recentPanel = document.getElementById("slot-recent");
-  if (recentPanel) {
-    const body = recentPanel.querySelector<HTMLElement>(".panel-body");
-    if (body) body.innerHTML = recentTokens ? withMermaidPlaceholders(renderTokens(recentTokens)) : "";
-    recentPanel.hidden = Boolean(currentModel.movements.length) || !recentTokens?.length;
-  }
-
-  const frameTokens = sections.get("project frame");
-  const settledTokens = sections.get("settled direction");
-  const frame = document.getElementById("slot-frame");
-  const settled = document.getElementById("slot-settled");
-  if (frame) {
-    const body = frame.querySelector<HTMLElement>(".panel-body");
-    if (body) body.innerHTML = frameTokens ? withMermaidPlaceholders(renderTokens(frameTokens)) : "";
-    frame.hidden = !frameTokens?.length;
-  }
-  if (settled) {
-    const body = settled.querySelector<HTMLElement>(".panel-body");
-    if (body) body.innerHTML = settledTokens ? withMermaidPlaceholders(renderTokens(settledTokens)) : "";
-    settled.hidden = !settledTokens?.length;
-  }
-
-  const horizon = sections.get("project horizon") ?? sections.get("current situation");
-  const next = sections.get("next transition");
-  const facing = sections.get("facing issues");
-  const legacyNow = document.getElementById("slot-now")?.querySelector<HTMLElement>(".panel-body");
-  const legacyNext = document.getElementById("slot-next")?.querySelector<HTMLElement>(".panel-body");
-  const legacyFacing = document.getElementById("slot-blocked")?.querySelector<HTMLElement>(".panel-body");
-  if (legacyNow) legacyNow.innerHTML = horizon ? withMermaidPlaceholders(renderTokens(horizon)) : "";
-  if (legacyNext) legacyNext.innerHTML = next ? withMermaidPlaceholders(renderTokens(next)) : "";
-  if (legacyFacing) legacyFacing.innerHTML = facing ? withMermaidPlaceholders(renderTokens(facing)) : "";
-
-  const extra = document.getElementById("slot-extra");
-  if (!extra) return;
-  extra.innerHTML = "";
-  const known = new Set([
-    "project map", "area details", "project horizon", "stage journey", "project posture",
-    "current frontier", "strategic threads", "recent material movement", "current focus",
-    "current situation", "next transition", "facing issues", "project frame", "settled direction",
-    "recently completed",
-  ]);
-  let shown = false;
-  for (const [name, tokens] of sections) {
-    if (known.has(name)) continue;
-    const heading = name.startsWith("__h1:") ? name.slice(6) : name;
-    const card = document.createElement("section");
-    card.className = "panel panel-context";
-    card.innerHTML = `<h2>${escapeHtml(heading)}</h2><div class="panel-body">${withMermaidPlaceholders(renderTokens(tokens))}</div>`;
-    extra.appendChild(card);
-    shown = true;
-  }
-  extra.hidden = !shown;
-}
-
 function setupFocusCopy(sections: Map<string, Token[]>, parsedMap: ParsedMap): void {
   const button = document.getElementById("focus-copy-btn") as HTMLButtonElement | null;
   const toast = document.getElementById("focus-copy-toast");
@@ -424,9 +298,9 @@ function setupFocusCopy(sections: Map<string, Token[]>, parsedMap: ParsedMap): v
     const text = buildFocusHandoffContext({
       projectTitle: activeProjectTitle,
       focusText: extractSectionRawText(sections.get("current focus")),
-      situationText: extractSectionRawText(sections.get("project horizon") ?? sections.get("current situation")),
-      nextTransitionText: extractSectionRawText(sections.get("current frontier") ?? sections.get("next transition")),
-      facingIssuesText: extractSectionRawText(sections.get("facing issues")),
+      situationText: extractSectionRawText(sections.get("situation")),
+      nextTransitionText: extractSectionRawText(sections.get("next")),
+      facingIssuesText: extractSectionRawText(sections.get("facing")),
       projectFrameText: extractSectionRawText(sections.get("project frame")),
       settledDirectionText: extractSectionRawText(sections.get("settled direction")),
       projectMapText: formatProjectMapText(parsedMap),
@@ -444,6 +318,28 @@ function setupFocusCopy(sections: Map<string, Token[]>, parsedMap: ParsedMap): v
   };
 }
 
+function renderExtraSections(sections: Map<string, Token[]>): void {
+  const extra = document.getElementById("slot-extra");
+  if (!extra) return;
+  extra.innerHTML = "";
+  const known = new Set([
+    "project map", "area details",
+    "current focus", "situation", "next", "facing", "recent",
+    "project frame", "settled direction",
+  ]);
+  let shown = false;
+  for (const [name, tokens] of sections) {
+    if (known.has(name)) continue;
+    const heading = name.startsWith("__h1:") ? name.slice(6) : name;
+    const card = document.createElement("section");
+    card.className = "panel panel-context";
+    card.innerHTML = `<h2>${escapeHtml(heading)}</h2><div class="panel-body">${withMermaidPlaceholders(renderTokens(tokens))}</div>`;
+    extra.appendChild(card);
+    shown = true;
+  }
+  extra.hidden = !shown;
+}
+
 async function renderDoc(source: string): Promise<void> {
   const tokens = md.parse(source, {});
   const { title, sections } = splitSections(tokens);
@@ -451,55 +347,19 @@ async function renderDoc(source: string): Promise<void> {
   currentSections = sections;
   currentAreaDetails = parseAreaDetails(sections.get("area details") ?? []);
   currentParsedMap = parseProjectMap(sections.get("project map") ?? []);
-  currentModel = parseMentalModel(sections);
 
   document.title = title ? `${title} — Cockpit` : "Cockpit";
   const projectTitle = document.getElementById("project-title");
   if (projectTitle) projectTitle.textContent = title || "이름 없는 프로젝트";
 
-  // Primary 1/3 — 프로젝트 현황: Horizon / Stage / salient Posture /
-  // Primary Frontier synthesis. Card markup is owned by the projection layer;
-  // orchestration only decides panel visibility and legacy fallback input.
-  const statusPanel = document.getElementById("slot-status");
-  if (statusPanel) {
-    const body = statusPanel.querySelector<HTMLElement>(".status-synthesis");
-    if (body) {
-      let legacyFrontierHtml = "";
-      if (currentModel.frontiers.length === 0 && sections.get("next transition")?.length) {
-        const nextHtml = withMermaidPlaceholders(renderTokens(sections.get("next transition")!));
-        const issueHtml = sections.get("facing issues") ? withMermaidPlaceholders(renderTokens(sections.get("facing issues")!)) : "";
-        legacyFrontierHtml = renderLegacyFrontier(nextHtml, issueHtml);
-      }
-      body.innerHTML = renderStatusSynthesis(currentModel, legacyFrontierHtml);
-    }
-    statusPanel.hidden = !body?.innerHTML;
-    statusPanel.classList.toggle("legacy-fallback", Boolean(currentModel.horizon?.isLegacyFallback));
-    bindSemanticCards(statusPanel);
-  }
-
-  // Primary 2/3 — 최근 변화: Material Movement 중심. Strategic Threads는
-  // 별도 primary surface가 아니라 내부 secondary로만 둔다.
-  const movementPanel = document.getElementById("slot-movement");
-  if (movementPanel) {
-    const body = movementPanel.querySelector<HTMLElement>(".panel-body");
-    if (body) body.innerHTML = currentModel.movements.length ? renderMovements(currentModel.movements) : "";
-    const threadsSlot = movementPanel.querySelector<HTMLElement>(".threads-secondary-slot");
-    if (threadsSlot) {
-      threadsSlot.innerHTML = renderThreadsSecondary(currentModel.strategicThreads);
-      threadsSlot.hidden = currentModel.strategicThreads.length === 0;
-    }
-    movementPanel.hidden = currentModel.movements.length === 0 && currentModel.strategicThreads.length === 0;
-    bindSemanticCards(movementPanel);
-  }
-
+  // MAP-FIRST: the project map is the mental anchor and renders first.
   const mapPanel = document.getElementById("slot-map");
   const mapBody = mapPanel?.querySelector<HTMLElement>(".map-body");
   if (mapBody && currentParsedMap.isNativeMap) {
     mapBody.innerHTML = renderNativeMap(
       currentParsedMap,
       selectedAreaId,
-      currentAreaDetails,
-      currentModel.stageJourney?.currentStage
+      currentAreaDetails
     );
     mapBody.querySelectorAll<HTMLButtonElement>(".map-card").forEach((button) => {
       button.addEventListener("click", () => {
@@ -522,7 +382,24 @@ async function renderDoc(source: string): Promise<void> {
     badge.className = `completeness-badge ${completeness.missingItems > 0 ? "missing" : "complete"}`;
   }
 
-  setLegacyContextSections(sections);
+  // Orientation second: 지금 / 다음 / 막힘 — plain-text projection, no ontology.
+  setSectionPanel("situation", "slot-now");
+  setSectionPanel("next", "slot-next");
+  setSectionPanel("facing", "slot-blocked");
+  setSectionPanel("recent", "slot-recent");
+
+  // Stable context + user-owned focus last.
+  const focusTokens = sections.get("current focus");
+  const focusPanel = document.getElementById("slot-focus");
+  if (focusPanel) {
+    const body = focusPanel.querySelector<HTMLElement>(".panel-body");
+    if (body) body.innerHTML = focusTokens ? withMermaidPlaceholders(renderTokens(focusTokens)) : "";
+    focusPanel.hidden = !focusTokens?.length;
+  }
+  setSectionPanel("project frame", "slot-frame");
+  setSectionPanel("settled direction", "slot-settled");
+
+  renderExtraSections(sections);
   setupFocusCopy(sections, currentParsedMap);
 
   const empty = document.getElementById("empty-state");
@@ -530,11 +407,15 @@ async function renderDoc(source: string): Promise<void> {
 
   if (inspectorHistory.length > 0) {
     const current = inspectorHistory[inspectorHistory.length - 1];
-    const refreshed = findEntity(current.kind, current.title, currentLookup());
-    if (refreshed) {
-      inspectorHistory[inspectorHistory.length - 1] = refreshed;
-      renderInspector(refreshed);
-    } else {
+    if (current.kind === "area" && current.areaItem) {
+      const refreshed = findEntity("area", current.areaItem.title, currentLookup());
+      if (refreshed) {
+        inspectorHistory[inspectorHistory.length - 1] = refreshed;
+        renderInspector(refreshed);
+      } else {
+        closeInspector();
+      }
+    } else if (current.kind === "evidence") {
       closeInspector();
     }
   }

@@ -6,6 +6,10 @@
  * only assembles the deterministic context payload and appends the canonical
  * instruction block. Consumes the clean domain model (`./domain.js`);
  * re-exported by the compatibility facade (`./parser.js`).
+ *
+ * Context is project context only: title, focus/area, situation, next,
+ * facing, frame, settled direction, map text, area detail text. No
+ * execution-wave, admission, publication, freshness, or topology metadata.
  */
 
 import {

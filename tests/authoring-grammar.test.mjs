@@ -222,14 +222,37 @@ test("Heading aliases contract: Korean and English Area Details and Context slot
   assert.equal(HEADING_ALIAS["제품 목표"], "project frame");
   assert.equal(HEADING_ALIAS["프로젝트 큰 그림"], "project frame");
 
-  // Overview panels
+  // Overview panels: one merged owner per reader question.
   assert.equal(HEADING_ALIAS["현재 집중"], "current focus");
   assert.equal(HEADING_ALIAS["현재의 집중"], "current focus");
   assert.equal(HEADING_ALIAS["current focus"], "current focus");
   assert.equal(HEADING_ALIAS["focus"], "current focus");
-  assert.equal(HEADING_ALIAS["현재 상황"], "current situation");
-  assert.equal(HEADING_ALIAS["다음 전환"], "next transition");
-  assert.equal(HEADING_ALIAS["직면한 문제"], "facing issues");
+  assert.equal(HEADING_ALIAS["현재 상황"], "situation");
+  assert.equal(HEADING_ALIAS["지금"], "situation");
+  assert.equal(HEADING_ALIAS["current situation"], "situation");
+  assert.equal(HEADING_ALIAS["프로젝트 지평"], "situation");
+  assert.equal(HEADING_ALIAS["project horizon"], "situation");
+  assert.equal(HEADING_ALIAS["다음 전환"], "next");
+  assert.equal(HEADING_ALIAS["다음"], "next");
+  assert.equal(HEADING_ALIAS["next transition"], "next");
+  assert.equal(HEADING_ALIAS["현재 최전선"], "next");
+  assert.equal(HEADING_ALIAS["current frontier"], "next");
+  assert.equal(HEADING_ALIAS["직면한 문제"], "facing");
+  assert.equal(HEADING_ALIAS["막힌 것"], "facing");
+  assert.equal(HEADING_ALIAS["blocked"], "facing");
+  assert.equal(HEADING_ALIAS["facing issues"], "facing");
+  assert.equal(HEADING_ALIAS["최근 진척"], "recent");
+  assert.equal(HEADING_ALIAS["최근 변화"], "recent");
+  assert.equal(HEADING_ALIAS["recent progress"], "recent");
+  assert.equal(HEADING_ALIAS["최근 실질적 변화"], "recent");
+  assert.equal(HEADING_ALIAS["recent material movement"], "recent");
+  // Removed canonical owners resolve to nothing.
+  assert.equal(HEADING_ALIAS["단계 여정"], undefined);
+  assert.equal(HEADING_ALIAS["stage journey"], undefined);
+  assert.equal(HEADING_ALIAS["프로젝트 상태"], undefined);
+  assert.equal(HEADING_ALIAS["project posture"], undefined);
+  assert.equal(HEADING_ALIAS["전략적 흐름"], undefined);
+  assert.equal(HEADING_ALIAS["strategic threads"], undefined);
 });
 
 test("Explicit relationship grammar: bullet list => peer rendering, no directional arrows", () => {

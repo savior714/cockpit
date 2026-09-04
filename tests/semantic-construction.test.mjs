@@ -4,7 +4,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import MarkdownIt from "markdown-it";
-import { createHash } from "node:crypto";
 import { normalizeTitle, normalizeKey, isCurrentStageHeading, isFoundationHeading, isFutureHeading } from "../dist/authoring-grammar.js";
 import {
   splitSections,
@@ -14,13 +13,6 @@ import {
   parseProjectMap,
   parseAreaDetails,
   findAreaDetail,
-  parseMentalModel,
-  parseProjectHorizon,
-  parseStageJourney,
-  parseProjectPosture,
-  parseCurrentFrontiers,
-  parseStrategicThreads,
-  parseMaterialMovements,
   parseDocument,
 } from "../dist/semantic-construction.js";
 import { checkProgressStructure, formatStructuralCheckReport, getAreaCompleteness } from "../dist/structural-check.js";
@@ -33,11 +25,11 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const md = new MarkdownIt({ html: true, linkify: true });
 
-function readFixtureModel(filename) {
+function readFixtureSections(filename) {
   const source = fs.readFileSync(path.join(__dirname, "fixtures", filename), "utf-8");
   const tokens = md.parse(source, {});
-  const { sections } = splitSections(tokens);
-  return { source, sections, model: parseMentalModel(sections) };
+  const { title, sections } = splitSections(tokens);
+  return { source, title, sections };
 }
 
 test("Synthetic Fixture 1: Operational and telemetry system topology verification", () => {
@@ -107,9 +99,9 @@ test("Synthetic Fixture 1: Operational and telemetry system topology verificatio
   }
 
   // 4. Verify Overview and Context slots
-  assert.ok(sections.get("current situation"), "## 현재 상황 slot parsed");
-  assert.ok(sections.get("next transition"), "## 다음 전환 slot parsed");
-  assert.ok(sections.get("facing issues"), "## 직면한 문제 slot parsed");
+  assert.ok(sections.get("situation"), "## 현재 상황 slot parsed");
+  assert.ok(sections.get("next"), "## 다음 전환 slot parsed");
+  assert.ok(sections.get("facing"), "## 직면한 문제 slot parsed");
   assert.ok(sections.get("project frame"), "## 제품 목표 slot parsed");
   assert.ok(sections.get("settled direction"), "## 확정된 방향 slot parsed");
 });
@@ -181,9 +173,9 @@ test("Synthetic Fixture 2: Distributed software architecture verification", () =
   }
 
   // 4. Overview & Context slots
-  assert.ok(sections.get("current situation"), "## Current Situation parsed");
-  assert.ok(sections.get("next transition"), "## Next Transition parsed");
-  assert.ok(sections.get("facing issues"), "## Facing Issues parsed");
+  assert.ok(sections.get("situation"), "## Current Situation parsed");
+  assert.ok(sections.get("next"), "## Next Transition parsed");
+  assert.ok(sections.get("facing"), "## Facing Issues parsed");
   assert.ok(sections.get("project frame"), "## Product Goals parsed");
   assert.ok(sections.get("settled direction"), "## Settled Direction parsed");
 });
@@ -255,43 +247,46 @@ test("Synthetic Fixture 3: Multicenter clinical research pipeline verification",
   }
 
   // 4. Overview & Context slots
-  assert.ok(sections.get("current situation"), "## 현재 상황 slot parsed");
-  assert.ok(sections.get("next transition"), "## 다음 전환 slot parsed");
-  assert.ok(sections.get("facing issues"), "## 직면한 문제 slot parsed");
+  assert.ok(sections.get("situation"), "## 현재 상황 slot parsed");
+  assert.ok(sections.get("next"), "## 다음 전환 slot parsed");
+  assert.ok(sections.get("facing"), "## 직면한 문제 slot parsed");
   assert.ok(sections.get("project frame"), "## 제품 목표 slot parsed");
   assert.ok(sections.get("settled direction"), "## 확정된 방향 slot parsed");
 });
 
-test("Recent Material Movement is a bounded semantic transition window, with legacy Recent Progress fallback", () => {
+test("Recent changes stay a bounded semantic transition window under one merged owner", () => {
   const progressPath = path.join(__dirname, "..", "PROGRESS.md");
   const source = fs.readFileSync(progressPath, "utf-8");
   const { sections } = splitSections(md.parse(source, {}));
-  const recentTokens = sections.get("recent material movement");
-  assert.ok(recentTokens, "root PROGRESS.md must expose Recent Material Movement");
-  const movements = parseMaterialMovements(recentTokens);
-  assert.ok(movements.length >= 1 && movements.length <= 8, "Recent Material Movement must stay bounded");
-  assert.equal(movements[0].title, "Presentation synthesis");
-  assert.equal(movements[0].before, "MAP-FIRST");
-  assert.equal(movements[0].after, "HORIZON-FIRST");
-  assert.ok(movements.every((movement) => movement.hasStateTransition));
+  const recentTokens = sections.get("recent");
+  assert.ok(recentTokens, "root PROGRESS.md must expose the merged Recent section");
+  const recentText = extractSectionRawText(recentTokens);
+  const items = recentText.split(/\r?\n/).filter((line) => /^[-*+]\s+/.test(line));
+  assert.ok(items.length >= 1 && items.length <= 8, "Recent changes must stay a bounded rolling window");
+  assert.ok(recentText.includes("→"), "recent items read as change → consequence");
 
-  const legacy = splitSections(md.parse(`
-# Legacy
-## Recent Progress
-- **Semantic transition** → project state changed
-`, {})).sections;
-  assert.ok(legacy.get("recently completed"), "old Recent Progress remains a supported fallback");
+  // Legacy headings resolve into the same single owner — no dual canonical model.
+  const legacyHeads = [
+    "## Recent Progress",
+    "## Recent Material Movement",
+    "## 최근 진척",
+    "## 최근 실질적 변화",
+  ];
+  for (const head of legacyHeads) {
+    const legacy = splitSections(md.parse(`# Legacy\n${head}\n- **Semantic transition** → project state changed\n`, {})).sections;
+    assert.ok(legacy.get("recent"), `${head} must resolve into the merged Recent owner`);
+  }
 
   const htmlPath = path.join(__dirname, "..", "index.html");
   const html = fs.readFileSync(htmlPath, "utf-8");
   const cssPath = path.join(__dirname, "..", "src", "style.css");
   const css = fs.readFileSync(cssPath, "utf-8");
 
-  assert.match(html, /현재 진행 문서 기준 · 단순 작업 나열이 아닌 프로젝트 상태의 핵심 전환/);
+  assert.match(html, /현재 진행 문서 기준 · 프로젝트 상태의 핵심 전환/);
   const foregroundRule = css.indexOf("li:nth-child(-n + 2)");
   const backgroundRule = css.indexOf("li:nth-child(n + 3)");
-  assert.ok(foregroundRule !== -1, "the newest two Recent Progress items need a foreground rule");
-  assert.ok(backgroundRule !== -1, "older Recent Progress items need a receding rule");
+  assert.ok(foregroundRule !== -1, "the newest two Recent items need a foreground rule");
+  assert.ok(backgroundRule !== -1, "older Recent items need a receding rule");
   assert.ok(foregroundRule < backgroundRule, "foreground styling must precede older-item styling");
   assert.match(css.slice(foregroundRule, backgroundRule), /font-size: 0\.94rem/);
   assert.match(css.slice(backgroundRule), /font-size: 0\.82rem/);
@@ -418,7 +413,7 @@ test("Project horizon fixture: noisy low-level evidence stays out of Overview su
 
   const tokens = md.parse(content, {});
   const { sections } = splitSections(tokens);
-  const overviewText = ["current situation", "next transition", "facing issues"]
+  const overviewText = ["situation", "next", "facing"]
     .map((key) => {
       const sectionTokens = sections.get(key);
       assert.ok(sectionTokens, `fixture must contain ${key} section`);
@@ -426,7 +421,7 @@ test("Project horizon fixture: noisy low-level evidence stays out of Overview su
     })
     .join("\n");
 
-  const recentProgress = extractSectionRawText(sections.get("recent progress"));
+  const recentProgress = extractSectionRawText(sections.get("recent"));
   const areaDetailsIdx = content.indexOf("## 영역 상세");
   assert.ok(areaDetailsIdx !== -1);
   const areaDetailsText = content.slice(areaDetailsIdx, content.indexOf("## 현재 상황"));
@@ -454,165 +449,73 @@ test("Project horizon fixture: noisy low-level evidence stays out of Overview su
   // state transition with completion condition, and material constraint only.
   assert.ok(overviewText.includes("성과/범위"), "situation must be compressed into material categories");
   assert.ok(overviewText.includes("검증/준비도"));
-  assert.ok(overviewText.includes("전환") && overviewText.includes("→"), "next transition must be a state transition");
-  assert.ok(overviewText.includes("완료 조건"), "next transition must carry a completion condition");
-  assert.ok(overviewText.includes("Proof Gap"), "facing issues must admit a project-level constraint");
+  assert.ok(overviewText.includes("전환") && overviewText.includes("→"), "next must be a state transition");
+  assert.ok(overviewText.includes("완료 조건"), "next must carry a completion condition");
+  assert.ok(overviewText.includes("Proof Gap"), "facing must admit a project-level constraint");
 });
 
-test("Mental-model canonical aliases normalize and legacy aliases remain distinct fallbacks", () => {
-  const canonical = splitSections(md.parse(`
-# Model
-## Project Horizon
-orientation
-## Stage Journey
-### Current — Stage 1
-- **CLOSED — Gate**
-`, {})).sections;
-
-  assert.ok(canonical.get("project horizon"));
-  assert.ok(canonical.get("stage journey"));
-  assert.equal(canonical.get("current situation"), undefined);
-
-  const legacy = splitSections(md.parse(`
-# Legacy
-## 현재 상황
-old orientation
-`, {})).sections;
-  const horizon = parseProjectHorizon(legacy.get("current situation"), true);
-  assert.ok(horizon);
-  assert.equal(horizon.isLegacyFallback, true);
-  assert.equal(horizon.title, "현재 상황");
+test("Contracted aliases resolve into one owner per reader question", () => {
+  // Now: canonical + legacy Horizon headings share the merged Situation owner.
+  for (const head of ["## Project Horizon", "## 프로젝트 지평", "## 현재 상황", "## Current Situation", "## 지금"]) {
+    const sections = splitSections(md.parse(`# Model\n${head}\norientation\n`, {})).sections;
+    assert.ok(sections.get("situation"), `${head} must resolve into the merged Situation owner`);
+  }
+  // Next: canonical + legacy Frontier headings share the merged Next owner.
+  for (const head of ["## Current Frontier", "## 현재 최전선", "## 다음 전환", "## Next Transition", "## 다음"]) {
+    const sections = splitSections(md.parse(`# Model\n${head}\nA → B\n`, {})).sections;
+    assert.ok(sections.get("next"), `${head} must resolve into the merged Next owner`);
+  }
+  // Recent: canonical + legacy Movement headings share the merged Recent owner.
+  for (const head of ["## Recent Material Movement", "## 최근 실질적 변화", "## 최근 진척", "## Recent Progress"]) {
+    const sections = splitSections(md.parse(`# Model\n${head}\n- **Change** → consequence\n`, {})).sections;
+    assert.ok(sections.get("recent"), `${head} must resolve into the merged Recent owner`);
+  }
+  // Removed owners resolve to nothing canonical: old Stage/Posture/Threads
+  // headings render as secondary extra context, never as canonical slots.
+  for (const head of ["## Stage Journey", "## 단계 여정", "## Project Posture", "## 프로젝트 상태", "## Strategic Threads", "## 전략적 흐름"]) {
+    const sections = splitSections(md.parse(`# Model\n${head}\nbody\n`, {})).sections;
+    assert.equal(sections.get("situation"), undefined, `${head} must not claim the Situation slot`);
+    assert.equal(sections.get("next"), undefined, `${head} must not claim the Next slot`);
+    assert.equal(sections.get("recent"), undefined, `${head} must not claim the Recent slot`);
+  }
 });
 
-test("NextChart EMR acceptance fixture parses as a complex, non-telemetry mental model", () => {
-  const { source, model } = readFixtureModel("nextchart-emr.md");
+test("NextChart EMR acceptance fixture restores orientation from the primary surface", () => {
+  const { source, title, sections } = readFixtureSections("nextchart-emr.md");
   const result = checkProgressStructure(source);
 
   assert.equal(result.ok, true, result.errors.join("; "));
-  assert.equal(model.horizon?.isLegacyFallback, false);
-  assert.match(model.horizon?.summaryText ?? "", /NextChart/);
-  assert.equal(model.stageJourney?.currentStage, "Stage 1A: Primary Care Baseline RC");
-  assert.equal(model.stageJourney?.nextStage, "Stage 1B");
-  assert.deepEqual(model.posture?.axes.map((axis) => axis.title), [
-    "Core Product",
-    "Production Truth",
-    "Reliability",
-    "Security",
-    "External Breadth",
-    "Delivery Readiness",
-  ]);
-  assert.equal(model.posture?.axes.find((axis) => axis.title === "Core Product")?.role, "core-capability");
-  assert.equal(model.posture?.axes.find((axis) => axis.title === "Delivery Readiness")?.role, "delivery-readiness");
-  assert.equal(model.frontiers.length, 1);
-  assert.equal(model.frontiers[0].title, "Exact release convergence");
-  assert.equal(model.frontiers[0].currentState, "NOT PROVEN");
-  assert.equal(model.frontiers[0].targetState, "PROVEN");
-  assert.equal(model.movements.length, 2);
-  assert.ok(model.movements.every((movement) => movement.hasStateTransition));
-  assert.match(model.frontiers[0].closedBoundaries, /HIRA sentinel/);
+  // Reader questions answered without taxonomy study:
+  const situation = extractSectionRawText(sections.get("situation"));
+  const next = extractSectionRawText(sections.get("next"));
+  const facing = extractSectionRawText(sections.get("facing"));
+  const recent = extractSectionRawText(sections.get("recent"));
+  assert.match(situation, /NextChart/, "purpose/state restorable from Now");
+  assert.match(next, /→/, "nearest transition restorable from Next");
+  assert.ok(facing.length > 0, "material constraint restorable from Blocked");
+  assert.match(recent, /→/, "arrival path restorable from Recent");
+  // Map structure + current position intact:
+  const parsedMap = parseProjectMap(sections.get("project map"));
+  assert.equal(parsedMap.isNativeMap, true);
+  assert.equal(parsedMap.hasCurrentStage, true);
+  assert.ok(parsedMap.rails.flatMap((rail) => rail.groups).flatMap((group) => group.items).some((item) => item.title === "Release proof"));
+  const areaDetails = parseAreaDetails(sections.get("area details"));
+  assert.ok(areaDetails.get(normalizeTitle("Release proof")), "current-position area drills into evidence");
+  void title;
 });
 
-test("Cockpit acceptance fixture proves posture vocabulary is project-specific", () => {
-  const { source, model } = readFixtureModel("cockpit-self.md");
+test("Cockpit self fixture restores orientation from the primary surface", () => {
+  const { source, sections } = readFixtureSections("cockpit-self.md");
   const result = checkProgressStructure(source);
 
   assert.equal(result.ok, true, result.errors.join("; "));
-  assert.deepEqual(model.posture?.axes.map((axis) => axis.title), [
-    "Core Viewer",
-    "Model Fidelity",
-    "Comprehension",
-    "Portability",
-    "Operational Simplicity",
-    "Adoption Readiness",
-  ]);
-  assert.equal(model.posture?.axes.some((axis) => axis.title === "Production Truth"), false);
-  assert.equal(model.frontiers[0].title, "Reader comprehension closure");
-  assert.equal(model.frontiers[0].currentState, "DRAFT");
-  assert.equal(model.frontiers[0].targetState, "INDEPENDENTLY ACCEPTED");
-  assert.deepEqual(model.movements.map((movement) => movement.title), [
-    "Presentation synthesis",
-    "Inspector convergence",
-  ]);
-});
-
-test("Stage Blocker remains separate from maturity and respects explicit negative wording", () => {
-  const sections = splitSections(md.parse(`
-# Stage blocker wording
-## Project Posture
-### Core Capability — STRONG
-단계 blocker 아님.
-### Delivery Readiness — PARTIAL
-Stage blocker: yes
-`, {})).sections;
-  const posture = parseProjectPosture(sections.get("project posture"));
-
-  assert.equal(posture?.axes[0]?.state, "STRONG");
-  assert.equal(posture?.axes[0]?.isStageBlocker, false);
-  assert.equal(posture?.axes[1]?.state, "PARTIAL");
-  assert.equal(posture?.axes[1]?.isStageBlocker, true);
-});
-
-test("Legacy documents use a single non-duplicating Horizon fallback", () => {
-  const { source, sections, model } = readFixtureModel("operational-system.md");
-  const result = checkProgressStructure(source);
-  assert.equal(result.ok, true, result.errors.join("; "));
-  assert.equal(model.horizon?.isLegacyFallback, true);
-  assert.equal(Boolean(sections.get("project horizon")), false);
-  assert.equal(model.frontiers.length, 0);
-  assert.equal(model.movements.length, 0);
-});
-
-test("Stage entry conditions are parsed from labeled lines in declared fixtures", () => {
-  const cockpit = readFixtureModel("cockpit-self.md");
-  assert.equal(
-    cockpit.model.stageJourney?.nextGates[0]?.entryCondition,
-    "Reader-level comprehension is independently accepted at the Primary Frontier."
-  );
-
-  const emr = readFixtureModel("nextchart-emr.md");
-  assert.equal(
-    emr.model.stageJourney?.nextGates[0]?.entryCondition,
-    "Stage 1A cannot be promoted until the exact release proof is admitted at the required boundary."
-  );
-});
-
-test("Entry condition labels are semantic metadata and never contaminate summaries", () => {
-  const markdown = `
-# Entry Condition System
-
-## 단계 여정
-
-### 다음 — Stage 2
-NOT OPEN
-진입조건: Core reliability reaches STRONG.
-`;
-
-  const tokens = md.parse(markdown, {});
-  const { sections } = splitSections(tokens);
-  const journey = parseStageJourney(sections.get("stage journey"));
-  const gate = journey?.nextGates[0];
-
-  assert.equal(gate?.state, "NOT OPEN");
-  assert.equal(gate?.entryCondition, "Core reliability reaches STRONG.");
-  assert.ok(!gate?.summaryText.includes("진입"));
-});
-
-test("'Opens when' alias extracts entry condition from material gate blocks", () => {
-  const markdown = `
-# Entry Condition System
-
-## Stage Journey
-
-### Next — Stage 2
-- **NOT OPEN — Adoption gate**
-  Opens when: a fresh reader accepts the rendered cockpit.
-`;
-
-  const tokens = md.parse(markdown, {});
-  const { sections } = splitSections(tokens);
-  const journey = parseStageJourney(sections.get("stage journey"));
-
-  assert.equal(journey?.nextGates[0]?.entryCondition, "a fresh reader accepts the rendered cockpit.");
+  const situation = extractSectionRawText(sections.get("situation"));
+  const next = extractSectionRawText(sections.get("next"));
+  assert.match(situation, /Cockpit/);
+  assert.match(next, /→/);
+  assert.ok(extractSectionRawText(sections.get("recent")).includes("→"));
+  const parsedMap = parseProjectMap(sections.get("project map"));
+  assert.equal(parsedMap.isNativeMap, true);
 });
 
 test("Native map links its single current-stage group to the declared current stage", () => {
@@ -675,7 +578,7 @@ test("RECONSTRUCT regression: evidence-rich map/details with blank stable contex
   assert.match(report, /^PROGRESS structural check: PASS/m);
 
   const { sections } = splitSections(md.parse(content, {}));
-  for (const key of ["project frame", "settled direction", "recently completed"]) {
+  for (const key of ["project frame", "settled direction", "recent"]) {
     assert.equal(
       extractSectionRawText(sections.get(key) ?? []).trim(),
       "",
@@ -685,7 +588,7 @@ test("RECONSTRUCT regression: evidence-rich map/details with blank stable contex
 
   // These are legacy Horizon headings in the fixture; their empty bodies are
   // also part of the incomplete reader-facing model shape.
-  for (const key of ["current situation", "next transition"]) {
+  for (const key of ["situation", "next"]) {
     assert.equal(
       extractSectionRawText(sections.get(key) ?? []).trim(),
       "",
@@ -724,42 +627,4 @@ test("RECONSTRUCT regression control: complete fixture populates stable context 
   const completeDirection = extractSectionRawText(completeSections.get("settled direction") ?? []).trim();
   assert.ok(completeGoal.length > 0, "Complete fixture must populate project frame");
   assert.ok(completeDirection.length > 0, "Complete fixture must populate settled direction");
-});
-
-test("Area-Local vs Project-Global Frontier Ownership: provider-local admission vs project-wide release proof", () => {
-  // WHERE-the-residual-is-owned rule: Area Details owns AREA_LOCAL residual only;
-  // PROJECT_GLOBAL_FRONTIER stays on the project-horizon surface. This adds to,
-  // not replaces, the existing WHAT-is-a-residual rule.
-  const content = fs.readFileSync(path.join(__dirname, "fixtures", "area-frontier-ownership.md"), "utf-8");
-  const structure = checkProgressStructure(content);
-  assert.equal(structure.ok, true, structure.errors.join("; "));
-  assert.equal(structure.totalMapItems, 3);
-  assert.equal(structure.matchedDetails, 3);
-
-  const { sections } = splitSections(md.parse(content, {}));
-  const areaDetails = parseAreaDetails(sections.get("area details"));
-  const model = parseMentalModel(sections);
-  const subsectionText = (area, label) =>
-    area?.subsections.find((s) => s.subheading.includes(label))?.rawText ?? "";
-
-  const provider = areaDetails.get(normalizeTitle("Provider admission"));
-  assert.ok(provider, "Provider admission area must exist");
-  const providerLevel = subsectionText(provider, "현재 수준");
-  const providerRemaining = subsectionText(provider, "남은 문제");
-  assert.match(providerLevel, /Live admission.*NOT PROVEN/);
-  assert.match(providerRemaining, /Live admission handshake.*NOT PROVEN/);
-  assert.ok(
-    providerLevel.includes("관련 최전선: Exact release convergence"),
-    "provider area may reference the global frontier as context"
-  );
-  assert.equal(
-    providerRemaining.includes("Exact release convergence"),
-    false,
-    "provider Remaining Problems must not carry the project-wide release proof"
-  );
-
-  assert.equal(model.frontiers.length, 1);
-  assert.equal(model.frontiers[0].title, "Exact release convergence");
-  assert.equal(model.frontiers[0].currentState, "NOT PROVEN");
-  assert.equal(model.frontiers[0].targetState, "PROVEN");
 });

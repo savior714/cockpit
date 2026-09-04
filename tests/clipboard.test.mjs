@@ -172,8 +172,8 @@ test("Both feedback surfaces are accessible live regions with preserved structur
   assert.ok(inspectorActions < inspectorToast, "#copy-toast must stay inside .inspector-actions");
   const slotFocus = html.indexOf('id="slot-focus"');
   const focusToast = html.indexOf('id="focus-copy-toast"');
-  const slotNow = html.indexOf('id="slot-now"');
-  assert.ok(slotFocus < focusToast && focusToast < slotNow, "#focus-copy-toast must stay inside #slot-focus");
+  const slotFrame = html.indexOf('id="slot-frame"');
+  assert.ok(slotFocus < focusToast && focusToast < slotFrame, "#focus-copy-toast must stay inside #slot-focus");
   // Visual language preserved: same elements, same button labels, failure styled via existing token.
   const css = readSource("src/style.css");
   assert.ok(css.includes(".copy-toast"), "CSS must keep the .copy-toast visual language");

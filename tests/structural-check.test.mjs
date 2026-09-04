@@ -9,9 +9,6 @@ import { splitSections } from "../dist/markdown-structure.js";
 import {
   parseProjectMap,
   parseAreaDetails,
-  parseMentalModel,
-  parseProjectHorizon,
-  parseStageJourney,
 } from "../dist/semantic-construction.js";
 import {
   checkProgressStructure,
@@ -816,82 +813,90 @@ test("Area Detail Evidence Admission: Area with Meaning + Current Level + Eviden
   assert.ok(handoffArea2.includes("#### 다시 열리는 조건\n- 카프카 클러스터"));
 });
 
-function readFixtureModel(filename) {
+function readFixtureSections(filename) {
   const source = fs.readFileSync(path.join(__dirname, "fixtures", filename), "utf-8");
   const tokens = md.parse(source, {});
-  const { sections } = splitSections(tokens);
-  return { source, sections, model: parseMentalModel(sections) };
+  const { title, sections } = splitSections(tokens);
+  return { source, title, sections };
 }
-
-test("Canonical semantic guardrails reject invalid posture, frontier, movement, relation, and Horizon telemetry", () => {
+test("Overview hygiene guardrail rejects low-level telemetry in Now/Next/Blocked", () => {
   const invalid = `
 # Invalid model
 
-## Project Horizon
+## 프로젝트 지도
+
+### Rail
+#### Group
+- **Area One** — first area
+
+## 영역 상세
+
+### Area One
+#### 의미
+Meaning.
+#### 현재 수준
+Level.
+#### 근거
+- Evidence.
+
+## 현재 상황
 Current model was reconstructed at 0123456789abcdef0123456789abcdef01234567 by PID 123 from /Users/example/src/main.ts.
 
-## Stage Journey
-### Current — Stage 1
-- **CLOSED — Gate**
-### Next — Stage 2
-NOT OPEN
+## 다음 전환
+A → B, verified in CI run #1.
 
-## Project Posture
-### Core Capability — BLOCKED
-Role: CORE CAPABILITY
-bad state
-### Axis 2 — STRONG
-fine
-### Axis 3 — PARTIAL
-fine
-### Axis 4 — WEAK
-fine
-
-## Current Frontier
-### One
-현재: A
-목표: B
-### Two
-현재: B
-목표: C
-관련 영역: Missing Area
-
-## Recent Material Movement
-### Activity only
-변경: a refactor happened
+## 직면한 문제
+Blocked by an absolute path /var/data/store.
 `;
 
   const result = checkProgressStructure(invalid);
   assert.equal(result.ok, false);
-  assert.ok(result.guardrailErrors.some((error) => /full Git SHA/.test(error)));
-  assert.ok(result.guardrailErrors.some((error) => /explicit PID/.test(error)));
-  assert.ok(result.guardrailErrors.some((error) => /absolute implementation path/.test(error)));
-  assert.ok(result.guardrailErrors.some((error) => /5–8 axes/.test(error)));
-  assert.ok(result.guardrailErrors.some((error) => /encodes BLOCKED as maturity/.test(error)));
-  assert.ok(result.guardrailErrors.some((error) => /Multiple Primary Frontiers/.test(error)));
-  assert.ok(result.guardrailErrors.some((error) => /Material movement/.test(error)));
-  assert.ok(result.unresolvedRelations.some((error) => /Missing Area/.test(error)));
+  assert.ok(result.guardrailErrors.some((error) => /현재 상황 contains a full Git SHA/.test(error)));
+  assert.ok(result.guardrailErrors.some((error) => /현재 상황 contains an explicit PID/.test(error)));
+  assert.ok(result.guardrailErrors.some((error) => /현재 상황 contains an absolute implementation path/.test(error)));
+  assert.ok(result.guardrailErrors.some((error) => /막힘 contains an absolute implementation path/.test(error)));
 });
 
-test("Explicit CO-PRIMARY is the only valid multi-primary frontier exception", () => {
+test("Removed rich owners never fail the check: old Stage/Posture/Threads sections are secondary context", () => {
   const doc = `
-# Co-primary
-## Current Frontier
-### [CO-PRIMARY] Release boundary
-현재: A
-목표: B
-### [CO-PRIMARY] Reader boundary
-현재: C
-목표: D
+# Legacy rich document
+
+## 프로젝트 지도
+
+### Rail
+#### Group
+- **Area One** — first area
+
+## 영역 상세
+
+### Area One
+#### 의미
+Meaning.
+#### 현재 수준
+Level.
+#### 근거
+- Evidence.
+
+## 단계 여정
+### 현재 — Stage 1
+- **CLOSED — Gate**
+
+## 프로젝트 상태
+### Axis — STRONG
+fine
+
+## 전략적 흐름
+### Thread — PARTIAL
+parallel direction
 `;
   const result = checkProgressStructure(doc);
-  assert.equal(result.primaryFrontierCount, 2);
-  assert.equal(result.coPrimaryFrontierCount, 2);
-  assert.equal(result.guardrailErrors.some((error) => /Multiple Primary Frontiers/.test(error)), false);
+  assert.equal(result.ok, true, result.errors.join("; "));
+  assert.equal(result.totalMapItems, 1);
+  assert.equal(result.matchedDetails, 1);
 });
 
 test("Authoring discoverability: canonical minimal example stays PASS and covers the documented grammar", () => {
-  const { source, model } = readFixtureModel("canonical-minimal.md");
+  const { source, sections } = readFixtureSections("canonical-minimal.md");
   const result = checkProgressStructure(source);
   assert.equal(result.ok, true, result.errors.join("; "));
 
@@ -901,141 +906,18 @@ test("Authoring discoverability: canonical minimal example stays PASS and covers
   assert.equal(result.currentStageCount, 1);
 
   // Documented slots are all recognizable without parser-source archaeology.
-  assert.equal(result.hasProjectHorizon, true);
-  assert.equal(result.hasStageJourney, true);
-  assert.equal(model.stageJourney?.currentStage, "Stage 0.1: 당일 운영 RC");
-  assert.equal(model.stageJourney?.nextStage, "Stage 0.2: 예약 운영");
-  assert.deepEqual(
-    model.stageJourney?.currentGates.map((gate) => gate.state),
-    ["CLOSED", "IN PROOF"]
-  );
-  assert.equal(model.stageJourney?.nextGates[0]?.state, "NOT OPEN");
-  assert.ok((model.stageJourney?.nextGates[0]?.entryCondition ?? "").length > 0);
+  assert.equal(result.hasSituation, true);
+  assert.equal(result.hasNext, true);
+  assert.equal(result.hasFacing, true);
+  assert.equal(result.hasRecent, true);
+  assert.ok((sections.get("situation") ?? []).length > 0);
+  assert.ok((sections.get("next") ?? []).length > 0);
 
-  // Posture: documented 5–8 axes, four-state vocabulary, both roles.
-  assert.equal(result.postureAxisCount, 5);
-  assert.equal(result.postureCoreCapabilityCount, 1);
-  assert.equal(result.postureDeliveryReadinessCount, 1);
-  for (const axis of model.posture?.axes ?? []) {
-    assert.ok(["STRONG", "PARTIAL", "WEAK", "UNKNOWN"].includes(axis.state ?? ""));
-  }
-
-  // Frontier: one primary with a current → target transition.
-  assert.equal(result.primaryFrontierCount, 1);
-  assert.equal(model.frontiers[0]?.currentState, "NOT PROVEN");
-  assert.equal(model.frontiers[0]?.targetState, "PROVEN");
-
-  // Movement: every entry carries a before → after transition.
-  assert.ok(model.movements.length >= 1);
-  for (const movement of model.movements) {
-    assert.equal(movement.hasStateTransition, true);
-  }
-
-  // Relations and guardrails: documented example introduces no FAIL.
-  assert.equal(result.unresolvedRelations.length, 0);
+  // No stale guardrails: contracted result carries no rich-ontology counters.
+  assert.equal("hasProjectHorizon" in result, false);
+  assert.equal("hasStageJourney" in result, false);
+  assert.equal("hasProjectPosture" in result, false);
+  assert.equal("primaryFrontierCount" in result, false);
+  assert.equal("unresolvedRelations" in result, false);
   assert.equal(result.guardrailErrors.length, 0);
 });
-
-test("Stage proof disposition: FAILED + decisionReason continuation parses without phantom gates", () => {
-  const markdown = `
-# Proof Disposition Probe
-
-## 단계 여정
-
-### 현재 — Stage X
-- NOT PROVEN — Browser Golden Path first clean PASS
-
-  판정 이유: 과거 clean PASS 주장은 확인되지만 현재 reconstruction에서 재입증할 durable evidence pointer를 찾지 못했다.
-
-  - nested note must not become a gate
-  - second nested note must not become a gate
-
-- FAILED — Exact release backend proof
-
-  판정 이유: canonical verifier가 terminal FAIL에 도달했고 durable failure 기록이 존재한다.
-
-- BLOCKED — Production provider proof
-
-  판정 이유: 실행에 필요한 provider authority가 확보되지 않아 proof 자체를 시작할 수 없다.
-
-- NOT PROVEN — Legacy gate without reason
-`;
-  const tokens = md.parse(markdown, {});
-  const { sections } = splitSections(tokens);
-  const journey = parseStageJourney(sections.get("stage journey"));
-  assert.ok(journey);
-  assert.equal(journey.currentGates.length, 4);
-  assert.deepEqual(
-    journey.currentGates.map((gate) => gate.state),
-    ["NOT PROVEN", "FAILED", "BLOCKED", "NOT PROVEN"]
-  );
-  assert.deepEqual(
-    journey.currentGates.map((gate) => gate.title),
-    [
-      "Browser Golden Path first clean PASS",
-      "Exact release backend proof",
-      "Production provider proof",
-      "Legacy gate without reason",
-    ]
-  );
-  // Reason is extracted to its own field, never mixed into title/state.
-  assert.ok(journey.currentGates[0].decisionReason?.includes("durable evidence pointer"));
-  assert.ok(journey.currentGates[1].decisionReason?.includes("terminal FAIL"));
-  assert.ok(journey.currentGates[2].decisionReason?.includes("provider authority"));
-  assert.equal(journey.currentGates[3].decisionReason, undefined);
-  for (const gate of journey.currentGates) {
-    assert.ok(!gate.title.includes("판정 이유"));
-    assert.ok(!gate.title.includes("Decision reason"));
-    assert.ok(!gate.state.includes("판정"));
-  }
-  // The old duplicate "Title — STATE" summary is gone; reason owns the third line.
-  for (const gate of journey.currentGates) {
-    assert.equal(gate.summaryText, "");
-  }
-  // Continuation paragraphs and nested items never become phantom gates.
-  assert.ok(!journey.currentGates.some((gate) => gate.title.includes("nested note")));
-});
-
-test("Stage proof disposition: existing gates parse unchanged, legacy NOT PROVEN stays valid", () => {
-  const { model } = readFixtureModel("canonical-minimal.md");
-  assert.deepEqual(
-    model.stageJourney?.currentGates.map((gate) => gate.state),
-    ["CLOSED", "IN PROOF"]
-  );
-  for (const gate of model.stageJourney?.currentGates ?? []) {
-    assert.equal(gate.decisionReason, undefined);
-    assert.equal(gate.summaryText, "");
-  }
-  assert.equal(model.stageJourney?.nextGates[0]?.state, "NOT OPEN");
-  assert.ok((model.stageJourney?.nextGates[0]?.entryCondition ?? "").length > 0);
-});
-
-test("Stage proof disposition: FAILED is canonical, fixture PASS, unknown state still guarded", () => {
-  const fixturePath = path.join(__dirname, "fixtures", "stage-gate-proof-disposition.md");
-  const content = fs.readFileSync(fixturePath, "utf-8");
-  const result = checkProgressStructure(content);
-  assert.equal(result.ok, true, result.errors.join("; "));
-  assert.deepEqual(
-    parseStageJourney(splitSections(md.parse(content, {})).sections.get("stage journey"))?.currentGates.map((gate) => gate.state),
-    ["NOT PROVEN", "FAILED", "BLOCKED"]
-  );
-
-  const bogus = `
-# Bogus state probe
-
-## 단계 여정
-
-### 현재 — Stage X
-- BOGUS — Made-up state gate
-
-### 다음 — Stage Y
-NOT OPEN
-`;
-  const bogusResult = checkProgressStructure(bogus);
-  assert.equal(bogusResult.ok, false);
-  assert.ok(
-    bogusResult.guardrailErrors.some((error) => /missing a declared state/.test(error)),
-    "unknown/malformed states must still fail the declared-state guardrail"
-  );
-});
-
