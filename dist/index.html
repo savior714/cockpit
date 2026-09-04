@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cockpit</title>
-    <script type="module" crossorigin src="/assets/index-CLvvbMOV.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CvOkiyE_.css">
+    <script type="module" crossorigin src="/assets/index-Bh6WyU9_.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CFhi6Mv_.css">
   </head>
   <body>
     <main id="cockpit" class="cockpit">
@@ -15,6 +15,13 @@
           <h1 id="project-title" class="project-title"></h1>
         </div>
         <span id="you-are-here-chip" class="stage-chip" hidden></span>
+        <div class="refresh-control">
+          <span class="refresh-label">자동 업데이트</span>
+          <button id="auto-refresh-toggle" class="refresh-switch" type="button" role="switch" aria-checked="false" aria-label="자동 업데이트">
+            <span class="switch-knob" aria-hidden="true"></span>
+          </button>
+          <span id="auto-refresh-status" class="refresh-status" role="status" aria-live="polite">꺼짐</span>
+        </div>
       </header>
 
       <div id="primary-workspace" class="primary-workspace">
