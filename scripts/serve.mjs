@@ -151,7 +151,8 @@ async function serveAsset(req, res, pathname) {
   res.end(req.method === "HEAD" ? undefined : buf);
 }
 
-function openEventStream(req, res, progressFile) {
+function openEventStream(req, res, progressFile, hooks = {}) {
+  const { onOpen, onClose } = hooks;
   res.writeHead(200, {
     "content-type": "text/event-stream",
     "cache-control": "no-cache, no-transform",
@@ -159,6 +160,14 @@ function openEventStream(req, res, progressFile) {
     "x-accel-buffering": "no",
   });
   res.write(": connected\n\n");
+
+  if (typeof onOpen === "function") {
+    try {
+      onOpen();
+    } catch {
+      /* viewer accounting must never break the stream */
+    }
+  }
 
   let last = null;
   let closed = false;
@@ -195,6 +204,7 @@ function openEventStream(req, res, progressFile) {
   }, 20000);
 
   const cleanup = () => {
+    if (closed) return;
     closed = true;
     if (fsWatcher) {
       try {
@@ -206,8 +216,16 @@ function openEventStream(req, res, progressFile) {
     }
     clearInterval(pollInterval);
     clearInterval(heartbeat);
+    if (typeof onClose === "function") {
+      try {
+        onClose();
+      } catch {
+        /* viewer accounting must never throw from cleanup */
+      }
+    }
   };
   req.on("close", cleanup);
+  res.on("close", cleanup);
   res.on("error", cleanup);
 }
 
@@ -296,7 +314,9 @@ Operator note:
   update only material semantic deltas, run 'cockpit check', then launch the viewer.
 
 The default browser opens automatically once the server is ready.
-Pass --no-open to suppress this.`);
+Pass --no-open to suppress this.
+After at least one viewer has connected, the server exits automatically
+shortly after the last viewer disconnects (refresh/reconnect is tolerated).`);
     process.exit(0);
   }
 
@@ -341,6 +361,24 @@ To verify structural completeness once prepared:
     console.error("cockpit: dist/index.html missing — run `npm run build` first.");
     process.exit(1);
   }
+
+  // Viewer lifecycle: the canonical viewer signal is an active /events SSE
+  // connection — not a raw TCP socket or an asset request. The server stays
+  // alive until at least one viewer has connected; once the last SSE viewer
+  // goes away, a short grace period allows refresh/reconnect before the
+  // canonical shutdown path below reclaims the process and port.
+  let activeViewers = 0;
+  let seenViewer = false;
+  let idleTimer = null;
+  let shuttingDown = false;
+  const idleShutdownMs = (() => {
+    const raw = process.env.COCKPIT_IDLE_SHUTDOWN_MS;
+    if (raw === undefined || raw === "") return 2000;
+    const parsed = Number.parseInt(raw, 10);
+    if (!Number.isInteger(parsed) || parsed < 0) return 2000;
+    return parsed;
+  })();
+
   const server = createServer((req, res) => {
     const pathname = new URL(req.url ?? "/", "http://127.0.0.1").pathname;
     if (req.method !== "GET" && req.method !== "HEAD") {
@@ -361,7 +399,28 @@ To verify structural completeness once prepared:
       return;
     }
     if (pathname === "/events") {
-      openEventStream(req, res, progressFile);
+      openEventStream(req, res, progressFile, {
+        onOpen: () => {
+          seenViewer = true;
+          activeViewers += 1;
+          if (idleTimer) {
+            clearTimeout(idleTimer);
+            idleTimer = null;
+          }
+        },
+        onClose: () => {
+          if (activeViewers > 0) activeViewers -= 1;
+          if (activeViewers !== 0 || !seenViewer || shuttingDown) return;
+          if (idleTimer) return;
+          idleTimer = setTimeout(() => {
+            idleTimer = null;
+            if (!shuttingDown && seenViewer && activeViewers === 0) {
+              console.log("cockpit: last viewer disconnected — shutting down");
+              shutdown();
+            }
+          }, idleShutdownMs);
+        },
+      });
       return;
     }
     void serveAsset(req, res, pathname).catch(() => {
@@ -392,6 +451,12 @@ To verify structural completeness once prepared:
   });
 
   const shutdown = () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    if (idleTimer) {
+      clearTimeout(idleTimer);
+      idleTimer = null;
+    }
     try {
       if (typeof server.closeAllConnections === "function") {
         server.closeAllConnections();
