@@ -207,4 +207,71 @@ test("Distribution artifact smoke: pack, install into isolated prefix, and verif
   const exitPromise = new Promise((resolve) => viewerProc.on("exit", resolve));
   viewerProc.kill("SIGTERM");
   await exitPromise;
+
+  // 7. Test: installed CLI serves a project-directory target (first-class)
+  const projDir = path.join(tmpDir, "sample-proj");
+  await fs.mkdir(projDir, { recursive: true });
+  await fs.copyFile(validFixture, path.join(projDir, "PROGRESS.md"));
+
+  const dirProc = spawn(process.execPath, [binPath, projDir, "--port", "0", "--no-open"], {
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  let dirPort = null;
+  let dirStdout = "";
+  dirProc.stdout.on("data", (d) => {
+    dirStdout += d.toString("utf-8");
+    const m = dirStdout.match(/http:\/\/127\.0\.0\.1:(\d+)\//);
+    if (m) dirPort = Number.parseInt(m[1], 10);
+  });
+  const dirStart = Date.now();
+  while (!dirPort && Date.now() - dirStart < 5000) {
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  assert.ok(dirPort, `Directory-target server failed to start. Stdout: ${dirStdout}`);
+  assert.match(dirStdout, /PROGRESS\.md/);
+
+  const dirProgress = await new Promise((resolve, reject) => {
+    http.get(`http://127.0.0.1:${dirPort}/progress.md`, (res) => {
+      assert.equal(res.statusCode, 200);
+      let data = "";
+      res.on("data", (chunk) => (data += chunk));
+      res.on("end", () => resolve(data));
+    }).on("error", reject);
+  });
+  assert.match(dirProgress, /스마트 엣지 텔레메트리 시스템/);
+  const dirExit = new Promise((resolve) => dirProc.on("exit", resolve));
+  dirProc.kill("SIGTERM");
+  await dirExit;
+
+  // 8. Test: installed CLI first-run in an empty project is deterministic
+  const emptyDir = path.join(tmpDir, "fresh-proj");
+  await fs.mkdir(emptyDir, { recursive: true });
+  let firstRunFailedAsExpected = false;
+  let firstRunOutput = "";
+  try {
+    execSync(`"${binPath}" --no-open --port 0`, {
+      cwd: emptyDir,
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: 10000,
+    });
+  } catch (err) {
+    firstRunFailedAsExpected = true;
+    firstRunOutput = (err.stdout || "") + (err.stderr || "");
+    assert.equal(err.status, 1, "First-run without PROGRESS.md must exit 1");
+  }
+  assert.ok(firstRunFailedAsExpected, "First-run without PROGRESS.md must exit non-zero");
+  assert.match(firstRunOutput, /progress representation/);
+  assert.ok(
+    firstRunOutput.includes(path.resolve(emptyDir)),
+    "First-run output must identify the target project"
+  );
+  let wroteUnexpected = true;
+  try {
+    await fs.stat(path.join(emptyDir, "PROGRESS.md"));
+  } catch {
+    wroteUnexpected = false;
+  }
+  assert.equal(wroteUnexpected, false, "Non-interactive first-run must not write files");
 });

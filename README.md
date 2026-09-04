@@ -49,16 +49,28 @@ cd my-project
 cockpit
 ```
 
-- **동작 방식**: Cockpit은 현재 존재하는 `PROGRESS.md`를 있는 그대로 읽어 브라우저(`http://127.0.0.1:4321`)에 표시하는 초경량 읽기 전용(Read-only) 뷰어입니다.
-- **바이너리 경계**: Cockpit 바이너리 자체는 저장소를 분석하거나, Git 이력을 검사하거나, `PROGRESS.md`를 수정하거나, AI를 호출하지 않습니다.
-- **새로고침 의미**: 브라우저 새로고침과 파일 변경 시 live reload는 지정된 현재 `PROGRESS.md`를 다시 읽어 렌더링할 뿐이며, Git을 조회하는 `Git refresh`가 아닙니다. 문서에 새 전환을 넣는 일은 외부 capable agent의 fresh evidence 대조 책임입니다.
-
-### 다른 경로의 파일 지정하기
+또는 프로젝트 디렉터리를 직접 지정합니다:
 
 ```bash
+cockpit my-project
+cockpit /path/to/my-project
+```
+
+- **동작 방식**: Cockpit은 프로젝트 디렉터리의 `PROGRESS.md`를 있는 그대로 읽어 브라우저(`http://127.0.0.1:4321`)에 표시하는 초경량 읽기 전용(Read-only) 뷰어입니다. 인자 없이 실행하면 대화형 터미널에서는 대상 경로를 먼저 묻고(비우면 현재 디렉터리), 비대화형에서는 `./PROGRESS.md`를 사용합니다.
+- **바이너리 경계**: Cockpit 바이너리 자체는 저장소를 분석하거나, Git 이력을 검사하거나, `PROGRESS.md`를 수정하거나, AI를 호출하지 않습니다. 첫 실행 온보딩이 만드는 중립 시작점도 사용자의 명시적 확인(`y`)이 있을 때만 기록됩니다.
+- **새로고침 의미**: 브라우저 새로고침과 파일 변경 시 live reload는 지정된 현재 `PROGRESS.md`를 다시 읽어 렌더링할 뿐이며, Git을 조회하는 `Git refresh`가 아닙니다. 문서에 새 전환을 넣는 일은 외부 capable agent의 fresh evidence 대조 책임입니다.
+
+### 다른 프로젝트·파일 지정하기
+
+```bash
+cockpit /path/to/another-project
 cockpit /path/to/another/PROGRESS.md
 cockpit ./docs/PROGRESS.md --port 5000 --no-open
 ```
+
+- 디렉터리를 지정하면 `<dir>/PROGRESS.md`를 찾아 뷰어를 실행합니다.
+- 명시적 파일 지정은 그대로 동작하는 빠른 경로(advanced)입니다.
+- `PROGRESS.md`가 아직 없는 프로젝트를 지정하면(또는 빈 디렉터리에서 `cockpit` 실행 시) 실패로 끝나지 않고 준비 흐름으로 들어갑니다. 대상 프로젝트를 명시하고, 외부 에이전트용 준비 요청문을 보여주며, 확인 후에만 중립 시작점을 만듭니다. 자세한 흐름은 §4를 보세요.
 
 ### 구조적 완전성 사전 검사 (Structural Preflight Check)
 
@@ -72,8 +84,10 @@ cockpit check /path/to/PROGRESS.md
 
 #### CLI 옵션
 
-- `cockpit [path/to/PROGRESS.md]` — 뷰어 실행 (생략 시 현재 디렉터리의 `./PROGRESS.md`)
-- `cockpit check [path/to/PROGRESS.md]` — 구조적 완전성 검사 후 즉시 종료 (0: PASS, 1: FAIL)
+- `cockpit` — 현재 디렉터리 프로젝트 열기 (대화형이면 대상 경로 확인, 아니면 `./PROGRESS.md`)
+- `cockpit <project-dir>` — `<dir>/PROGRESS.md` 열기, 없으면 준비 흐름으로 진입
+- `cockpit [path/to/PROGRESS.md]` — 명시적 파일 직접 실행 (빠른 경로)
+- `cockpit check [path]` — 구조적 완전성 검사 후 즉시 종료 (0: PASS, 1: FAIL). 디렉터리도 지정 가능하며, 프롬프트·기록 없이 결정론적으로 동작
 - `--port`, `-p` — 포트 번호 지정 (기본값: `4321`)
 - `--no-open` — 브라우저 자동 실행 비활성화
 - `--help`, `-h` — 도움말 출력
@@ -99,9 +113,17 @@ repo / runtime / 관련 SSOT (최신 실제 증거)
 - **외부 에이전트 갱신**: 프로젝트 상태가 달라지면 외부 코딩 에이전트가 최신 실제 증거와 기존 문서를 대조하여 `PROGRESS.md`를 갱신합니다.
 - **자동 새로고침 (Live Reload)**: 대상 `PROGRESS.md` 파일 저장을 감시하여 브라우저 새로고침 없이 화면을 즉시 갱신합니다.
 
-### 처음 시작할 때: 새 프로젝트에 PROGRESS.md 작성 요청하기
+### 처음 시작할 때: PROGRESS.md가 없는 프로젝트
 
-새 프로젝트나 기존 프로젝트에 처음 Cockpit을 연결할 때는 외부 역량 에이전트에게 다음 프롬프트를 그대로 복사하여 전달합니다:
+`PROGRESS.md`가 아직 없는 프로젝트에서 `cockpit`을 실행하면(디렉터리 지정 포함) 막다른 오류 대신 준비 흐름으로 들어갑니다:
+
+1. Cockpit이 대상 프로젝트와 찾는 위치(`<dir>/PROGRESS.md`)를 명시합니다.
+2. 외부 역량 에이전트에게 그대로 전달할 준비 요청문을 보여줍니다. Cockpit 자체는 저장소를 분석하거나 내용을 자동으로 만들지 않습니다.
+3. 대화형 터미널에서는 중립 시작점 파일을 만들지 묻고, 명시적으로 확인(`y`)할 때만 기록합니다. 비대화형(파이프·스크립트·CI)에서는 묻지 않고 종료 코드 1과 함께 조치 경로를 출력합니다.
+
+중립 시작점은 `§5` 구조의 빈 골격이며, 실제 증거로 채우기 전에는 `cockpit check`가 FAIL인 것이 정상입니다. 준비 요청문을 받은 에이전트(또는 작성자)가 실제 증거 기반으로 채운 뒤 `cockpit check`로 확인하고 `cockpit <project-dir>`로 다시 실행하세요.
+
+참고로 준비 요청문은 다음과 같으며, 실제 실행 시에는 대상 프로젝트·작성 위치가 채워진 형태로 출력됩니다:
 
 ```text
 이 프로젝트의 실제 상태를 파악하여 Cockpit용 `PROGRESS.md` 문서를 작성해줘.
@@ -220,6 +242,7 @@ cockpit/
 │   ├── parser.ts        # 호환/공개 파사드 (재노출만, 정식 구현 아님)
 │   └── style.css        # 지도/검사기 반응형 그리드 및 테마 스타일
 ├── scripts/
+│   ├── target.mjs       # CLI target 획득·progress resolution·온보딩의 단일 canonical owner
 │   └── serve.mjs        # 루프백 HTTP 서버 + SSE 파일 변경 감시 CLI
 ├── docs/operations/
 │   ├── DEVELOPMENT.md   # 개발 실행 원칙

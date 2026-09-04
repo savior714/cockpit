@@ -15,64 +15,18 @@ import {
   checkProgressStructure,
   formatStructuralCheckReport,
 } from "../dist/parser.js";
+import {
+  DEFAULT_PORT,
+  acquireTargetInteractively,
+  isInteractive,
+  parseArgs,
+  resolveProgressTarget,
+  runMissingProgressFlow,
+} from "./target.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = path.resolve(__dirname, "..");
 const DIST_ROOT = path.join(PKG_ROOT, "dist");
-const DEFAULT_PORT = 4321;
-
-function parseCheckArgs(argv) {
-  let file = null;
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === "--help" || a === "-h") {
-      return { help: true, file: null };
-    } else if (a.startsWith("-")) {
-      throw new Error(`unknown check option: ${a}`);
-    } else if (!file) {
-      file = path.resolve(a);
-    } else {
-      throw new Error(`unexpected extra argument: ${a}`);
-    }
-  }
-  return { help: false, file };
-}
-
-function parseArgs(argv) {
-  if (argv.length > 0 && argv[0] === "check") {
-    const checkArgs = parseCheckArgs(argv.slice(1));
-    return { command: "check", ...checkArgs };
-  }
-
-  let file = null;
-  let port = DEFAULT_PORT;
-  let noOpen = false;
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === "--port" || a === "-p") {
-      port = Number.parseInt(argv[++i], 10);
-      if (!Number.isInteger(port) || port < 0 || port > 65535) {
-        throw new Error(`invalid --port value: ${argv[i]}`);
-      }
-    } else if (a === "--no-open") {
-      noOpen = true;
-    } else if (a === "--help" || a === "-h") {
-      return { command: "serve", help: true, file, port, noOpen };
-    } else if (a.startsWith("--port=")) {
-      port = Number.parseInt(a.slice(7), 10);
-      if (!Number.isInteger(port) || port < 0 || port > 65535) {
-        throw new Error(`invalid --port value: ${a}`);
-      }
-    } else if (a.startsWith("-")) {
-      throw new Error(`unknown option: ${a}`);
-    } else if (!file) {
-      file = path.resolve(a);
-    } else {
-      throw new Error(`unexpected extra argument: ${a}`);
-    }
-  }
-  return { command: "serve", help: false, file, port, noOpen };
-}
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -220,31 +174,29 @@ Deterministically verifies that PROGRESS.md is structurally complete:
   - At most one Current Stage per trajectory rail
   - At most one Current Focus section if present
 
+The target may be a project directory (checks <dir>/PROGRESS.md),
+an explicit progress file, or empty (checks ./PROGRESS.md).
+Never prompts, never writes, never starts onboarding.
+
 Exits with code 0 on PASS, 1 on structural FAIL.`);
       process.exit(0);
     }
 
-    let progressFile = args.file;
-    if (!progressFile) {
-      const defaultPath = path.resolve(process.cwd(), "PROGRESS.md");
-      const exists = await stat(defaultPath)
-        .then((st) => st.isFile())
-        .catch(() => false);
-      if (!exists) {
-        console.error(`cockpit: PROGRESS.md not found in the current directory.
+    const resolved = await resolveProgressTarget(args.target, process.cwd());
+    if (!resolved.ok) {
+      console.error(`cockpit: ${resolved.reason}`);
+      process.exit(1);
+    }
+    const progressFile = resolved.progressFile;
+    if (!resolved.exists) {
+      console.error(`cockpit: PROGRESS.md not found for project '${resolved.projectDir}'.
+Expected: ${progressFile}
 
 Usage:
   cockpit check
+  cockpit check <project-dir>
   cockpit check /path/to/PROGRESS.md`);
-        process.exit(1);
-      }
-      progressFile = defaultPath;
-    } else {
-      const initial = await stat(progressFile).catch(() => null);
-      if (!initial || !initial.isFile()) {
-        console.error(`cockpit: not a readable file: ${progressFile}`);
-        process.exit(1);
-      }
+      process.exit(1);
     }
 
     let content;
@@ -261,15 +213,23 @@ Usage:
   }
 
   if (args.help) {
-    console.log(`Usage: cockpit [command | path/to/PROGRESS.md] [--port <n>] [--no-open]
+    console.log(`Usage: cockpit [project-dir | path/to/PROGRESS.md] [--port <n>] [--no-open]
 
 Commands:
   check [path]       Check structural completeness of PROGRESS.md and exit (0 on PASS, 1 on FAIL)
 
 Viewer:
-  cockpit [path]     Serves the Cockpit viewer on http://127.0.0.1:<port> (default ${DEFAULT_PORT}),
-                     reading the target Markdown file (defaults to ./PROGRESS.md in the current directory)
-                     at runtime and live-reloading the page when it changes. Read-only.
+  cockpit                  Open the current directory's project in the viewer.
+                           Interactive terminals are asked for the target first
+                           (empty answer means the current directory).
+  cockpit <project-dir>    Open <dir>/PROGRESS.md in the viewer. When the
+                           directory has no PROGRESS.md yet, Cockpit enters an
+                           explicit first-run/bootstrap flow instead of failing.
+  cockpit <progress-file>  Serve one explicit progress file directly (fast path),
+                           e.g. cockpit ./docs/PROGRESS.md, on
+                           http://127.0.0.1:<port> (default ${DEFAULT_PORT}).
+                           Reads the file at runtime and live-reloads the page
+                           when it changes. Read-only.
 
 Operator note:
   Cockpit itself is read-only and displays PROGRESS.md as-is.
@@ -282,30 +242,41 @@ Pass --no-open to suppress this.`);
     process.exit(0);
   }
 
-  let progressFile = args.file;
-  if (!progressFile) {
-    const defaultPath = path.resolve(process.cwd(), "PROGRESS.md");
-    const exists = await stat(defaultPath).then((st) => st.isFile()).catch(() => false);
-    if (!exists) {
-      console.error(`cockpit: PROGRESS.md not found in the current directory.
-
-To start Cockpit:
-  1. Create PROGRESS.md in your project root, or
-  2. Pass a file path explicitly:
-     cockpit /path/to/PROGRESS.md
-
-To verify structural completeness:
-  cockpit check /path/to/PROGRESS.md`);
+  let rawTarget = args.target;
+  if ((rawTarget === null || rawTarget === undefined) && isInteractive()) {
+    const acquired = await acquireTargetInteractively({ cwd: process.cwd() });
+    if (!acquired.ok) {
+      console.error(`cockpit: ${acquired.reason}`);
       process.exit(1);
     }
-    progressFile = defaultPath;
-  } else {
-    const initial = await stat(progressFile).catch(() => null);
-    if (!initial || !initial.isFile()) {
-      console.error(`cockpit: not a readable file: ${progressFile}`);
-      process.exit(1);
-    }
+    rawTarget = acquired.rawTarget;
   }
+
+  const resolved = await resolveProgressTarget(rawTarget, process.cwd());
+  if (!resolved.ok) {
+    console.error(`cockpit: ${resolved.reason}`);
+    process.exit(1);
+  }
+
+  if (!resolved.exists) {
+    if (isInteractive()) {
+      const flow = await runMissingProgressFlow({
+        projectDir: resolved.projectDir,
+        progressFile: resolved.progressFile,
+      });
+      process.exit(flow.action === "created" || flow.action === "exists-now" ? 0 : 1);
+    }
+    console.error(`cockpit: '${resolved.projectDir}'에는 Cockpit progress representation이 아직 없습니다.
+찾는 위치: ${resolved.progressFile}
+
+Cockpit은 저장소를 분석하거나 내용을 자동으로 만들지 않습니다.
+터미널에서 'cockpit ${resolved.projectDir}'을(를) 실행하면 준비 요청문과 중립 시작점 안내를 볼 수 있습니다.
+
+To verify structural completeness once prepared:
+  cockpit check ${resolved.progressFile}`);
+    process.exit(1);
+  }
+  const progressFile = resolved.progressFile;
 
   const distIndex = await stat(path.join(DIST_ROOT, "index.html")).catch(() => null);
   if (!distIndex) {
