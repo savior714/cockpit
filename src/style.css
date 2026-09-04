@@ -44,11 +44,16 @@
      Component selectors below reference these tokens instead of declaring
      their own sizes. Intentional deviations carry a comment at the use site.
      L0 project identity → L1 primary orientation (map) → L2 sections/rails →
-     L3 entities → L4 supporting content → L5 micro UI. */
+     L3 entities → L4 supporting content → L5 micro UI.
+     Reader context-region semantic roles (typography + spacing only):
+     SECTION_HEADING (--text-l2-section) > ITEM_TITLE (--text-recent-new) >
+     BODY (--text-l4-stable) > META (--text-recent-old). INLINE_EMPHASIS
+     shares BODY size at 600 weight so it never competes with ITEM_TITLE
+     via weight alone; ITEM_TITLE wins via size + ink. */
   --text-l0: clamp(1.25rem, 2vw, 1.55rem);
   --text-l1: 1rem;
   --text-l2-rail: 0.95rem;
-  --text-l2-section: 0.78rem;
+  --text-l2-section: 0.88rem;
   --text-l3-entity: 0.85rem;
   --text-l3-lead: 0.92rem;
   --text-l3-body: 0.88rem;
@@ -61,9 +66,12 @@
   --text-micro: 0.68rem;
   --text-kicker: 0.62rem;
   /* Pinned by tests/semantic-construction.test.mjs: newest-two foreground vs
-     older-item recession, asserted through these tokens (values + ordering). */
-  --text-recent-new: 0.94rem;
-  --text-recent-old: 0.82rem;
+     older-item recession, asserted through these tokens (values + ordering).
+     Values establish SECTION > ITEM > BODY > META in the context region:
+     --text-l2-section (0.88) > --text-recent-new (0.84) >
+     --text-l4-stable (0.81) > --text-recent-old (0.78). */
+  --text-recent-new: 0.84rem;
+  --text-recent-old: 0.78rem;
 
   --leading-tight: 1.2;
   --leading-snug: 1.35;
@@ -291,7 +299,7 @@ body {
   font-size: var(--text-l2-section);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: var(--muted);
 }
 
@@ -818,9 +826,9 @@ body {
 }
 
 .panel-recent .panel-body {
-  font-size: var(--text-l3-body);
-  line-height: var(--leading-loose);
-  color: var(--ink);
+  font-size: var(--text-l4-stable);
+  line-height: var(--leading-relaxed);
+  color: var(--ink-secondary);
 }
 
 .panel-recent .panel-body ul,
@@ -836,12 +844,15 @@ body {
 }
 
 /* Recent Progress is a rolling transition window: foreground the newest two,
-   then let older transitions recede without changing the existing list grammar. */
+   then let older transitions recede without changing the existing list grammar.
+   Semantic roles: foreground li owns BODY (prose container); its leading
+   strong below owns ITEM_TITLE; older li owns META. No position-based size
+   override beyond this single foreground/recession depth split. */
 .panel-recent .panel-body > ul > li:nth-child(-n + 2),
 .panel-recent .panel-body > ol > li:nth-child(-n + 2) {
-  color: var(--ink);
-  font-size: var(--text-recent-new);
-  line-height: var(--leading-loose);
+  color: var(--ink-secondary);
+  font-size: var(--text-l4-stable);
+  line-height: var(--leading-relaxed);
 }
 
 .panel-recent .panel-body > ul > li:first-child,
@@ -870,8 +881,27 @@ body {
 
 .panel-recent .panel-body li strong {
   color: var(--ink);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.005em;
+}
+
+/* ITEM_TITLE: foreground entry titles sit one step above BODY via size + ink,
+   not via 700-weight dominance. Same 600 weight as INLINE_EMPHASIS so the
+   two never compete on weight; ITEM wins on size + ink vs BODY-size ink. */
+.panel-recent .panel-body > ul > li:nth-child(-n + 2) strong,
+.panel-recent .panel-body > ol > li:nth-child(-n + 2) strong {
+  font-size: var(--text-recent-new);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* META emphasis: older entry titles recede with their container — same META
+   size, 600 weight, muted ink so they never outrank BODY. */
+.panel-recent .panel-body > ul > li:nth-child(n + 3) strong,
+.panel-recent .panel-body > ol > li:nth-child(n + 3) strong {
+  font-size: inherit;
+  font-weight: 600;
+  color: var(--muted);
 }
 
 .panel-recent .panel-body li:last-child {
@@ -895,17 +925,22 @@ body {
 }
 
 .panel-stable h2 {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
   font-family: var(--font-mono);
-  /* Intentional quiet exception: stable context is persistent background, not
-     orientation, so its headings sit one step below the section level. */
-  font-size: var(--text-micro);
+  /* SECTION_HEADING: stable context shares the single section treatment with
+     Recent — same size/weight/transform/color/spacing, no quiet exception.
+     Position never owns typography. */
+  font-size: var(--text-l2-section);
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--ink);
   border-bottom: 1px solid var(--line-subtle);
-  padding-bottom: 4px;
-  margin-bottom: 6px;
+  padding-bottom: 6px;
+  margin-bottom: 10px;
 }
 
 .panel-stable .panel-body {
@@ -934,6 +969,13 @@ body {
 
 .panel-stable .panel-body li:last-child {
   margin-bottom: 0;
+}
+
+/* INLINE_EMPHASIS: body prose emphasis shares BODY size at 600 weight —
+   visible within prose but never outranks ITEM_TITLE (which wins on size). */
+.panel-stable .panel-body strong {
+  font-weight: 600;
+  color: var(--ink);
 }
 
 #slot-extra {

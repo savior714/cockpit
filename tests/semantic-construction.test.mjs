@@ -291,17 +291,37 @@ test("Recent changes stay a bounded semantic transition window under one merged 
   assert.ok(backgroundRule !== -1, "older Recent items need a receding rule");
   assert.ok(foregroundRule < backgroundRule, "foreground styling must precede older-item styling");
   // Visual-hierarchy convergence: Recent sizes are owned by the :root scale
-  // tokens, not by local literals. The pinned contract is the ordering
-  // invariant plus the exact token values.
+  // tokens, not by local literals. Semantic roles in the context region:
+  // SECTION_HEADING (--text-l2-section) > ITEM_TITLE (--text-recent-new) >
+  // BODY (--text-l4-stable) > META (--text-recent-old). Foreground li owns
+  // BODY; its leading strong owns ITEM_TITLE; older li owns META.
   const foregroundSlice = css.slice(foregroundRule, backgroundRule);
-  assert.match(foregroundSlice, /var\(--text-recent-new/);
+  assert.match(foregroundSlice, /var\(--text-l4-stable/);
+  const itemTitleRule = css.indexOf("li:nth-child(-n + 2) strong");
+  assert.ok(itemTitleRule !== -1, "foreground entry titles need an ITEM_TITLE rule");
+  assert.match(css.slice(itemTitleRule, itemTitleRule + 500), /var\(--text-recent-new/);
   assert.match(css.slice(backgroundRule), /var\(--text-recent-old/);
+  const sectionTok = css.match(/--text-l2-section:\s*([0-9.]+)rem/);
   const recentNew = css.match(/--text-recent-new:\s*([0-9.]+)rem/);
+  const stableBody = css.match(/--text-l4-stable:\s*([0-9.]+)rem/);
   const recentOld = css.match(/--text-recent-old:\s*([0-9.]+)rem/);
-  assert.ok(recentNew && recentOld, "the :root scale must define both recent tokens");
-  assert.equal(recentNew[1], "0.94");
-  assert.equal(recentOld[1], "0.82");
-  assert.ok(Number(recentNew[1]) > Number(recentOld[1]), "newest items must foreground above older items");
+  assert.ok(sectionTok && recentNew && stableBody && recentOld, "the :root scale must define section/item/body/meta tokens");
+  assert.equal(sectionTok[1], "0.88");
+  assert.equal(recentNew[1], "0.84");
+  assert.equal(stableBody[1], "0.81");
+  assert.equal(recentOld[1], "0.78");
+  assert.ok(
+    Number(sectionTok[1]) > Number(recentNew[1]) &&
+    Number(recentNew[1]) > Number(stableBody[1]) &&
+    Number(stableBody[1]) > Number(recentOld[1]),
+    "context-region hierarchy must read SECTION > ITEM > BODY > META"
+  );
+  // Stable headings share the single section treatment — no quiet exception.
+  const stableH2 = css.indexOf(".panel-stable h2");
+  assert.ok(stableH2 !== -1, "stable context needs a section-heading rule");
+  assert.match(css.slice(stableH2, stableH2 + 600), /var\(--text-l2-section/);
+  // No 700-weight bold wall: entry titles and inline emphasis converge to 600.
+  assert.match(css.slice(itemTitleRule, itemTitleRule + 500), /font-weight:\s*600/);
 });
 
 test("Independent multi-rail mental-model axis invariants: single Current Stage ownership and plain-rail coexistence", () => {
