@@ -1,0 +1,78 @@
+#!/bin/sh
+# git-safety — repo-local thin entrypoint for the Git Safety Baseline.
+#
+# Responsibility (only):
+#   1. discover the central canonical implementation,
+#   2. verify its required contract identity/version,
+#   3. delegate with the repository context,
+#   4. relay fail-closed output on any tool-availability failure.
+#
+# This file owns NO Git safety semantics. Do not copy canonical logic here.
+# Convenience aliases (just/Make/npm) must delegate to this entrypoint,
+# never reimplement it. A BLOCKED result must never be bypassed with raw git.
+set -eu
+
+REQUIRED_CONTRACT_ID="bootstrap-git-safety"
+REQUIRED_CONTRACT_VERSION="1"
+REQUIRED_CONTRACT="${REQUIRED_CONTRACT_ID}/${REQUIRED_CONTRACT_VERSION}"
+
+fail_closed() {
+	# fail_closed REASON OBSERVED_CONTRACT — never falls back to raw git.
+	printf 'GIT_SAFETY: BLOCKED\n'
+	printf 'REASON: %s\n' "${1}"
+	printf 'REQUIRED_CONTRACT: %s\n' "${REQUIRED_CONTRACT}"
+	printf 'OBSERVED_CONTRACT: %s\n' "${2}"
+	printf 'REMEDIATION: re-apply the bootstrap scaffold scripts/ over this repository (source: bootstrap scaffold/scripts -> scripts/) and retry this same command; do not bypass with raw git worktree/branch commands and do not reimplement safety logic locally\n'
+	exit 3
+}
+
+resolve_script_dir() {
+	# Resolve this script's directory without depending on cwd or PATH order.
+	_self=$0
+	case "${_self}" in
+		*/*) ;;
+		*)
+			_found=$(command -v -- "${_self}" 2>/dev/null || true)
+			[ -n "${_found}" ] && _self=${_found} || _self=./${_self}
+			;;
+	esac
+	_dir=$(dirname -- "${_self}")
+	(CDPATH= cd -- "${_dir}" 2>/dev/null && pwd -P) 2>/dev/null || printf '%s' "${_dir}"
+}
+
+SCRIPT_DIR=$(resolve_script_dir)
+DEFAULT_CANONICAL="${SCRIPT_DIR}/lib/git-safety-canonical.sh"
+CANONICAL="${GIT_SAFETY_CANONICAL:-${DEFAULT_CANONICAL}}"
+
+# 1. Central helper must exist, be readable, and be non-empty.
+if [ -z "${CANONICAL}" ] || [ ! -f "${CANONICAL}" ] || [ ! -r "${CANONICAL}" ] || [ ! -s "${CANONICAL}" ]; then
+	fail_closed "CANONICAL_MISSING" "NONE"
+fi
+
+# 2. Identity must be verifiable: exactly one contract-ID marker and exactly
+#    one contract-version marker. Anything else is untrusted.
+ID_COUNT=$(grep -c -E '^GIT_SAFETY_CONTRACT_ID="bootstrap-git-safety"$' "${CANONICAL}" 2>/dev/null || true)
+VER_COUNT=$(grep -c -E '^GIT_SAFETY_CONTRACT_VERSION="[0-9][0-9A-Za-z.]*"$' "${CANONICAL}" 2>/dev/null || true)
+if [ "${ID_COUNT}" != "1" ] || [ "${VER_COUNT}" != "1" ]; then
+	fail_closed "IDENTITY_UNVERIFIABLE" "UNKNOWN"
+fi
+
+OBSERVED_VERSION=$(grep -E '^GIT_SAFETY_CONTRACT_VERSION="[0-9][0-9A-Za-z.]*"$' "${CANONICAL}" 2>/dev/null | head -n 1 | sed -e 's/^GIT_SAFETY_CONTRACT_VERSION="//' -e 's/"$//')
+OBSERVED_CONTRACT="${REQUIRED_CONTRACT_ID}/${OBSERVED_VERSION}"
+
+# 3. Required contract version must be compatible (same major contract version).
+if [ "${OBSERVED_VERSION}" != "${REQUIRED_CONTRACT_VERSION}" ]; then
+	fail_closed "CONTRACT_MISMATCH" "${OBSERVED_CONTRACT}"
+fi
+
+# 4. Central implementation must parse (corruption check). No partial trust.
+if ! sh -n "${CANONICAL}" 2>/dev/null; then
+	fail_closed "CANONICAL_UNUSABLE" "${OBSERVED_CONTRACT}"
+fi
+
+# 5. Delegate. Repository context travels via argv (--repo/--remote/...).
+if [ -x "${CANONICAL}" ]; then
+	exec "${CANONICAL}" "$@"
+else
+	exec sh "${CANONICAL}" "$@"
+fi
