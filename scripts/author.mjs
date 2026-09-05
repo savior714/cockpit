@@ -157,6 +157,35 @@ export function buildAuthorHandoff({ projectDir, progressFile }) {
 증명으로 비약하지 말고 (문서에 적혀 있다고 구현된 것이 아님), 모순은 미리 해결하고, 확인되지 않은
 주장은 쓰지 마.
 
+PROGRESS.md 문장을 처음부터 요약해서 쓰지 마. 문서/spec, production 구현 경로, 테스트/런타임 증거,
+최근 material change를 대조해 먼저 현재 실제 가능한 capability, 대표 사용자/운영 workflow, 권위 경계,
+중요한 미완료·미확인 경계, claim을 어디까지 강하게 말할 수 있는지를 재구성하고, 마지막 projection
+단계에서만 PROGRESS.md로 압축해줘. 추상어는 실제 제품 사실을 정리할 수는 있지만 대체해서는 안 된다.
+
+주요 상태 문장은 증거가 허용하는 범위에서 실제 제품 객체·capability, 실제 사용자/운영 workflow,
+관찰 가능한 현재 상태, 구체적인 미완료 경계, 관찰 가능한 닫힘 조건 중 하나 이상을 보존해줘.
+"통합·실체·완결·기반·성숙도" 같은 추상어만으로 실제 대상을 대체하지 마.
+
+개요는 압축적으로, 내용은 구체적으로 써줘. SHA·파일 경로·test command 같은 저수준 proof는
+overview에서 내리고 영역 상세·근거에 두되, 현재 제품 상태를 이해하는 데 필요한 product truth까지
+제거하지 마.
+
+최근 commit/task 목록을 요약해서 현재 상황을 만들지 마. fresh evidence로 현재 제품 state를 다시
+구성하고, capability·product state·frontier·durable settled semantics를 바꾸는 material fact만
+상위에 투영해줘. 제품 상태를 바꾸지 않는 내부 refactor/test 정리는 상단 보고의 주제가 아니다.
+
+현재 상황은 제품 소개문이 아니라 지금 실제 되는 것 + 가장 중요한 미완료 경계로, 다음은 추상 상태명만
+쓰지 말고 어떤 실제 object/workflow가 무엇을 통과하면 닫히는지 읽히게, 직면한 문제는 "증거 부족·외부 연동"
+같은 category명으로 끝내지 말고 정확히 무엇이 연결·검증되지 않았거나 막혔는지 쓰되 실제 blocker가
+없으면 만들지 마. 지도는 오래 살아남는 실제 제품 영역을 유지하고 각 설명은 무엇을 하는지 또는 현재
+capability/state가 드러나게, Area 현재 수준은 "구현됨·부분 완료" 같은 평가만 쓰지 말고 실제 가능한
+행동/state를 말하고 남은 문제는 구체적으로, 현재 집중은 사용자 소유이므로 활동량·executor task로
+이동시키지 마.
+
+repository 전체를 전수 조사하는 새 framework를 만들지 마. 현재 capability, 중요한 unfinished boundary,
+가장 가까운 observable transition, claim 강도가 안정되고 짧은 반증 확인에서도 뒤집히지 않으면 멈춰줘.
+UNKNOWN은 허용하며, 없애기 위해 사실을 invent하거나 끝없이 조사하지 마.
+
 기존 PROGRESS.md가 있으면 최신 증거와 대조하여 실질적으로 잘못 이해하게 되는 표면만 보수적으로 PATCH해줘.
 시간이 흘렀다는 이유만으로 수정하지 말고, 실질적 변화가 없으면 파일을 그대로 두고, 닫힌 문제를 되살리거나
 미확인 문제를 만들지 마. 기존 파일이 없으면 증거 기반 최초 문서를 작성해줘.

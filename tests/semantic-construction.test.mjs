@@ -543,6 +543,77 @@ test("NextChart EMR acceptance fixture restores orientation from the primary sur
   for (const banned of ["Representative outpatient workflow", "Production truth", "Reliability & recovery", "Release proof", "External breadth"]) {
     assert.ok(!allItems.some((item) => item.title === banned), `abstract title must not return: ${banned}`);
   }
+  // CONCRETE-BEFORE-ABSTRACT synthesis density. Test-owned only:
+  // structural check stays structural-only (no prose regex in src/).
+  // Major state sentences must preserve concrete project truth instead of
+  // abstract-only ontology ("통합·실체·완결·기반·성숙도" alone).
+  for (const banned of ["외부 연동 실체", "대표 외래 흐름 완결", "실제 제품 화면과 실제 영속 경계를 관통"]) {
+    assert.ok(!source.includes(banned), `abstract-only phrasing must not return: ${banned}`);
+  }
+  // Situation: actual workflow confirmed + authoritative boundary + most
+  // important unfinished boundary (not role-only, not abstract-only).
+  assert.ok(
+    situation.includes("접수") && situation.includes("진료") && situation.includes("처방"),
+    "situation preserves actual outpatient workflow"
+  );
+  assert.ok(
+    situation.includes("병원") && situation.includes("원본"),
+    "situation preserves authoritative boundary (hospital original vs screen)"
+  );
+  assert.ok(
+    situation.includes("1A") && (situation.includes("아직") || situation.includes("남아")),
+    "situation names most important unfinished boundary"
+  );
+  assert.ok(situation.includes("이어"), "situation preserves continuity protection state");
+  // Next: not abstract A→B names only; which object/workflow passes what to close.
+  assert.ok(
+    next.includes("접수") || next.includes("원본") || next.includes("이어가"),
+    "next preserves concrete object/workflow, not abstract state names only"
+  );
+  assert.ok(
+    next.includes("인정되면") && next.includes("닫힌"),
+    "next carries observable closure condition"
+  );
+  assert.ok(next.includes("다시 열지"), "next does not reopen closed representative scope");
+  // Facing: not category names; exactly what is unconnected/unverified/blocked.
+  assert.ok(
+    facing.includes("한 곳") && facing.includes("좁은 범위"),
+    "facing specifies what is unverified (not category name alone)"
+  );
+  assert.ok(
+    facing.includes("고장이 아니다") || facing.includes("직접 막는 blocker는 아니다"),
+    "facing distinguishes fault vs deferred constraint without inventing blocker"
+  );
+  // Overview stays compressed: low-level proof lives below, product truth stays above.
+  const overviewText = [situation, next, facing].join("\n");
+  assert.ok(!/\b[0-9a-f]{7,40}\b/.test(overviewText), "overview stays compressed (no SHAs)");
+  assert.ok(!/npm run/.test(overviewText), "overview stays compressed (no commands)");
+  // Area current levels: actual possible action/state, not evaluation-only.
+  const currentLevelOf = (areaTitle) => {
+    const detail = areaDetails.get(normalizeTitle(areaTitle));
+    assert.ok(detail, `area detail exists: ${areaTitle}`);
+    const current = detail.subsections.find((s) => s.subheading.includes("현재 수준"));
+    assert.ok(current, `area has 현재 수준: ${areaTitle}`);
+    return current.rawText;
+  };
+  assert.ok(
+    currentLevelOf("외래 접수·진료·처방 흐름").includes("접수→진료"),
+    "flow area states observable workflow, not evaluation-only"
+  );
+  const originalLevel = currentLevelOf("실제 병원 원본과 화면 일치 확인");
+  assert.ok(
+    originalLevel.includes("한 곳") && originalLevel.includes("1A"),
+    "original-match area states concrete unfinished boundary"
+  );
+  assert.ok(
+    currentLevelOf("느려지거나 끊겨도 기록이 이어지는 보호").includes("사라지지 않고"),
+    "continuity area states observable protection"
+  );
+  const currentPositionLevel = currentLevelOf("1A 출시 승인에 필요한 전체 증거 모으기");
+  assert.ok(
+    currentPositionLevel.includes("아직 인정되지") && currentPositionLevel.includes("다시 열지"),
+    "current-position area states unfinished + closure without reopening"
+  );
   void title;
 });
 
