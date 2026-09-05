@@ -24,81 +24,32 @@
  * a separate summary (it would repeat the map label), and evidence sections
  * render in the area view as entry points only, with the full text preserved
  * in the evidence drill-down.
+ *
+ * Semantic boundary: subsection tone follows the explicit heading structure
+ * only. Body prose is never reinterpreted to judge factual or verification
+ * state — the LLM author owns meaning via structure and content.
  */
 import { isCurrentStageHeading, normalizeKey, normalizeTitle, } from "./authoring-grammar.js";
 import { escapeHtml, renderMarkdownString, } from "./markdown-structure.js";
 /**
- * Conservative veto for evidence promotion.
- * Returns true only when the ENTIRE subsection content clearly states that no
- * verifiable evidence exists yet (absent / unverified / planned-only).
- */
-function isClearlyUnverifiedOrPlannedEvidence(cleanText) {
-    if (cleanText === "")
-        return true;
-    const lines = cleanText
-        .split(/\r?\n/)
-        .map((l) => l.replace(/^\s*(?:[-*+]\s+|\d+[.)]\s+)/, "").trim())
-        .filter(Boolean);
-    if (lines.length === 0)
-        return true;
-    return lines.every((line) => {
-        const withoutLabel = line
-            .replace(/^(?:근거|증거|evidence|proof)\s*[:：]\s*/i, "")
-            .trim();
-        const core = withoutLabel.replace(/[.．。;；!！]+$/, "").trim();
-        if (!core)
-            return true;
-        if (/^(?:없음|해당\s*없음|아직\s*없음|아직\s*근거\s*없음|근거\s*없음|증거\s*없음|근거\s*미확보|미확인|미검증|미작성|미수립|예정|향후\s*과제|추후\s*과제|향후\s*작업|추후\s*작업)$/.test(core)) {
-            return true;
-        }
-        if (/^(?:아직\s*|추가\s*|추후\s*|향후\s*)?(?:테스트|검증|확인|작성|수립|확보|측정)\s*예정(?:입니다|임)?$/.test(core)) {
-            return true;
-        }
-        if (/^추후\s*(?:테스트|검증|확인|작성|수립|확보|측정)(?:\s*예정)?$/.test(core)) {
-            return true;
-        }
-        if (/^(?:아직\s*|추가\s*|추후\s*)?(?:테스트|검증|확인|작성)\s*(?:필요|요망|요구)(?:함|입니다|임)?$/.test(core)) {
-            return true;
-        }
-        if (/^(?:none|no\s*evidence|not\s*verified|not\s*proven|unverified|unconfirmed|unknown|tbd|n\/a|planned|future\s*work|future-work)$/i.test(core)) {
-            return true;
-        }
-        if (/^(?:verification|confirmation|test(?:s|ing)?)\s*(?:required|needed|pending|planned)$/i.test(core)) {
-            return true;
-        }
-        if (/^(?:pending(?:\s*(?:verification|confirmation|test|testing))?|to\s*be\s*(?:verified|confirmed|tested)|awaiting\s*(?:verification|confirmation|test|testing)?)$/i.test(core)) {
-            return true;
-        }
-        return false;
-    });
-}
-/**
  * Canonical semantic tone classifier for Inspector subsections.
  *
- * Only the README §5 Area Detail contract distinguishes tones: evidence
- * headings with verified content read as evidence, open remaining
- * problems/blockers read as danger, everything else (meaning, level,
- * closed/none issues, custom notes, legacy gate/transition headings) reads
- * as neutral. There is no separate gate/transition/movement tone owner.
+ * Heading-structure only: evidence headings read as evidence, open-issue
+ * headings read as danger, everything else reads as neutral. Body prose is
+ * intentionally ignored — Cockpit does not re-judge factual state,
+ * verification state, or open/closed meaning from natural language.
+ * A strange document such as "근거: 미검증" keeps its structural
+ * presentation; the author owns structure and content.
  */
 export function classifySubsectionTone(subheading, rawText, _contextState) {
+    void rawText;
+    void _contextState;
     const normKey = normalizeKey(subheading);
-    const cleanText = (rawText || "").trim();
-    const firstLine = cleanText
-        .split(/\r?\n/)
-        .map((l) => l.replace(/^\s*[-*+]\s+/, "").trim())
-        .filter(Boolean)[0] ?? "";
-    const isExplicitlyClosedOrNone = cleanText === "" ||
-        /^(?:없음|해당\s*없음|해결됨|완료됨|닫힘|특이\s*사항\s*없음|none|n\/a|closed|resolved|all\s+resolved|no\s+remaining\s+issues?|no\s+issues?)\.?$/i.test(firstLine) ||
-        /^(?:남은\s*문제|remaining\s*issues?)\s*[:：]\s*(?:없음|해당\s*없음|none|n\/a|closed|해결됨)\.?$/i.test(firstLine);
     const isEvidenceHeading = normKey.includes("근거") ||
         normKey.includes("증거") ||
         normKey.includes("evidence") ||
         normKey.includes("proof");
     if (isEvidenceHeading) {
-        if (isClearlyUnverifiedOrPlannedEvidence(cleanText)) {
-            return "neutral";
-        }
         return "evidence";
     }
     const isIssueHeading = normKey.includes("남은문제") ||
@@ -110,9 +61,6 @@ export function classifySubsectionTone(subheading, rawText, _contextState) {
         normKey.includes("issues") ||
         normKey.includes("남은과제");
     if (isIssueHeading) {
-        if (isExplicitlyClosedOrNone) {
-            return "neutral";
-        }
         return "danger";
     }
     return "neutral";

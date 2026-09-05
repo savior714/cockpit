@@ -15,8 +15,10 @@
  *
  * Map position uses exactly one marker: an optional group titled exactly
  * `현재 단계` (`Current Stage`) highlights its items as YOU ARE HERE.
- * Every other group title is the project's own vocabulary and renders
- * uniformly; no foundation/future heading carries privilege.
+ * At most one such group may exist in the whole Project Map document;
+ * a single group may hold several map items. Every other group title is
+ * the project's own vocabulary and renders uniformly; no
+ * foundation/future heading carries privilege.
  *
  * Must not import markdown-it Token, rendered HTML, tone, or DOM.
  */

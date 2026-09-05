@@ -40,7 +40,7 @@ test("README authoring contract stays a short human contract, not a governance m
   assert.ok(readme.includes("질문 하나에 섹션 하나가 대응합니다"));
   assert.ok(readme.includes("Fresh evidence first"));
   assert.ok(readme.includes("STRUCTURALLY VALID != EVIDENCE-GROUNDED"));
-  assert.ok(readme.includes("`cockpit check` PASS는 구조 검사이지 사실 증명이 아니다"));
+  assert.ok(readme.includes("`cockpit check` PASS는 구조 검사이지 사실·문체 증명이 아니다"));
   // Contracted: no execution/publication governance in the product contract.
   assert.equal(readme.includes("WATCH_SURFACES"), false);
   assert.equal(readme.includes("ADMITTED_BASE"), false);
@@ -92,7 +92,7 @@ test("Parser facade compatibility: public dist/parser.js surface exposes require
   assert.equal(typeof classifySubsectionTone, "function");
   // Legacy behavior spot-checks through the facade (not a second implementation).
   assert.equal(normalizeTitle("  Patient  Registration  "), "patient registration");
-  assert.equal(classifySubsectionTone("남은 문제", "없음"), "neutral");
+  assert.equal(classifySubsectionTone("남은 문제", "없음"), "danger");
   const canonical = fs.readFileSync(path.join(__dirname, "fixtures", "canonical-minimal.md"), "utf-8");
   const result = checkProgressStructure(canonical);
   assert.equal(result.ok, true, result.errors.join("; "));

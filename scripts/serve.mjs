@@ -330,8 +330,12 @@ Deterministically verifies that PROGRESS.md is structurally complete:
   - Every map item has exactly one matching Area Detail (H3)
   - No orphan Area Details (title drift)
   - No duplicate Area Detail titles
-  - At most one Current Stage (YOU ARE HERE) group per map rail
+  - At most one Current Stage (YOU ARE HERE) group in the whole Project Map
   - At most one Current Focus section if present
+
+Writing style (SHA / PID / test node / absolute path in overview) is
+advisory warnings only and never affects PASS/FAIL. This check never
+re-judges factual or verification state from prose.
 
 The target may be a project directory (checks <dir>/PROGRESS.md),
 an explicit progress file, or empty (checks ./PROGRESS.md).

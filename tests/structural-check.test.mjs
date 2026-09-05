@@ -158,7 +158,7 @@ test("Structural check: Title drift => missing + orphan detection", () => {
   assert.ok(report.includes("- 운영 안전 경계 및 검증"));
 });
 
-test("Structural check: Multi-rail independent Current Stages across different rails => PASS", () => {
+test("Structural check: Current Stage groups across different rails => FAIL (global single marker)", () => {
   const multiCurrentDoc = `
 # 다중 궤적 레일 정상 문서
 
@@ -257,21 +257,26 @@ test("Structural check: Multi-rail independent Current Stages across different r
   assert.ok(parsedMap.rails.every((rail) => !("railType" in rail)), "rails carry no journey typology");
 
   const result = checkProgressStructure(multiCurrentDoc);
-  assert.equal(result.ok, true, "Multi-rail with independent Current Stages must PASS check");
+  assert.equal(result.ok, false, "Multiple Current Stage groups anywhere in the document must FAIL check");
   assert.equal(result.currentStageCount, 2);
   assert.equal(result.currentFocusCount, 1);
   assert.equal(result.totalMapItems, 6);
   assert.equal(result.matchedDetails, 6);
   assert.equal(result.missingDetails, 0);
   assert.equal(result.orphanDetails, 0);
+  assert.ok(
+    result.errors.some((e) =>
+      e.includes("Multiple '현재 단계' (Current Stage) groups found across the document (2)")
+    )
+  );
 
   const report = formatStructuralCheckReport(result);
-  assert.ok(report.includes("PROGRESS structural check: PASS"));
+  assert.ok(report.includes("PROGRESS structural check: FAIL"));
   assert.ok(report.includes("Current stage:   2"));
-  assert.ok(report.includes("Current focus:   1"));
+  assert.ok(report.includes("Multiple '현재 단계' (Current Stage) groups found across the document (2)"));
 });
 
-test("Structural check: Duplicate Current Stage in the SAME rail => FAIL", () => {
+test("Structural check: Duplicate Current Stage in the SAME rail => FAIL (global single marker)", () => {
   const sameRailMultiCurrentDoc = `
 # 단일 레일 내 다중 현재 단계 오류 문서
 
@@ -310,14 +315,38 @@ test("Structural check: Duplicate Current Stage in the SAME rail => FAIL", () =>
   assert.equal(result.currentStageCount, 2);
   assert.ok(
     result.errors.some((e) =>
-      e.includes("Multiple '현재 단계' (Current Stage) groups found in rail '코어 궤적 레일' (2)")
+      e.includes("Multiple '현재 단계' (Current Stage) groups found across the document (2)")
     )
   );
 
   const report = formatStructuralCheckReport(result);
   assert.ok(report.includes("PROGRESS structural check: FAIL"));
   assert.ok(report.includes("Current stage:   2"));
-  assert.ok(report.includes("Multiple '현재 단계' (Current Stage) groups found in rail '코어 궤적 레일' (2)"));
+  assert.ok(report.includes("Multiple '현재 단계' (Current Stage) groups found across the document (2)"));
+});
+
+test("Structural check: Global Current Stage marker is optional (zero groups => PASS)", () => {
+  const noStageDoc = `
+# 현재 단계 없는 문서
+
+## 프로젝트 지도
+### 코어 레일
+#### 일반 그룹
+- **항목 A** — 일반 항목
+
+## 영역 상세
+### 항목 A
+#### 의미
+의미 A
+#### 현재 수준
+수준 A
+#### 근거
+- 근거 A
+`;
+
+  const result = checkProgressStructure(noStageDoc);
+  assert.equal(result.ok, true, result.errors.join("; "));
+  assert.equal(result.currentStageCount, 0);
 });
 
 test("Structural check: Multiple '## 현재 집중' (Current Focus) sections => FAIL", () => {
@@ -664,7 +693,7 @@ test("Current Stage Canonical Semantics: Multi-frontier items under single Curre
   assert.equal(currentCardMatches?.length, 2, "Both current frontier items must render as current stage cards");
 });
 
-test("Current Stage Canonical Semantics: Multi-rail independent Current Stages + neutral rail coexistence", () => {
+test("Current Stage Canonical Semantics: Single global Current Stage + neutral rail coexistence", () => {
   const multiRailDoc = `
 # 멀티 레일 복합 시스템
 
@@ -679,7 +708,7 @@ test("Current Stage Canonical Semantics: Multi-rail independent Current Stages +
 ### 서빙 및 추론 궤적
 #### 확보된 기반
 - **정적 모델 배포** — v1 모델 서빙
-#### 현재 단계
+#### 진행 중
 - **온라인 A/B 테스트** — 다중 모델 트래픽 분기
 - **실시간 피드백 루프** — 예측 결과 감사
 #### 향후 계획
@@ -700,15 +729,17 @@ test("Current Stage Canonical Semantics: Multi-rail independent Current Stages +
   assert.equal(parsedMap.rails[2].title, "시스템 인프라");
   assert.ok(parsedMap.rails.every((rail) => !("railType" in rail)), "rails carry no journey typology");
 
-  // Rail 1 has 1 current item, Rail 2 has 2 current items
+  // Only one global Current Stage group; the second rail uses plain vocabulary.
   const r1Current = parsedMap.rails[0].groups.find((g) => isCurrentStageHeading(g.title));
   assert.equal(r1Current?.items.length, 1);
   assert.equal(r1Current?.items[0].title, "실시간 스트림");
 
   const r2Current = parsedMap.rails[1].groups.find((g) => isCurrentStageHeading(g.title));
-  assert.equal(r2Current?.items.length, 2);
-  assert.equal(r2Current?.items[0].title, "온라인 A/B 테스트");
-  assert.equal(r2Current?.items[1].title, "실시간 피드백 루프");
+  assert.equal(r2Current, undefined, "second rail carries no global position marker");
+  const r2Progress = parsedMap.rails[1].groups.find((g) => g.title === "진행 중");
+  assert.equal(r2Progress?.items.length, 2);
+  assert.equal(r2Progress?.items[0].title, "온라인 A/B 테스트");
+  assert.equal(r2Progress?.items[1].title, "실시간 피드백 루프");
 
   // Plain rail has no position group
   const r3Current = parsedMap.rails[2].groups.find((g) => isCurrentStageHeading(g.title));
@@ -816,7 +847,7 @@ function readFixtureSections(filename) {
   const { title, sections } = splitSections(tokens);
   return { source, title, sections };
 }
-test("Overview hygiene guardrail rejects low-level telemetry in Now/Next/Blocked", () => {
+test("Overview telemetry is advisory only: structural PASS with warnings, never FAIL", () => {
   const invalid = `
 # Invalid model
 
@@ -837,7 +868,7 @@ Level.
 - Evidence.
 
 ## 현재 상황
-Current model was reconstructed at 0123456789abcdef0123456789abcdef01234567 by PID 123 from /Users/example/src/main.ts.
+Current model was reconstructed at 0123456789abcdef0123456789abcdef01234567 by PID 123 from /Users/example/src/main.ts via suite::test_login_flow.
 
 ## 다음 전환
 A → B, verified in CI run #1.
@@ -847,11 +878,18 @@ Blocked by an absolute path /var/data/store.
 `;
 
   const result = checkProgressStructure(invalid);
-  assert.equal(result.ok, false);
-  assert.ok(result.guardrailErrors.some((error) => /현재 상황 contains a full Git SHA/.test(error)));
-  assert.ok(result.guardrailErrors.some((error) => /현재 상황 contains an explicit PID/.test(error)));
-  assert.ok(result.guardrailErrors.some((error) => /현재 상황 contains an absolute implementation path/.test(error)));
-  assert.ok(result.guardrailErrors.some((error) => /막힘 contains an absolute implementation path/.test(error)));
+  assert.equal(result.ok, true, `telemetry must not fail structure: ${result.errors.join("; ")}`);
+  assert.equal(result.errors.length, 0);
+  assert.ok(result.warnings.some((warning) => /현재 상황 contains a full Git SHA/.test(warning)));
+  assert.ok(result.warnings.some((warning) => /현재 상황 contains an explicit PID/.test(warning)));
+  assert.ok(result.warnings.some((warning) => /현재 상황 contains a pytest-style test node/.test(warning)));
+  assert.ok(result.warnings.some((warning) => /현재 상황 contains an absolute implementation path/.test(warning)));
+  assert.ok(result.warnings.some((warning) => /막힘 contains an absolute implementation path/.test(warning)));
+  // Deprecated alias stays in sync for existing consumers.
+  assert.deepEqual(result.guardrailErrors, result.warnings);
+  const report = formatStructuralCheckReport(result);
+  assert.ok(report.includes("PROGRESS structural check: PASS"));
+  assert.ok(report.includes("Warnings (advisory, do not affect PASS/FAIL):"));
 });
 
 test("Removed rich owners never fail the check: old Stage/Posture/Threads sections are secondary context", () => {
@@ -916,5 +954,6 @@ test("Authoring discoverability: canonical minimal example stays PASS and covers
   assert.equal("hasProjectPosture" in result, false);
   assert.equal("primaryFrontierCount" in result, false);
   assert.equal("unresolvedRelations" in result, false);
+  assert.equal(result.warnings.length, 0);
   assert.equal(result.guardrailErrors.length, 0);
 });

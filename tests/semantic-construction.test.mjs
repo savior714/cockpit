@@ -396,7 +396,7 @@ test("Independent multi-rail mental-model axis invariants: single Current Stage 
   assert.equal(singleParsed.hasCurrentStage, false);
 });
 
-test("Fixture verification: visual-test-focus.md (Current Focus + multi-rail Current Stage + neutral rail)", () => {
+test("Fixture verification: visual-test-focus.md (Current Focus + single global Current Stage + neutral rails)", () => {
   const filePath = path.join(__dirname, "fixtures", "visual-test-focus.md");
   const content = fs.readFileSync(filePath, "utf-8");
 
@@ -410,7 +410,7 @@ test("Fixture verification: visual-test-focus.md (Current Focus + multi-rail Cur
   assert.equal(result.totalMapItems, 9);
   assert.equal(result.matchedDetails, 9);
   assert.equal(result.missingDetails, 0);
-  assert.equal(result.currentStageCount, 2);
+  assert.equal(result.currentStageCount, 1);
   assert.equal(result.currentFocusCount, 1);
 
   const parsedMap = parseProjectMap(sections.get("project map"));

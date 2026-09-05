@@ -2,16 +2,18 @@
  * Structural validation owner: deterministic structural validity only.
  *
  * Owns `checkProgressStructure`, `StructuralCheckResult`, structural
- * guardrail evaluation, area/map completeness validation, and the human
- * structural check report formatting. Consumes the structural/domain
- * representation (`./markdown-structure.js`, `./semantic-construction.js`,
- * `./domain.js`) rather than becoming a second unrelated parser.
+ * completeness validation, and the human structural check report formatting.
+ * Consumes the structural/domain representation (`./markdown-structure.js`,
+ * `./semantic-construction.js`, `./domain.js`) rather than becoming a second
+ * unrelated parser.
  *
  * Structural PASS means: required map + area details exist, every map item
  * resolves to exactly one area detail (no missing/orphan/duplicates), at
- * most one Current Stage (YOU ARE HERE) group per map rail, at most one Current Focus, and
- * overview sections stay free of low-level telemetry dumps. It never
- * checks semantic truth (external-agent responsibility).
+ * most one Current Stage (YOU ARE HERE) group in the whole Project Map,
+ * and at most one Current Focus. It never checks semantic truth
+ * (external-agent responsibility) and never fails on writing style:
+ * overview telemetry (SHA / PID / test node / absolute path) is advisory
+ * `warnings` only and never flips PASS/FAIL.
  *
  * There is intentionally no Stage/Posture/Frontier/Thread/Movement/relation
  * ontology here: those canonical owners were contracted away. Unknown H2
@@ -50,27 +52,24 @@ export function checkProgressStructure(markdownOrTokens) {
     const parsedMap = mapTokens
         ? parseProjectMap(mapTokens)
         : { isNativeMap: false, rails: [] };
-    // Count Current Stage groups per rail and gather map items
+    // Count Current Stage groups document-wide and gather map items.
+    // A single Current Stage group may hold several map items ("one marker +
+    // several current areas"); more than one such group anywhere in the
+    // Project Map is a structural contradiction.
     let currentStageCount = 0;
     const mapItemTitles = [];
     const mapItemKeyCounts = new Map();
-    const multiStageRailErrors = [];
     if (parsedMap.rails) {
         for (const rail of parsedMap.rails) {
-            let railStageCount = 0;
             for (const group of rail.groups) {
                 if (isCurrentStageHeading(group.title)) {
                     currentStageCount++;
-                    railStageCount++;
                 }
                 for (const item of group.items) {
                     mapItemTitles.push(item.title);
                     const key = normalizeTitle(item.title);
                     mapItemKeyCounts.set(key, (mapItemKeyCounts.get(key) ?? 0) + 1);
                 }
-            }
-            if (railStageCount > 1) {
-                multiStageRailErrors.push(`Multiple '현재 단계' (Current Stage) groups found in rail '${rail.title}' (${railStageCount}). At most 1 allowed per rail.`);
             }
         }
     }
@@ -110,17 +109,20 @@ export function checkProgressStructure(markdownOrTokens) {
         }
     }
     const orphanDetails = orphanTitles.length;
-    const guardrailErrors = [];
-    // Overview hygiene: situation / next / facing stay readable orientation,
-    // not low-level telemetry dumps. Exact evidence lives in area details.
+    const warnings = [];
+    // Overview writing advice: situation / next / facing stay readable
+    // orientation, not low-level telemetry dumps. Exact evidence lives in
+    // area details. Advisory only — never flips PASS/FAIL.
     for (const key of ["situation", "next", "facing"]) {
         const rawText = extractSectionRawText(sections.get(key));
         if (!rawText)
             continue;
         const telemetry = findTopLevelTelemetry(rawText);
         const label = key === "situation" ? "현재 상황" : key === "next" ? "다음 전환" : "막힘";
-        guardrailErrors.push(...telemetry.map((finding) => `${label} contains ${finding}.`));
+        warnings.push(...telemetry.map((finding) => `${label} contains ${finding}.`));
     }
+    // Deprecated alias: same advisory list under the old name.
+    const guardrailErrors = warnings;
     // Count focus sections via normalized H2 keys (splitSections already maps aliases).
     const focusCount = countFocusSections(tokens);
     const errors = [];
@@ -142,10 +144,9 @@ export function checkProgressStructure(markdownOrTokens) {
     if (focusCount > 1) {
         errors.push(`Multiple '현재 집중' (Current Focus) sections found (${focusCount}). At most 1 allowed.`);
     }
-    for (const err of multiStageRailErrors) {
-        errors.push(err);
+    if (currentStageCount > 1) {
+        errors.push(`Multiple '현재 단계' (Current Stage) groups found across the document (${currentStageCount}). At most 1 allowed in the whole Project Map.`);
     }
-    errors.push(...guardrailErrors);
     const ok = errors.length === 0;
     return {
         ok,
@@ -164,6 +165,7 @@ export function checkProgressStructure(markdownOrTokens) {
         hasNext,
         hasFacing,
         hasRecent,
+        warnings,
         guardrailErrors,
         errors,
     };
@@ -246,6 +248,14 @@ export function formatStructuralCheckReport(result) {
             }
             lines.push("");
         }
+    }
+    const advisory = result.warnings ?? result.guardrailErrors ?? [];
+    if (advisory.length > 0) {
+        lines.push("Warnings (advisory, do not affect PASS/FAIL):");
+        for (const warn of advisory) {
+            lines.push(`- ${warn}`);
+        }
+        lines.push("");
     }
     return lines.join("\n").trimEnd();
 }

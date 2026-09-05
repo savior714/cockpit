@@ -373,14 +373,17 @@ test("Reader-visible DOM leads Map-first and exposes one area Inspector shell", 
   }
 });
 
-test("Semantic Tone Contract: Case 1 - Explicitly closed or 'none' remaining issues are neutral", () => {
-  assert.equal(classifySubsectionTone("남은 문제", "없음"), "neutral");
-  assert.equal(classifySubsectionTone("남은 문제", "해당 없음"), "neutral");
-  assert.equal(classifySubsectionTone("남은 문제", "해당 없음."), "neutral");
-  assert.equal(classifySubsectionTone("남은 문제", "남은 문제: 없음"), "neutral");
-  assert.equal(classifySubsectionTone("남은 문제", "- 없음"), "neutral");
-  assert.equal(classifySubsectionTone("직면한 문제", "해결됨"), "neutral");
-  assert.equal(classifySubsectionTone("막힌 것", "닫힘"), "neutral");
+test("Semantic Tone Contract: Case 1 - Issue headings always read as danger, body wording never flips tone", () => {
+  // Heading-structure only: even "없음 / 해결됨 / 닫힘" keeps the structural
+  // danger presentation. The authoring contract says to omit the section
+  // when there is nothing open; Cockpit never re-judges open/closed.
+  assert.equal(classifySubsectionTone("남은 문제", "없음"), "danger");
+  assert.equal(classifySubsectionTone("남은 문제", "해당 없음"), "danger");
+  assert.equal(classifySubsectionTone("남은 문제", "해당 없음."), "danger");
+  assert.equal(classifySubsectionTone("남은 문제", "남은 문제: 없음"), "danger");
+  assert.equal(classifySubsectionTone("남은 문제", "- 없음"), "danger");
+  assert.equal(classifySubsectionTone("직면한 문제", "해결됨"), "danger");
+  assert.equal(classifySubsectionTone("막힌 것", "닫힘"), "danger");
 });
 
 test("Semantic Tone Contract: Case 2 - Genuine remaining problems and blockers are danger", () => {
@@ -400,14 +403,14 @@ test("Semantic Tone Contract: Case 3 - Core area context subsections default to 
   assert.equal(classifySubsectionTone("closed boundaries", "No global mutable state"), "neutral");
 });
 
-test("Semantic Tone Contract: Case 4 - Empty or resolved issues do not claim danger", () => {
-  assert.equal(classifySubsectionTone("남은 문제", "All resolved."), "neutral");
-  assert.equal(classifySubsectionTone("remaining issues", "none"), "neutral");
-  assert.equal(classifySubsectionTone("remaining issues", "No remaining issues"), "neutral");
-  assert.equal(classifySubsectionTone("남은 문제", ""), "neutral");
+test("Semantic Tone Contract: Case 4 - Issue headings stay danger even when empty or resolved-worded", () => {
+  assert.equal(classifySubsectionTone("남은 문제", "All resolved."), "danger");
+  assert.equal(classifySubsectionTone("remaining issues", "none"), "danger");
+  assert.equal(classifySubsectionTone("remaining issues", "No remaining issues"), "danger");
+  assert.equal(classifySubsectionTone("남은 문제", ""), "danger");
 });
 
-test("Semantic Tone Contract: Case 5 - Supporting evidence is evidence, but unverified/empty evidence is neutral", () => {
+test("Semantic Tone Contract: Case 5 - Evidence headings always read as evidence, body never demotes", () => {
   // Concrete supporting evidence:
   assert.equal(
     classifySubsectionTone("근거", "Commit 94c02fd, npm test 58 pass across all synthetic fixtures"),
@@ -422,14 +425,15 @@ test("Semantic Tone Contract: Case 5 - Supporting evidence is evidence, but unve
     "evidence"
   );
 
-  // Unverified, placeholder, or absent evidence must NOT be promoted to evidence:
-  assert.equal(classifySubsectionTone("근거", ""), "neutral");
-  assert.equal(classifySubsectionTone("근거", "미확인"), "neutral");
-  assert.equal(classifySubsectionTone("근거", "UNKNOWN"), "neutral");
-  assert.equal(classifySubsectionTone("근거", "NOT PROVEN"), "neutral");
-  assert.equal(classifySubsectionTone("근거", "TBD"), "neutral");
-  assert.equal(classifySubsectionTone("evidence", "unverified"), "neutral");
-  assert.equal(classifySubsectionTone("evidence", "none"), "neutral");
+  // Unverified, placeholder, or absent evidence keeps the structural
+  // evidence presentation: Cockpit does not re-judge verification state.
+  assert.equal(classifySubsectionTone("근거", ""), "evidence");
+  assert.equal(classifySubsectionTone("근거", "미확인"), "evidence");
+  assert.equal(classifySubsectionTone("근거", "UNKNOWN"), "evidence");
+  assert.equal(classifySubsectionTone("근거", "NOT PROVEN"), "evidence");
+  assert.equal(classifySubsectionTone("근거", "TBD"), "evidence");
+  assert.equal(classifySubsectionTone("evidence", "unverified"), "evidence");
+  assert.equal(classifySubsectionTone("evidence", "none"), "evidence");
 });
 
 test("Semantic Tone Contract: Case 6 - Legacy gate/transition/movement headings read as neutral", () => {
@@ -503,34 +507,40 @@ Commit af97c57 및 유닛 테스트 60+ 건 통과
   assert.equal(notes && toViewSubsection(notes).tone, "neutral");
 });
 
-test("Semantic Tone Repair: unverified / planned-only evidence stays neutral", () => {
-  // Required adversarial cases
-  assert.equal(classifySubsectionTone("근거", "아직 근거 없음"), "neutral");
-  assert.equal(classifySubsectionTone("근거", "테스트 예정"), "neutral");
-  assert.equal(classifySubsectionTone("Evidence", "Verification required"), "neutral");
+test("Semantic Tone Contraction: heading structure alone owns tone, prose never re-judged", () => {
+  // Required adversarial cases: same heading, different body wording, same tone.
+  assert.equal(classifySubsectionTone("근거", "검증 완료"), "evidence");
+  assert.equal(classifySubsectionTone("근거", "아직 검증 안 됨"), "evidence");
+  assert.equal(classifySubsectionTone("근거", "아직 근거 없음"), "evidence");
+  assert.equal(classifySubsectionTone("근거", "테스트 예정"), "evidence");
+  assert.equal(classifySubsectionTone("Evidence", "Verification required"), "evidence");
 
   // Representative Korean wording (bounded, phrase-level only)
-  assert.equal(classifySubsectionTone("근거", "검증 예정"), "neutral");
-  assert.equal(classifySubsectionTone("근거", "확인 필요"), "neutral");
-  assert.equal(classifySubsectionTone("근거", "추후 검증"), "neutral");
-  assert.equal(classifySubsectionTone("근거", "미검증"), "neutral");
-  assert.equal(classifySubsectionTone("근거", "근거: 아직 근거 없음"), "neutral");
-  assert.equal(classifySubsectionTone("근거", "- 테스트 예정"), "neutral");
-  assert.equal(classifySubsectionTone("근거", "향후 작업"), "neutral");
-  assert.equal(classifySubsectionTone("근거", "추후 과제"), "neutral");
+  assert.equal(classifySubsectionTone("근거", "검증 예정"), "evidence");
+  assert.equal(classifySubsectionTone("근거", "확인 필요"), "evidence");
+  assert.equal(classifySubsectionTone("근거", "추후 검증"), "evidence");
+  assert.equal(classifySubsectionTone("근거", "미검증"), "evidence");
+  assert.equal(classifySubsectionTone("근거", "근거: 아직 근거 없음"), "evidence");
+  assert.equal(classifySubsectionTone("근거", "- 테스트 예정"), "evidence");
+  assert.equal(classifySubsectionTone("근거", "향후 작업"), "evidence");
+  assert.equal(classifySubsectionTone("근거", "추후 과제"), "evidence");
 
   // Representative English wording (bounded, phrase-level only)
-  assert.equal(classifySubsectionTone("Evidence", "NOT VERIFIED"), "neutral");
-  assert.equal(classifySubsectionTone("Evidence", "NO EVIDENCE"), "neutral");
-  assert.equal(classifySubsectionTone("Evidence", "To be verified"), "neutral");
-  assert.equal(classifySubsectionTone("Evidence", "UNKNOWN"), "neutral");
-  assert.equal(classifySubsectionTone("Evidence", "UNVERIFIED"), "neutral");
-  assert.equal(classifySubsectionTone("Evidence", "NOT PROVEN"), "neutral");
-  assert.equal(classifySubsectionTone("Evidence", "TBD"), "neutral");
-  assert.equal(classifySubsectionTone("Evidence", "N/A"), "neutral");
-  assert.equal(classifySubsectionTone("Evidence", "planned"), "neutral");
-  assert.equal(classifySubsectionTone("Evidence", "future-work"), "neutral");
-  assert.equal(classifySubsectionTone("Evidence", "future work"), "neutral");
+  assert.equal(classifySubsectionTone("Evidence", "NOT VERIFIED"), "evidence");
+  assert.equal(classifySubsectionTone("Evidence", "NO EVIDENCE"), "evidence");
+  assert.equal(classifySubsectionTone("Evidence", "To be verified"), "evidence");
+  assert.equal(classifySubsectionTone("Evidence", "UNKNOWN"), "evidence");
+  assert.equal(classifySubsectionTone("Evidence", "UNVERIFIED"), "evidence");
+  assert.equal(classifySubsectionTone("Evidence", "NOT PROVEN"), "evidence");
+  assert.equal(classifySubsectionTone("Evidence", "TBD"), "evidence");
+  assert.equal(classifySubsectionTone("Evidence", "N/A"), "evidence");
+  assert.equal(classifySubsectionTone("Evidence", "planned"), "evidence");
+  assert.equal(classifySubsectionTone("Evidence", "future-work"), "evidence");
+  assert.equal(classifySubsectionTone("Evidence", "future work"), "evidence");
+
+  // Issue headings: "없음" keeps danger presentation; omission is the author contract.
+  assert.equal(classifySubsectionTone("남은 문제", "없음"), "danger");
+  assert.equal(classifySubsectionTone("남은 문제", "실제 production 연결 미완료"), "danger");
 });
 
 test("Semantic Tone Repair: concrete and mixed evidence stays evidence", () => {
@@ -562,8 +572,8 @@ test("Semantic Tone Repair: incidental keywords never promote custom subsections
     "neutral"
   );
 
-  // Existing regression: explicitly closed remaining problems stay neutral
-  assert.equal(classifySubsectionTone("남은 문제", "남은 문제: 없음"), "neutral");
+  // Heading-only regression: issue headings stay danger regardless of body.
+  assert.equal(classifySubsectionTone("남은 문제", "남은 문제: 없음"), "danger");
 
   // Existing regression: real unresolved issues stay danger
   assert.equal(classifySubsectionTone("남은 문제", "대용량 동시 요청 시 쿼리 타임아웃 발생"), "danger");
