@@ -8,7 +8,10 @@
  * re-exported by the compatibility facade (`./parser.js`).
  *
  * Context is project context only: title, focus/area, situation, next,
- * facing, frame, settled direction, map text, area detail text. No
+ * facing, frame, settled direction, map text, area detail text. The
+ * selected-area handoff carries the full Project Map for deterministic
+ * project-position context plus the selected Area Detail only; it never
+ * duplicates all unrelated Area Details. No
  * execution-wave, admission, publication, freshness, or topology metadata.
  */
 
@@ -35,6 +38,7 @@ export interface AreaHandoffParams {
   areaTitle: string;
   railTitle?: string;
   groupTitle?: string;
+  projectMapText?: string;
   areaDescription?: string;
   areaDetail?: AreaDetail | null;
   focusText?: string;
@@ -96,6 +100,10 @@ export function buildAreaHandoffContext(params: AreaHandoffParams): string {
     ? `${params.areaTitle} (${tagParts.join(" · ")})`
     : params.areaTitle;
   sections.push(`[SELECTED AREA]\n${areaHeader}`);
+
+  if (params.projectMapText && params.projectMapText.trim()) {
+    sections.push(`[PROJECT MAP]\n${params.projectMapText.trim()}`);
+  }
 
   if (params.areaDescription && params.areaDescription.trim()) {
     sections.push(`[AREA SUMMARY]\n${params.areaDescription.trim()}`);

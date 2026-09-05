@@ -179,6 +179,7 @@ function renderInspector(entity: InspectorEntity): void {
         areaTitle: entity.areaItem.title,
         railTitle: entity.areaItem.railTitle,
         groupTitle: entity.areaItem.groupTitle,
+        projectMapText: currentParsedMap ? formatProjectMapText(currentParsedMap) : "",
         areaDescription: entity.areaItem.description,
         areaDetail: detail,
         focusText: extractSectionRawText(currentSections.get("current focus")),

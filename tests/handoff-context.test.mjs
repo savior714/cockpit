@@ -183,7 +183,7 @@ test("Area review handoff context assembly: complete context and Problem Framer 
   assert.ok(context.includes("[SETTLED DIRECTION]\n- C99 기반 저지연 통신 모듈 유지"));
 
   assert.ok(context.includes("[PROBLEM FRAMER HANDOFF INSTRUCTION]"));
-  assert.ok(context.includes("review that area against fresh evidence"));
+  assert.ok(context.includes("Deeply investigate THIS area against fresh evidence"));
   assert.ok(context.includes("NO_ACTION / NO_CHANGE"));
 
   assert.ok(!context.includes("ChatGPT memory"));
@@ -315,14 +315,26 @@ test("README handoff contract matches generated handoff semantics", () => {
 
 test("AREA-DETAIL-HANDOFF-SEMANTIC-DEPTH-01: area instruction demands concrete deep analysis, not generalities", () => {
   const instruction = formatAreaHandoffInstruction();
-  // The user request survives verbatim in intent: deep source-evidence analysis
-  // of actual problems/causes/unfinished boundaries, not generalities.
-  assert.ok(instruction.includes("review that area against fresh evidence"));
-  assert.ok(instruction.includes("Analyze the area's current state deeply against the source evidence in the area details"));
-  assert.ok(instruction.includes("actual problems, causes, and unfinished boundaries"));
-  assert.ok(instruction.includes("in concrete product terms instead of generalities"));
+  // Deep-review contract: reconstruct CURRENT REALITY from fresh evidence,
+  // not a shallow review note or generalities.
+  assert.ok(instruction.includes("Deeply investigate THIS area against fresh evidence"));
+  assert.ok(instruction.includes("Treat the handed-over PROGRESS text as context, not truth"));
+  assert.ok(instruction.includes("CURRENT REALITY"));
+  assert.ok(instruction.includes("concrete product objects"));
+  assert.ok(instruction.includes("implemented"));
+  assert.ok(instruction.includes("proven"));
+  assert.ok(instruction.includes("merely claimed"));
+  assert.ok(instruction.includes("unknown"));
+  assert.ok(instruction.includes("interfaces"));
+  assert.ok(instruction.includes("boundaries"));
+  assert.ok(instruction.includes("dependencies"));
+  assert.ok(instruction.includes("FRESH EVIDENCE"));
+  assert.ok(instruction.includes("MATERIAL GAPS / RISKS"));
+  assert.ok(instruction.includes("BOUNDED NEXT WORK"));
+  assert.ok(instruction.includes("NO_ACTION / NO_CHANGE"));
   // Still project context only: delegation + no executor mechanics.
   assert.ok(instruction.includes("follow the repository's own current development / Git safety contract"));
+  assert.ok(instruction.includes("This handoff embeds no execution mechanics"));
   for (const term of FORBIDDEN_HANDOFF_VOCABULARY) {
     assert.equal(instruction.includes(term), false, `area instruction must not contain: ${term}`);
   }
