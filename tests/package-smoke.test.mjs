@@ -62,7 +62,14 @@ test("Distribution artifact smoke: pack, install into isolated prefix, and verif
   });
 
   // 1. Pack tarball into tmpDir
-  const packOutput = execSync(`npm pack --pack-destination "${tmpDir}"`, {
+  // --ignore-scripts: pack the committed dist verbatim without running
+  // prepack->build. package-smoke owns archive content + installed behavior
+  // only; the src->dist freshness contract is owned by scripts/freshness.mjs
+  // and tests/freshness.test.mjs. Running prepack here would rewrite shared
+  // REPO_ROOT/dist during parallel tests (write/write race tearing
+  // dist/parser.js for concurrent serve.mjs imports) and silently rebuild
+  // stale dist instead of packaging exactly what consumers get.
+  const packOutput = execSync(`npm pack --ignore-scripts --pack-destination "${tmpDir}"`, {
     cwd: REPO_ROOT,
     encoding: "utf-8",
   }).trim();

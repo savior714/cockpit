@@ -116,14 +116,36 @@ test("isLocalDevCheckout boundary detection", async (t) => {
 });
 
 test("Clean local checkout + fresh build: cockpit execution causes no rebuild", async (t) => {
-  // Ensure the repo build is fresh
-  execSync("npm run build", { cwd: REPO_ROOT, encoding: "utf-8" });
+  // Isolated disposable checkout: building REPO_ROOT/dist here would rewrite
+  // the shared production dist while viewer-lifecycle (serve.mjs statically
+  // imports ../dist/parser.js) and other suites run in parallel, tearing
+  // dist/parser.js mid-build. The same src->dist freshness semantics are
+  // exercised through the real scripts/cockpit.mjs -> ensureFreshBuild path
+  // with PKG_ROOT resolved to the isolated checkout.
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "cockpit-fresh-test-"));
+  t.after(async () => {
+    try {
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    } catch {}
+  });
 
-  const binPath = path.join(REPO_ROOT, "scripts", "cockpit.mjs");
+  await fs.cp(path.join(REPO_ROOT, "src"), path.join(tmpDir, "src"), { recursive: true });
+  await fs.cp(path.join(REPO_ROOT, "scripts"), path.join(tmpDir, "scripts"), { recursive: true });
+  await fs.cp(path.join(REPO_ROOT, "dist"), path.join(tmpDir, "dist"), { recursive: true });
+  await fs.cp(path.join(REPO_ROOT, "package.json"), path.join(tmpDir, "package.json"));
+  await fs.cp(path.join(REPO_ROOT, "tsconfig.json"), path.join(tmpDir, "tsconfig.json"));
+  await fs.cp(path.join(REPO_ROOT, "index.html"), path.join(tmpDir, "index.html"));
+  await fs.symlink(path.join(REPO_ROOT, "node_modules"), path.join(tmpDir, "node_modules"), "dir");
+  await fs.mkdir(path.join(tmpDir, ".git"));
+
+  // Ensure the isolated checkout build is fresh
+  execSync("npm run build", { cwd: tmpDir, encoding: "utf-8" });
+
+  const binPath = path.join(tmpDir, "scripts", "cockpit.mjs");
   const validFixture = path.join(REPO_ROOT, "tests", "fixtures", "operational-system.md");
 
   const proc = spawn(process.execPath, [binPath, validFixture, "--port", "0", "--no-open"], {
-    cwd: REPO_ROOT,
+    cwd: tmpDir,
     stdio: ["pipe", "pipe", "pipe"],
   });
   t.after(() => { try { proc.kill("SIGTERM"); } catch {} });
