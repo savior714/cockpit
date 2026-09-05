@@ -11,12 +11,15 @@
 //     -> [existing] viewer launch for a concrete file (serve.mjs)
 //        or explicit bootstrap UX when the representation is missing.
 //
-// Bootstrap never fabricates project truth and never writes a neutral
+// Bootstrap never fabricates project truth and never creates a neutral
 // starter: a missing PROGRESS.md is owned by the canonical LLM author
 // capability (scripts/author.mjs, COCKPIT_AUTHOR_COMMAND with legacy
 // COCKPIT_REFRESH_COMMAND fallback). This module only resolves the target,
-// invokes that one capability after explicit confirmation, and verifies via
-// read-back (+ structural check when a checker is provided).
+// offers an explicit confirmed restore from the recovery replica
+// (scripts/replica.mjs, exact bytes, stale-possible) before fresh authorship,
+// invokes that one author capability after explicit confirmation, verifies
+// via read-back (+ structural check when a checker is provided), and then
+// stores the exact bytes as a recovery replica (warning-only on failure).
 //
 // serve.mjs keeps the loopback/read-only runtime; it must not duplicate
 // path semantics. `cockpit check` shares resolution but never prompts,
@@ -32,6 +35,11 @@ import {
   resolveAuthorCommandSource,
   runAuthorCommand,
 } from "./author.mjs";
+import {
+  readRecoveryReplica as defaultReadRecoveryReplica,
+  restoreRecoveryReplica as defaultRestoreRecoveryReplica,
+  saveRecoveryReplica as defaultSaveRecoveryReplica,
+} from "./replica.mjs";
 
 export const PROGRESS_FILENAME = "PROGRESS.md";
 export const DEFAULT_PORT = 4321;
@@ -299,17 +307,24 @@ const NEXT_STEPS = `다음:
 
 /**
  * Explicit first-run/bootstrap UX for a concrete target with no progress
- * representation. Never writes project truth itself:
+ * representation. Never fabricates project truth and never creates a
+ * neutral starter:
  *
- *   - no author capability  -> guidance only, non-zero, no write, no prompt
- *     beyond the handoff display
+ *   - recovery replica first: when a recovery copy exists for this project
+ *     key, propose restoring its exact bytes to the canonical target before
+ *     any fresh authorship. Restore runs only after explicit confirmation,
+ *     is labelled stale-possible, and keeps author reconciliation duty.
+ *   - no author capability  -> guidance only, non-zero, no prompt
+ *     beyond the handoff display (and no canonical write)
  *   - author configured     -> explicit confirmation, then invoke the ONE
  *     author capability (shared with refresh), read back the file, and
- *     verify with the structural check when a checker is provided
+ *     verify with the structural check when a checker is provided. After
+ *     that success, store the exact bytes as a recovery replica;
+ *     replica failure only warns and never flips author success.
  *
  * Non-interactive callers must not invoke this with an auto-affirmative
- * prompt: no silent writes. Returns an action descriptor; the caller
- * decides the exit code.
+ * prompt: no silent canonical writes. Returns an action descriptor; the
+ * caller decides the exit code.
  */
 export async function runMissingProgressFlow({
   projectDir,
@@ -321,8 +336,64 @@ export async function runMissingProgressFlow({
   checkFn,
   resolveAuthorCommandFn,
   readFileFn,
+  readReplicaFn,
+  restoreReplicaFn,
+  saveReplicaFn,
 } = {}) {
   stdout.write(`${formatMissingGuidance({ projectDir, progressFile })}\n\n`);
+
+  // Recovery check comes before any fresh-authorship proposal. Existence
+  // only: no repository inspection, no content analysis.
+  const readReplica = readReplicaFn ?? ((f) => defaultReadRecoveryReplica(f));
+  let replica = null;
+  try {
+    replica = await readReplica(progressFile);
+  } catch {
+    replica = null;
+  }
+  if (replica && replica.exists) {
+    stdout.write(`복구 가능한 recovery copy가 있습니다.\n`);
+    stdout.write(`recovery copy: ${replica.replicaFile}\n`);
+    stdout.write(`복원 대상(canonical): ${progressFile}\n`);
+    if (replica.mtimeMs) {
+      try {
+        stdout.write(`recovery copy 시각: ${new Date(replica.mtimeMs).toISOString()}\n`);
+      } catch {}
+    }
+    stdout.write(`주의: recovery copy이므로 stale할 수 있습니다. 복구 후에도 LLM author가 최신 증거와 대조해야 합니다.\n\n`);
+    let restoreAnswer;
+    try {
+      restoreAnswer = await prompt(
+        `recovery copy를 canonical 위치로 복원할까요? (${progressFile}) [y/N]: `,
+        { stdin, stdout }
+      );
+    } catch {
+      stdout.write(`\n${NEXT_STEPS.replace("<progress-file>", progressFile).replace("<project-dir>", projectDir)}\n`);
+      return { action: "declined" };
+    }
+    if (isAffirmative(restoreAnswer)) {
+      const restore = restoreReplicaFn ?? ((f) => defaultRestoreRecoveryReplica(f));
+      let restored = null;
+      try {
+        restored = await restore(progressFile);
+      } catch (err) {
+        restored = { ok: false, error: err };
+      }
+      if (!restored || !restored.ok) {
+        const detail = restored?.error?.message ?? restored?.error ?? "unknown error";
+        stdout.write(`\nrecovery copy 복원에 실패했습니다: ${detail}\n`);
+        stdout.write(`파일을 쓰지 않았습니다. 아래 fresh authorship 흐름으로 계속합니다.\n\n`);
+      } else {
+        stdout.write(`\nrecovery copy를 복원했습니다: ${progressFile}\n`);
+        stdout.write(`주의: 복원된 파일은 recovery copy이므로 stale할 수 있습니다. LLM author가 최신 증거와 대조해야 합니다.\n`);
+        stdout.write(`다음:\n  1. LLM author에게 최신 증거 대조를 요청하고\n  2. cockpit check ${progressFile} 로 구조적 완전성을 확인하고\n  3. cockpit ${projectDir} 로 다시 실행하세요.\n`);
+        return { action: "restored", key: restored.key ?? replica.key, replicaFile: restored.replicaFile ?? replica.replicaFile };
+      }
+    } else {
+      stdout.write(`\nrecovery copy를 복원하지 않았습니다. 파일을 만들지 않았습니다.\n\n`);
+    }
+  }
+
   stdout.write(`LLM author에게 전달할 준비 요청문:\n\n`);
   stdout.write(`${buildAuthorHandoff({ projectDir, progressFile })}\n\n`);
 
@@ -410,6 +481,22 @@ export async function runMissingProgressFlow({
       stdout.write(`  cockpit ${projectDir}\n`);
       return { action: "author-invalid", check };
     }
+  }
+
+  // Author success + canonical read-back success come first. Only then
+  // store the exact bytes as a recovery replica. Replica failure only
+  // warns and never flips author success.
+  const saveReplica = saveReplicaFn ?? ((f) => defaultSaveRecoveryReplica(f));
+  try {
+    const saved = await saveReplica(progressFile);
+    if (!saved || !saved.ok) {
+      const detail = saved?.error?.message ?? saved?.error ?? "unknown error";
+      stdout.write(`\ncockpit: warning: recovery replica를 저장하지 못했습니다: ${detail}\n`);
+      stdout.write(`canonical 작성은 성공했습니다: ${progressFile}\n`);
+    }
+  } catch (err) {
+    stdout.write(`\ncockpit: warning: recovery replica를 저장하지 못했습니다: ${err?.message ?? err}\n`);
+    stdout.write(`canonical 작성은 성공했습니다: ${progressFile}\n`);
   }
 
   stdout.write(`\nLLM author가 PROGRESS.md를 작성하고 구조적 검사를 통과했습니다: ${progressFile}\n`);

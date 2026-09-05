@@ -38,6 +38,23 @@ async function makeTempDir(t) {
   return dir;
 }
 
+async function makeIsolatedReplicaRoot(t) {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "cockpit-replica-root-"));
+  t.after(async () => {
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+  return dir;
+}
+
+function withReplicaRoot(t, replicaRoot) {
+  const saved = process.env.COCKPIT_REPLICA_DIR;
+  process.env.COCKPIT_REPLICA_DIR = replicaRoot;
+  t.after(() => {
+    if (saved === undefined) delete process.env.COCKPIT_REPLICA_DIR;
+    else process.env.COCKPIT_REPLICA_DIR = saved;
+  });
+}
+
 async function runCli(args, { cwd = REPO_ROOT, timeout = 15000 } = {}) {
   try {
     const { stdout, stderr } = await execFileAsync(process.execPath, [SERVE, ...args], {
@@ -195,10 +212,16 @@ test("bootstrap: Cockpit runtime never fabricates a starter file", async () => {
   assert.doesNotMatch(targetSource, /buildStarterContent/);
   assert.doesNotMatch(targetSource, /중립 시작점 파일을 만들까요/);
   assert.doesNotMatch(targetSource, /중립 시작점을 만들었습니다/);
-  // No silent PROGRESS.md writes in the onboarding owner: the only writer is
-  // the external author process invoked via the capability.
+  // No silent PROGRESS.md writes and no semantic fabrication in the
+  // onboarding owner: fresh creation is owned by the external author process
+  // invoked via the capability. The only other canonical write is an explicit
+  // user-confirmed exact-byte restore of a previously successful recovery
+  // replica via scripts/replica.mjs (no merge, stale-possible, author
+  // reconciliation still required).
   assert.doesNotMatch(targetSource, /writeFile/);
   assert.match(targetSource, /COCKPIT_AUTHOR_COMMAND|resolveAuthorCommand|runAuthorCommand/);
+  assert.match(targetSource, /restoreRecoveryReplica/, "explicit restore path must stay visible");
+  assert.match(targetSource, /isAffirmative/, "restore must stay gated on explicit confirmation");
 });
 
 // --- interactive boundary ---
@@ -261,6 +284,8 @@ test("acquireTargetInteractively: gives up deterministically after max attempts"
 
 test("runMissingProgressFlow: no author capability writes nothing and guides", async (t) => {
   const dir = await makeTempDir(t);
+  const replicaRoot = await makeIsolatedReplicaRoot(t);
+  withReplicaRoot(t, replicaRoot);
   const progressFile = path.join(dir, "PROGRESS.md");
   let prompted = 0;
   let authorCalls = 0;
@@ -293,6 +318,8 @@ test("runMissingProgressFlow: no author capability writes nothing and guides", a
 
 test("runMissingProgressFlow: decline never invokes the author", async (t) => {
   const dir = await makeTempDir(t);
+  const replicaRoot = await makeIsolatedReplicaRoot(t);
+  withReplicaRoot(t, replicaRoot);
   const progressFile = path.join(dir, "PROGRESS.md");
   let authorCalls = 0;
   const out = [];
@@ -316,6 +343,8 @@ test("runMissingProgressFlow: decline never invokes the author", async (t) => {
 
 test("runMissingProgressFlow: empty answer is not confirmation", async (t) => {
   const dir = await makeTempDir(t);
+  const replicaRoot = await makeIsolatedReplicaRoot(t);
+  withReplicaRoot(t, replicaRoot);
   let authorCalls = 0;
   const r = await runMissingProgressFlow({
     projectDir: dir,
@@ -335,6 +364,8 @@ test("runMissingProgressFlow: empty answer is not confirmation", async (t) => {
 
 test("runMissingProgressFlow: configured author is invoked with location context, read back, and checked", async (t) => {
   const dir = await makeTempDir(t);
+  const replicaRoot = await makeIsolatedReplicaRoot(t);
+  withReplicaRoot(t, replicaRoot);
   const progressFile = path.join(dir, "PROGRESS.md");
   const out = [];
   const seen = [];
@@ -367,6 +398,8 @@ test("runMissingProgressFlow: configured author is invoked with location context
 
 test("runMissingProgressFlow: author success without output is not success", async (t) => {
   const dir = await makeTempDir(t);
+  const replicaRoot = await makeIsolatedReplicaRoot(t);
+  withReplicaRoot(t, replicaRoot);
   const progressFile = path.join(dir, "PROGRESS.md");
   const r = await runMissingProgressFlow({
     projectDir: dir,
@@ -384,6 +417,8 @@ test("runMissingProgressFlow: author success without output is not success", asy
 
 test("runMissingProgressFlow: failed author keeps the (missing) document and reports", async (t) => {
   const dir = await makeTempDir(t);
+  const replicaRoot = await makeIsolatedReplicaRoot(t);
+  withReplicaRoot(t, replicaRoot);
   const progressFile = path.join(dir, "PROGRESS.md");
   const r = await runMissingProgressFlow({
     projectDir: dir,
@@ -401,6 +436,8 @@ test("runMissingProgressFlow: failed author keeps the (missing) document and rep
 
 test("runMissingProgressFlow: author output that fails check is not accepted", async (t) => {
   const dir = await makeTempDir(t);
+  const replicaRoot = await makeIsolatedReplicaRoot(t);
+  withReplicaRoot(t, replicaRoot);
   const progressFile = path.join(dir, "PROGRESS.md");
   const r = await runMissingProgressFlow({
     projectDir: dir,

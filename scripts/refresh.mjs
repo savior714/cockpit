@@ -41,6 +41,7 @@ import {
   resolveAuthorTimeoutMs,
   runAuthorCommand,
 } from "./author.mjs";
+import { saveRecoveryReplica as defaultSaveRecoveryReplica } from "./replica.mjs";
 
 export const DEFAULT_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 // Backward-compatible alias: the author timeout owns the value.
@@ -110,6 +111,7 @@ export function createRefreshOrchestrator({
   onStatus,
   readFileFn = readFile,
   nowFn = () => new Date().toISOString(),
+  saveReplicaFn,
 } = {}) {
   if (!progressFile) throw new Error("createRefreshOrchestrator requires progressFile");
   const resolvedProjectDir = projectDir ?? path.dirname(progressFile);
@@ -215,6 +217,23 @@ export function createRefreshOrchestrator({
       // SSE change path only fires when the fingerprint actually moves.
       lastResult = changed ? "changed" : "unchanged";
       emit();
+      // Author success + canonical read-back success: store the exact bytes
+      // as a recovery replica. Warning-only; never flips refresh success.
+      try {
+        const saveReplica = saveReplicaFn ?? ((f, opts) => defaultSaveRecoveryReplica(f, opts));
+        const saved = await saveReplica(progressFile, { bytes: after.bytes });
+        if (saved && saved.ok === false) {
+          try {
+            console.error(
+              `cockpit: warning: recovery replica를 저장하지 못했습니다: ${saved.error?.message ?? saved.error ?? "unknown error"}`
+            );
+          } catch {}
+        }
+      } catch (err) {
+        try {
+          console.error(`cockpit: warning: recovery replica를 저장하지 못했습니다: ${err?.message ?? err}`);
+        } catch {}
+      }
       return {
         outcome: changed ? "changed" : "unchanged",
         beforeHash: before.hash,

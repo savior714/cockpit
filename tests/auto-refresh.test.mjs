@@ -19,7 +19,32 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..");
 
+async function makeIsolatedReplicaRoot(t) {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "cockpit-replica-root-"));
+  t.after(async () => {
+    try {
+      await fs.rm(dir, { recursive: true, force: true });
+    } catch {}
+  });
+  return dir;
+}
+
+function withReplicaRoot(t, replicaRoot) {
+  const saved = process.env.COCKPIT_REPLICA_DIR;
+  process.env.COCKPIT_REPLICA_DIR = replicaRoot;
+  t.after(() => {
+    if (saved === undefined) delete process.env.COCKPIT_REPLICA_DIR;
+    else process.env.COCKPIT_REPLICA_DIR = saved;
+  });
+}
+
 async function makeProgressFile(t, initial = "# Test\n\n## 현재 상황\n\n초기 상태.\n") {
+  // Every refresh path may persist an exact-byte recovery replica after
+  // author success + read-back, so every progress file gets an isolated
+  // temporary COCKPIT_REPLICA_DIR. Deterministic cleanup via t.after; the
+  // real ~/.cockpit tree stays untouched and production default is unchanged.
+  const replicaRoot = await makeIsolatedReplicaRoot(t);
+  withReplicaRoot(t, replicaRoot);
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "cockpit-auto-refresh-"));
   t.after(async () => {
     try {
@@ -28,7 +53,7 @@ async function makeProgressFile(t, initial = "# Test\n\n## 현재 상황\n\n초�
   });
   const file = path.join(dir, "PROGRESS.md");
   await fs.writeFile(file, initial, "utf-8");
-  return { dir, file, initial };
+  return { dir, file, initial, replicaRoot };
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -476,14 +501,14 @@ test("auto-refresh: server keeps a single refresh scheduler", async () => {
 // ---------------------------------------------------------------------------
 
 test("auto-refresh: HTTP toggle defaults OFF and converges when configured", async (t) => {
-  const { file } = await makeProgressFile(t);
+  const { file, replicaRoot } = await makeProgressFile(t);
   const proc = spawn(
     process.execPath,
     [path.join(REPO_ROOT, "scripts", "serve.mjs"), file, "--port", "0", "--no-open"],
     {
       cwd: REPO_ROOT,
       stdio: ["pipe", "pipe", "pipe"],
-      env: { ...process.env, COCKPIT_AUTHOR_COMMAND: "true" },
+      env: { ...process.env, COCKPIT_AUTHOR_COMMAND: "true", COCKPIT_REPLICA_DIR: replicaRoot },
     }
   );
   t.after(() => {
@@ -542,8 +567,8 @@ test("auto-refresh: HTTP toggle defaults OFF and converges when configured", asy
 });
 
 test("auto-refresh: HTTP unconfigured ON is refused truthfully without waiting", async (t) => {
-  const { file, initial } = await makeProgressFile(t);
-  const env = { ...process.env };
+  const { file, initial, replicaRoot } = await makeProgressFile(t);
+  const env = { ...process.env, COCKPIT_REPLICA_DIR: replicaRoot };
   delete env.COCKPIT_AUTHOR_COMMAND;
   delete env.COCKPIT_REFRESH_COMMAND;
   const proc = spawn(
@@ -602,11 +627,11 @@ test("auto-refresh: HTTP unconfigured ON is refused truthfully without waiting",
 });
 
 test("auto-refresh: SSE carries refresh-status to every tab", async (t) => {
-  const { file } = await makeProgressFile(t);
+  const { file, replicaRoot } = await makeProgressFile(t);
   const proc = spawn(
     process.execPath,
     [path.join(REPO_ROOT, "scripts", "serve.mjs"), file, "--port", "0", "--no-open"],
-    { cwd: REPO_ROOT, stdio: ["pipe", "pipe", "pipe"], env: { ...process.env } }
+    { cwd: REPO_ROOT, stdio: ["pipe", "pipe", "pipe"], env: { ...process.env, COCKPIT_REPLICA_DIR: replicaRoot } }
   );
   t.after(() => {
     try {
@@ -651,14 +676,19 @@ test("auto-refresh: SSE carries refresh-status to every tab", async (t) => {
 // ---------------------------------------------------------------------------
 
 test("auto-refresh lifecycle: enabled scheduler does not block last-viewer shutdown", async (t) => {
-  const { file } = await makeProgressFile(t);
+  const { file, replicaRoot } = await makeProgressFile(t);
   const proc = spawn(
     process.execPath,
     [path.join(REPO_ROOT, "scripts", "serve.mjs"), file, "--port", "0", "--no-open"],
     {
       cwd: REPO_ROOT,
       stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, COCKPIT_IDLE_SHUTDOWN_MS: "300", COCKPIT_AUTHOR_COMMAND: "true" },
+      env: {
+        ...process.env,
+        COCKPIT_IDLE_SHUTDOWN_MS: "300",
+        COCKPIT_AUTHOR_COMMAND: "true",
+        COCKPIT_REPLICA_DIR: replicaRoot,
+      },
     }
   );
   t.after(() => {
@@ -715,12 +745,17 @@ test("auto-refresh lifecycle: enabled scheduler does not block last-viewer shutd
 });
 
 test("auto-refresh lifecycle: fresh invocation starts OFF with a clean scheduler", async (t) => {
-  const { file } = await makeProgressFile(t);
+  const { file, replicaRoot } = await makeProgressFile(t);
   const spawnServer = () =>
     spawn(process.execPath, [path.join(REPO_ROOT, "scripts", "serve.mjs"), file, "--port", "0", "--no-open"], {
       cwd: REPO_ROOT,
       stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, COCKPIT_IDLE_SHUTDOWN_MS: "300", COCKPIT_AUTHOR_COMMAND: "true" },
+      env: {
+        ...process.env,
+        COCKPIT_IDLE_SHUTDOWN_MS: "300",
+        COCKPIT_AUTHOR_COMMAND: "true",
+        COCKPIT_REPLICA_DIR: replicaRoot,
+      },
     });
   const waitPort = async (proc, stdoutRef) => {
     const start = Date.now();

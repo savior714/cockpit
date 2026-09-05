@@ -440,7 +440,7 @@ shortly after the last viewer disconnects (refresh/reconnect is tolerated).`);
         progressFile: resolved.progressFile,
         checkFn: (content) => checkProgressStructure(content),
       });
-      process.exit(flow.action === "authored" || flow.action === "exists-now" ? 0 : 1);
+      process.exit(flow.action === "authored" || flow.action === "exists-now" || flow.action === "restored" ? 0 : 1);
     }
     console.error(`cockpit: '${resolved.projectDir}'에는 PROGRESS.md가 아직 없습니다.
 찾는 위치: ${resolved.progressFile}
