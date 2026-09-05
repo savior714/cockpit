@@ -20,7 +20,7 @@ Cockpit이 아닌 것: 프로젝트 관리 시스템, 워크플로우 엔진, �
 안정 설치는 버전이 고정된 태그(tag-pinned) GitHub ref를 사용합니다:
 
 ```bash
-npm install -g --install-links "github:savior714/cockpit#v0.3.0-preview.1"
+npm install -g --install-links "github:savior714/cockpit#v0.3.0-preview.2"
 ```
 
 *(다음 버전으로 업데이트할 때는 다음 버전 태그로 동일한 명령어를 다시 실행하면 됩니다.)*
@@ -32,7 +32,7 @@ cockpit --version
 ```
 
 - **버전 고정**: `#vX.Y.Z` 태그는 불변 ref이므로 같은 명령어는 언제나 같은 artifact를 설치합니다. `main` 같은 mutable ref는 일반 설치 경로가 아닙니다.
-- **현재 상태**: `v0.3.0-preview.1`이 현재 게시된 version-pinned GitHub installation authority이며, 위 설치 명령이 현재 사용 가능한 정식 versioned installation path입니다. 해당 태그는 `package.json` 버전(`0.3.0-preview.1`)과 일치합니다.
+- **현재 상태**: `v0.3.0-preview.2`가 현재 게시된 version-pinned GitHub installation authority이며, 위 설치 명령이 현재 사용 가능한 정식 versioned installation path입니다. 해당 태그는 `package.json` 버전(`0.3.0-preview.2`)과 일치합니다. `v0.3.0-preview.1`은 recovery replica capability 이전의 이전 distribution입니다.
 - **npm registry**: unscoped `cockpit` 이름은 registry에 오래전부터 무관한 패키지가 선점하고 있어, 이 저장소는 npm registry 발행을 distribution authority로 사용하지 않습니다(`package.json`은 `private: true` 유지).
 - **로컬 개발 체크아웃(Linked Setup)**: 로컬 Git 체크아웃을 직접 `npm link` 등으로 연결해 사용하는 개발 환경에서는 소스가 변경되었을 때 다음 `cockpit` 실행 시 오래된 빌드를 자동으로 감지하고 갱신합니다. `git pull` 등으로 체크아웃을 갱신한 뒤에는 `npm link`를 다시 실행해 `cockpit` 명령이 정식 진입점(`scripts/cockpit.mjs`)을 가리키게 하고, `command -v cockpit && readlink "$(command -v cockpit)"`으로 확인합니다. `scripts/serve.mjs`를 `cockpit` 이름으로 직접 심볼릭 링크하지 마세요.
 
