@@ -1,16 +1,58 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { execSync, spawn } from "node:child_process";
+import { execFileSync, execSync, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import http from "node:http";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..");
+const RELEASE_IDENTITY_ENV = "COCKPIT_VERIFY_RELEASE_IDENTITY";
+
+function verifyReleaseIdentity() {
+  if (process.env[RELEASE_IDENTITY_ENV] !== "1") return;
+
+  const pkg = JSON.parse(readFileSync(path.join(REPO_ROOT, "package.json"), "utf-8"));
+  const version = pkg?.version;
+  assert.equal(typeof version, "string", "release verification requires package.json version");
+
+  const tag = `v${version}`;
+  const git = (args) =>
+    execFileSync("git", args, {
+      cwd: REPO_ROOT,
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+
+  const head = git(["rev-parse", "--verify", "HEAD"]);
+  const localTagCommit = git(["rev-parse", "--verify", `${tag}^{commit}`]);
+  assert.equal(localTagCommit, head, `local ${tag} must point at the release candidate HEAD`);
+
+  assert.equal(
+    git(["status", "--porcelain", "--untracked-files=all"]),
+    "",
+    "release identity verification requires a clean candidate tree"
+  );
+
+  const remoteRows = git(["ls-remote", "origin", `refs/tags/${tag}`, `refs/tags/${tag}^{}`])
+    .split("\n")
+    .filter(Boolean)
+    .map((row) => row.split(/\s+/));
+  const remoteRefs = new Map(remoteRows.map(([sha, ref]) => [ref, sha]));
+  const remoteTagRef = `refs/tags/${tag}`;
+  assert.ok(remoteRefs.has(remoteTagRef), `origin must contain ${remoteTagRef}`);
+  const remoteTagCommit = remoteRefs.get(`${remoteTagRef}^{}`) ?? remoteRefs.get(remoteTagRef);
+  assert.equal(remoteTagCommit, head, `origin ${tag} must resolve to the release candidate HEAD`);
+}
 
 test("Distribution artifact smoke: pack, install into isolated prefix, and verify CLI & viewer", async (t) => {
+  // Normal npm test stays offline with respect to release refs. Set
+  // COCKPIT_VERIFY_RELEASE_IDENTITY=1 for the release-time tag/read-back proof.
+  verifyReleaseIdentity();
+
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "cockpit-smoke-"));
 
   t.after(async () => {

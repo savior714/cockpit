@@ -93,6 +93,27 @@ For publication-intended work, when the current user instruction authorizes it a
 - ordinary safe non-force fast-forward publication directly to canonical `main` plus remote read-back is part of normal closure; publication never creates or pushes a remote task branch by default;
 - an unpublished local candidate is not the normal terminal success state.
 
+### Distribution identity closure
+
+The package's runtime identity is the `version` in `package.json`, and the
+versioned GitHub installation authority is the immutable `v<version>` tag. The
+existing distribution smoke test checks the packaged `package.json` version
+against `cockpit --version`; it does not prove that a tag or remote points at
+the same candidate. At a release boundary, run the same existing smoke test
+with the opt-in identity proof enabled from a clean candidate tree:
+
+```bash
+COCKPIT_VERIFY_RELEASE_IDENTITY=1 npm test
+```
+
+This opt-in check derives the tag from `package.json` and proves, without a
+second version source, that local `HEAD`, the local `v<version>` tag, and the
+remote tag read-back resolve to the same commit. It is intentionally not part
+of ordinary `npm test`, because the remote read-back is release-time evidence,
+not a general test dependency. The installed tarball checks in the same smoke
+test remain local artifact evidence; a tag-pinned GitHub install and any
+installed-runtime recovery proof remain separate external release proof.
+
 Canonical terminal outcomes:
 
 - `COMPLETE / PUBLISHED` — the intended change is safely published and read back from the remote;
