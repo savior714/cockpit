@@ -30,7 +30,7 @@ Read the routed owner plus the exact claimed boundary. Expand one dependency/aut
 
 - Ordinary technical choices include file-local naming, test wording, semantics-preserving refactor, proof-mechanism choice, settled-UX detail, and small non-meaning copy/layout; the agent may decide them from repository evidence.
 - Consequential choices include user-visible behavior/meaning, workflow/acceptance, public API/contract, safety/security/privacy/data, irreversible migration/data loss, cross-boundary scope, and promise-changing copy; they remain a user decision unless already settled.
-- Already settled means the `README.md` §5 table, `SETTLED` framing, or explicit instruction; escalate once at the decision point, and downstream must not re-ask.
+- Already settled means the `README.md` §5 table, a scope-matched canonical decision/spec, a scope-matched durable settled intent, or explicit current instruction; escalate once at the decision point, and downstream must not re-ask. Newer explicit user intent wins; reopen only for an explicit user change, same-scope supersession, or fresh authority invalidating a material premise.
 - Close one bounded failure domain / coherent state transition at a time; do not absorb newly discovered independent problems into the current task.
 - When Cockpit is being accepted against an external repository, target-project findings are testbed evidence rather than Cockpit work; do not remediate them unless the user explicitly switches the goal back to target-project development. The detailed boundary is in `README.md` §4.
 
