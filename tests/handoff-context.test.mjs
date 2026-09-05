@@ -312,3 +312,18 @@ test("README handoff contract matches generated handoff semantics", () => {
   assert.ok(readme.includes("실행·스케줄링·발행·Git 절차는 해당 repository 자체의 개발 계약을 따릅니다"));
   assert.ok(readme.includes("Cockpit handoff는 그 절차를 정의하지 않습니다"));
 });
+
+test("AREA-DETAIL-HANDOFF-SEMANTIC-DEPTH-01: area instruction demands concrete deep analysis, not generalities", () => {
+  const instruction = formatAreaHandoffInstruction();
+  // The user request survives verbatim in intent: deep source-evidence analysis
+  // of actual problems/causes/unfinished boundaries, not generalities.
+  assert.ok(instruction.includes("review that area against fresh evidence"));
+  assert.ok(instruction.includes("Analyze the area's current state deeply against the source evidence in the area details"));
+  assert.ok(instruction.includes("actual problems, causes, and unfinished boundaries"));
+  assert.ok(instruction.includes("in concrete product terms instead of generalities"));
+  // Still project context only: delegation + no executor mechanics.
+  assert.ok(instruction.includes("follow the repository's own current development / Git safety contract"));
+  for (const term of FORBIDDEN_HANDOFF_VOCABULARY) {
+    assert.equal(instruction.includes(term), false, `area instruction must not contain: ${term}`);
+  }
+});

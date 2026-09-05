@@ -796,3 +796,58 @@ test("INLINE-AREA-EVIDENCE-01: Area Detail renders evidence inline with no drill
   assert.ok(html.includes('id="inspector-close-btn"'), "overview return must survive");
   assert.ok(html.includes("개요로 돌아가기"), "overview return label must survive");
 });
+
+test("AREA-DETAIL-HANDOFF-SEMANTIC-DEPTH-01: concrete area facts survive source to rendered area without loss", async () => {
+  const { buildAreaHandoffContext } = await import("../dist/handoff-context.js");
+  const content = fs.readFileSync(path.join(__dirname, "fixtures", "canonical-minimal.md"), "utf-8");
+  const { sections } = splitSections(md.parse(content, {}));
+  const map = parseProjectMap(sections.get("project map"));
+  const areaDetails = parseAreaDetails(sections.get("area details"));
+  const items = map.rails.flatMap((r) => r.groups).flatMap((g) => g.items);
+  const counter = items.find((i) => i.title === "수령 카운터");
+  const reception = items.find((i) => i.title === "주문 접수");
+  assert.ok(counter && reception);
+
+  // PROOF 1 (source fidelity): several concrete facts reach the rendered area.
+  const counterEntity = areaEntity(counter, areaDetails);
+  const receptionEntity = areaEntity(reception, areaDetails);
+  assert.ok(counterEntity.rawText.includes("수령 대장에 확인 표시"), "counter concrete object/workflow survives to renderer");
+  assert.ok(counterEntity.rawText.includes("수령 기록이 다음 전환의 닫힘 조건이다"), "counter evidence anchor survives to renderer");
+  assert.ok(receptionEntity.rawText.includes("번호표 순서대로 조리 큐에 올리는 흐름"), "reception concrete workflow survives to renderer");
+  assert.ok(receptionEntity.rawText.includes("조리 큐 개통 이후"), "reception evidence anchor survives to renderer");
+  assert.ok(counterEntity.html.includes("수령 대장에 확인 표시"), "counter concrete fact renders as html inline");
+  assert.ok(receptionEntity.html.includes("번호표 순서대로"), "reception concrete fact renders as html inline");
+
+  // PROOF 2 (concrete analysis): two areas read as different states/boundaries/evidences.
+  assert.equal(counterEntity.rawText.includes(receptionEntity.subsections.find((s) => s.subheading === "의미")?.rawText ?? "__none__"), false);
+  assert.ok(counterEntity.subsections.some((s) => s.subheading === "남은 문제"), "counter keeps its open boundary");
+  assert.ok(counterEntity.rawText.includes("마감 시간대"), "counter names its unfinished boundary");
+  assert.ok(receptionEntity.rawText.includes("단골 예약 접수는 다음 전환이 닫히기 전까지 받지 않는 것이 경계다"), "reception names a different boundary");
+  assert.equal(counterEntity.rawText.includes("단골 예약 접수는 다음 전환이 닫히기 전까지 받지 않는 것이 경계다"), false, "boundaries do not leak across areas");
+
+  // PROOF 3+4 (handoff fidelity + depth preservation): copied handoff keeps each
+  // area's concrete facts/evidence without mixing or collapsing to one summary.
+  const { extractSectionRawText: extractRaw } = await import("../dist/markdown-structure.js");
+  const { title, sections: fullSections } = splitSections(md.parse(content, {}));
+  const situation = extractRaw(fullSections.get("situation"));
+  const next = extractRaw(fullSections.get("next"));
+  const counterHandoff = buildAreaHandoffContext({
+    projectTitle: title, areaTitle: counter.title, railTitle: counter.railTitle,
+    groupTitle: counter.groupTitle, areaDescription: counter.description,
+    areaDetail: areaDetails.get(counter.title.trim().toLowerCase().replace(/\s+/g, " ")),
+    situationText: situation, nextTransitionText: next,
+  });
+  const receptionHandoff = buildAreaHandoffContext({
+    projectTitle: title, areaTitle: reception.title, railTitle: reception.railTitle,
+    groupTitle: reception.groupTitle, areaDescription: reception.description,
+    areaDetail: areaDetails.get(reception.title.trim().toLowerCase().replace(/\s+/g, " ")),
+    situationText: situation, nextTransitionText: next,
+  });
+  assert.ok(counterHandoff.includes("수령 대장에 확인 표시"), "counter handoff keeps concrete fact");
+  assert.ok(counterHandoff.includes("수령 기록이 다음 전환의 닫힘 조건이다"), "counter handoff keeps evidence");
+  assert.ok(receptionHandoff.includes("번호표 순서대로 조리 큐에 올리는 흐름"), "reception handoff keeps concrete fact");
+  assert.ok(receptionHandoff.includes("조리 큐 개통 이후"), "reception handoff keeps evidence");
+  assert.equal(counterHandoff.includes("번호표 순서대로 조리 큐에 올리는 흐름"), false, "counter handoff does not mix reception content");
+  assert.equal(receptionHandoff.includes("수령 대장에 확인 표시"), false, "reception handoff does not mix counter content");
+  assert.ok(counterHandoff.includes("#### 남은 문제"), "counter handoff preserves residual section, not a single abstract summary");
+});

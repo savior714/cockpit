@@ -37,6 +37,7 @@ export function formatAreaHandoffInstruction() {
         "---",
         "[PROBLEM FRAMER HANDOFF INSTRUCTION]",
         "You received Cockpit project context for one selected area. The objective is to review that area against fresh evidence and frame only the work the evidence actually requires.",
+        "Analyze the area's current state deeply against the source evidence in the area details; identify actual problems, causes, and unfinished boundaries in concrete product terms instead of generalities.",
         ...SHARED_GUARDS,
     ];
     return lines.join("\n");
