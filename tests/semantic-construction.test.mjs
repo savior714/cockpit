@@ -529,9 +529,20 @@ test("NextChart EMR acceptance fixture restores orientation from the primary sur
   const parsedMap = parseProjectMap(sections.get("project map"));
   assert.equal(parsedMap.isNativeMap, true);
   assert.equal(parsedMap.hasCurrentStage, true);
-  assert.ok(parsedMap.rails.flatMap((rail) => rail.groups).flatMap((group) => group.items).some((item) => item.title === "Release proof"));
+  const CURRENT_TITLE = "1A 출시 승인에 필요한 전체 증거 모으기";
+  assert.ok(parsedMap.rails.flatMap((rail) => rail.groups).flatMap((group) => group.items).some((item) => item.title === CURRENT_TITLE));
   const areaDetails = parseAreaDetails(sections.get("area details"));
-  assert.ok(areaDetails.get(normalizeTitle("Release proof")), "current-position area drills into evidence");
+  assert.ok(areaDetails.get(normalizeTitle(CURRENT_TITLE)), "current-position area drills into evidence");
+  // Concrete natural-language reporting: titles/descriptions read as product
+  // language without abstract-ontology decoding.
+  const allItems = parsedMap.rails.flatMap((rail) => rail.groups).flatMap((group) => group.items);
+  for (const item of allItems) {
+    assert.ok(/[가-힣]/.test(item.title), `map title reads as product language: ${item.title}`);
+    assert.ok(/[가-힣]/.test(item.description), `map description reads as product behavior: ${item.title}`);
+  }
+  for (const banned of ["Representative outpatient workflow", "Production truth", "Reliability & recovery", "Release proof", "External breadth"]) {
+    assert.ok(!allItems.some((item) => item.title === banned), `abstract title must not return: ${banned}`);
+  }
   void title;
 });
 

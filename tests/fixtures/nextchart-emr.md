@@ -1,93 +1,93 @@
-# NextChart EMR — Mental Model Acceptance Snapshot
+# NextChart 외래 EMR — 수용 확인용 고정 스냅샷
 
-> Frozen testbed snapshot for Cockpit acceptance. This is not live EMR authority.
+> Cockpit 수용 확인용 고정 시험 본보기다. 실제 진료 기록의 권위가 아니다.
 
 ## 현재 상황
 
-NextChart는 프로토타입을 넘어섰다. 대표 외래 진료 흐름과 핵심 회복 경계는 확립되어 있고, 현재 무게중심은 Stage 1A의 release-acceptance closure 증명에 있다. 보안과 외부 확장은 부분 상태로 남는다.
+NextChart는 시험 단계를 넘어 대표 외래 흐름(접수·진료·처방)과 확인된 범위의 끊김 이어가기가 돌아가는 상태다. 실제 병원 원본과는 한정된 연결 하나로만 맞춘 상태다. 지금 가장 중요한 남은 일은 1A로 출시하기로 한 정확한 범위 전체의 증거를 모으는 것이다. 로그인·세션 이후의 운영 보안 마무리와 다른 병원으로 넓히기는 그 다음 일로 남아 있다.
 
 ## 다음 전환
 
-Release-proof 미확정 상태 → Stage 1A release-acceptance 확정 상태. 정확한 release 경계에서 증거가 인정되면 닫히며, 이미 닫힌 대표 진료·회복 계열을 다시 열지 않는다. 그 이후 보안 closure와 외부 확장으로 넘어간다.
+출시 증거가 일부만 모인 상태 → 1A 출시 범위 전체의 증거가 모인 상태. 출시하기로 한 정확한 범위에서 증거가 인정되면 닫히며, 이미 닫힌 대표 진료·이어가기 범위는 다시 열지 않는다. 그 다음에 운영 보안 마무리와 외부 확대로 넘어간다.
 
 ## 직면한 문제
 
-- **Release proof 미확정** — 정확한 release 경계의 증거가 아직 인정되지 않아 다음 전환을 제한한다. 핵심 진료·회복 흐름 자체의 결함이 아니다.
-- **운영 보안 closure 잔여** — 기초 identity·세션은 확립되었으나 운영 보안 closure가 남아 Stage 1A 이후 과제로 제한된다.
+- **출시 증거 미확정** — 출시하기로 한 정확한 범위 전체의 증거가 아직 인정되지 않아 다음 전환이 막힌다. 대표 진료·이어가기 흐름 자체의 고장이 아니다.
+- **운영 보안 마무리 잔여** — 기초 로그인·세션은 되어 있으나 운영 보안 마무리가 남아 1A 이후 일로 밀린다.
 
 ## 최근 변화
 
-- **Provider sentinel 인정** → 한정된 실제 provider 경계 증거가 모델에 들어와 production truth가 부분 상태가 됨.
-- **저하-지속 복구 closure** → 대표 degraded-continuity 경계가 닫혀 reliability가 강한 상태가 됨.
+- **한정된 실제 병원 연결 인정** → 실제 병원 한 곳의 좁은 범위 증거가 들어와 화면-원본 대조가 일부만 된 상태가 됨.
+- **대표 범위의 이어가기 닫힘** → 확인한 대표 범위에서 느려지거나 끊겨도 기록이 이어짐이 닫힘.
 
 ## 프로젝트 지도
 
-### Product and delivery trajectory
-#### 확보된 기반
-- **Representative outpatient workflow** — Core primary-care workflow and clinician path
-- **Production truth** — Bounded provider-truth evidence
-- **Reliability & recovery** — Representative degraded-continuity boundary
+### 외래 진료와 출시 준비
+#### 이미 되는 진료 흐름
+- **외래 접수·진료·처방 흐름** — 접수부터 진료 기록·처방까지 의사가 외래에서 쓰는 기본 흐름
+- **실제 병원 원본과 화면 일치 확인** — 외부 병원 시스템의 실제 진료 데이터를 가져와 화면 표시와 같은지 확인하는 연결
+- **느려지거나 끊겨도 기록이 이어지는 보호** — 일부 기능이 느려지거나 멈춰도 외래 기록이 사라지지 않게 이어주는 동작
 
 #### 현재 단계
-- **Release proof** — Exact release-level convergence for Stage 1A
+- **1A 출시 승인에 필요한 전체 증거 모으기** — 출시하기로 한 정확한 범위에서 증거가 다 모였는지 확인하는 일
 
-#### 향후 여정
-1. **Security** — Operational security closure
-2. **External breadth** — Wider provider and network coverage
+#### 출시 뒤에 할 일
+1. **로그인 이후 운영 보안 닫기** — 로그인·세션 이후 실제 운영에서 필요한 보안 마무리를 하는 일
+2. **다른 병원·외부 기관으로 넓히기** — 대표 외래·현재 연결 병원을 넘어 적용 범위를 넓히는 일
 
 ## 영역 상세
 
-### Representative outpatient workflow
+### 외래 접수·진료·처방 흐름
 #### 의미
-The representative primary-care journey that makes the product useful to clinicians.
+환자가 접수하고 의사가 진료·처방 기록을 남기는, 외래에서 매일 쓰는 기본 흐름이다.
 #### 현재 수준
-Strong in the frozen acceptance model.
+이 고정 스냅샷의 대표 외래 경로에서 동작이 확인되어 현재 출시 후보의 기준이 되어 있다.
 #### 근거
-- Representative outpatient paths anchor the current release candidate.
+- 대표 외래 경로가 현재 출시 후보의 기준이다.
 
-### Production truth
+### 실제 병원 원본과 화면 일치 확인
 #### 의미
-The boundary where provider-facing behavior is shown to work against the real external source.
+화면에 보이는 진료 내용이 실제 병원 원본과 같은지 대조해 보여주는 연결이다.
 #### 현재 수준
-Partial: the frozen snapshot admits a bounded sentinel, not the complete release boundary.
+한정된 실제 병원 연결 하나로만 확인된 상태이며, 출시 범위 전체에서는 아직 입증되지 않았다.
 #### 근거
-- Recent progress records the narrow provider-truth transition.
+- 최근 변화에 기록된 좁은 범위의 실제 병원 연결 전환.
 
-### Reliability & recovery
+### 느려지거나 끊겨도 기록이 이어지는 보호
 #### 의미
-Recovery and degraded-continuity behavior that protects representative clinical use.
+시스템이 느려지거나 일부가 멈춰도 외래 진료 기록이 끊기지 않게 보호하는 동작이다.
 #### 현재 수준
-Strong for the representative boundaries in this snapshot.
+이 스냅샷에서 확인한 대표 범위에서는 닫혔다.
 #### 근거
-- Representative degraded-continuity boundaries are closed.
+- 확인한 대표 범위에서 느려지거나 끊겨도 기록이 이어짐이 닫혔음이 기록되어 있다.
 
-### Security
+### 로그인 이후 운영 보안 닫기
 #### 의미
-Identity, session, and operational security closure across the product boundary.
+로그인·세션 같은 기초 통제를 넘어, 실제 운영에서 필요한 보안 마무리를 하는 범위이다.
 #### 현재 수준
-Partial; foundational controls are stronger than remaining operational closure.
+기초 로그인·세션 통제는 확립되어 있고, 운영 보안 마무리가 남아 있다.
 #### 남은 문제
-- Operational security closure remains before the post-1A trajectory.
+- 1A 이후 흐름 전에 운영 보안 마무리가 남아 있다.
 #### 근거
-- Foundational identity and session controls are established.
+- 기초 로그인·세션 통제가 확립되어 있다.
 
-### External breadth
+### 다른 병원·외부 기관으로 넓히기
 #### 의미
-Coverage beyond the representative primary-care and provider boundary.
+지금 대표 외래와 연결된 병원 범위를 넘어, 다른 병원·네트워크로 적용을 넓히는 일이다.
 #### 현재 수준
-Partial and intentionally not part of the nearest transition.
+일부러 가장 가까운 전환에는 넣지 않은 이후 과제이다.
 #### 근거
-- Wider provider and network coverage is declared as future trajectory.
+- 이후 할 일로 선언되어 있다.
 
-### Release proof
+### 1A 출시 승인에 필요한 전체 증거 모으기
 #### 의미
-The exact release-level evidence boundary required to promote Stage 1A.
+Stage 1A로 올리기 위해 정한 정확한 출시 범위에서 증거를 다 모으는 일이다.
 #### 현재 수준
-Not proven at the complete release boundary.
+출시 범위 전체에서는 아직 입증되지 않았다.
 #### 남은 문제
-- Exact release convergence remains open in the frozen acceptance model.
+- 출시하기로 한 정확한 범위 전체의 증거가 이 고정 스냅샷에서는 아직 열려 있다.
 #### 근거
-- The next transition above names this exact transition.
+- 위의 다음 전환이 바로 이 전환을 가리킨다.
 
 ## 제품 목표
 
