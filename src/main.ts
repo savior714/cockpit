@@ -44,7 +44,7 @@ let currentSections = new Map<string, Token[]>();
 let currentAreaDetails = new Map<string, AreaDetail>();
 let currentParsedMap: ParsedMap | null = null;
 let selectedAreaId: string | null = null;
-let inspectorHistory: InspectorEntity[] = [];
+let currentInspector: InspectorEntity | null = null;
 
 function currentLookup(): EntityLookup {
   return {
@@ -141,15 +141,6 @@ function renderInspector(entity: InspectorEntity): void {
   const aside = document.getElementById("inspector-aside");
   if (!aside) return;
   aside.hidden = false;
-
-  const breadcrumb = document.getElementById("inspector-breadcrumb");
-  if (breadcrumb) {
-    breadcrumb.innerHTML = inspectorHistory
-      .map((item, index) => index === inspectorHistory.length - 1
-        ? `<span>${escapeHtml(item.title)}</span>`
-        : `<button type="button" data-breadcrumb-index="${index}">${escapeHtml(item.title)}</button>`)
-      .join('<span class="breadcrumb-separator">→</span>');
-  }
 
   const tag = document.getElementById("inspector-group-tag");
   if (tag) tag.textContent = INSPECTOR_LABELS[entity.kind];
@@ -250,17 +241,12 @@ function resolveSelectedAreaId(entity: InspectorEntity): string | null {
   return entity.areaItem?.id ?? entity.evidenceParent?.areaItem?.id ?? null;
 }
 
-function openInspector(entity: InspectorEntity, replace = false): void {
-  if (replace) {
-    inspectorHistory = [entity];
-  } else {
-    const existingIndex = inspectorHistory.findIndex((item) => item.key === entity.key);
-    if (existingIndex >= 0) {
-      inspectorHistory = inspectorHistory.slice(0, existingIndex + 1);
-    } else {
-      inspectorHistory.push(entity);
-    }
-  }
+function openInspector(entity: InspectorEntity): void {
+  // Single-current model: Map navigation replaces the current area instead of
+  // accumulating parallel areas into a sequential trail. The Project Map stays
+  // the sole owner of cross-area navigation; the Inspector shows one area (or
+  // its evidence depth) at a time with no inter-area `→` rail.
+  currentInspector = entity;
   selectedAreaId = resolveSelectedAreaId(entity);
   projectMapSelection();
   if (entity.areaItem) {
@@ -274,7 +260,7 @@ function openInspector(entity: InspectorEntity, replace = false): void {
 }
 
 function closeInspector(): void {
-  inspectorHistory = [];
+  currentInspector = null;
   selectedAreaId = null;
   const aside = document.getElementById("inspector-aside");
   if (aside) aside.hidden = true;
@@ -288,22 +274,10 @@ function bindInspectorActions(): void {
   close.onclick = () => closeInspector();
   aside.addEventListener("click", (event) => {
     const target = event.target as HTMLElement;
-    const breadcrumb = target.closest<HTMLButtonElement>("[data-breadcrumb-index]");
-    if (breadcrumb) {
-      const index = Number(breadcrumb.dataset.breadcrumbIndex);
-      const entity = inspectorHistory[index];
-      if (entity) {
-        inspectorHistory = inspectorHistory.slice(0, index + 1);
-        selectedAreaId = resolveSelectedAreaId(entity);
-        projectMapSelection();
-        renderInspector(entity);
-      }
-      return;
-    }
     const evidenceButton = target.closest<HTMLButtonElement>("[data-subsection-index]");
-    if (evidenceButton && inspectorHistory.length > 0) {
+    if (evidenceButton && currentInspector) {
       const index = Number(evidenceButton.dataset.subsectionIndex);
-      const parent = inspectorHistory[inspectorHistory.length - 1];
+      const parent = currentInspector;
       const section = parent.subsections[index];
       if (section) openInspector(evidenceEntity(parent, section));
     }
@@ -425,12 +399,12 @@ async function renderDoc(source: string): Promise<void> {
   const empty = document.getElementById("empty-state");
   if (empty) empty.hidden = Boolean(title || sections.size);
 
-  if (inspectorHistory.length > 0) {
-    const current = inspectorHistory[inspectorHistory.length - 1];
+  if (currentInspector) {
+    const current = currentInspector;
     if (current.kind === "area" && current.areaItem) {
       const refreshed = findEntity("area", current.areaItem.title, currentLookup());
       if (refreshed) {
-        inspectorHistory[inspectorHistory.length - 1] = refreshed;
+        currentInspector = refreshed;
         renderInspector(refreshed);
       } else {
         closeInspector();

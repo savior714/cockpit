@@ -364,13 +364,32 @@ test("Reader-visible DOM leads Map-first and exposes one area Inspector shell", 
   }
   assert.ok(html.includes('id="inspector-aside"'));
   assert.ok(html.includes('id="universal-inspector-panel"'));
-  assert.ok(html.includes('id="inspector-breadcrumb"'));
+  // REMOVE-MEANINGLESS-AREA-RAIL-01: the full-area sequential rail is gone.
+  // The Inspector top leads with the context label + current title, not a
+  // repeated area list. Project Map owns cross-area navigation.
+  assert.equal(html.includes('id="inspector-breadcrumb"'), false, "area rail breadcrumb must not exist");
+  assert.equal(html.includes("breadcrumb-separator"), false, "inter-area sequential separator must not exist");
+  assert.equal(html.includes("data-breadcrumb-index"), false, "rail navigation hook must not exist");
+  assert.ok(html.includes('id="inspector-close-btn"'), "overview return must survive rail removal");
+  assert.ok(html.includes('id="inspector-group-tag"'), "area context label must survive rail removal");
+  assert.ok(html.includes('id="inspector-title"'), "current area title must survive rail removal");
+  assert.ok(html.includes("개요로 돌아가기"), "overview return label must survive rail removal");
   assert.ok(html.includes("이 영역 검토하기"));
 
   const css = fs.readFileSync(path.join(__dirname, "..", "src", "style.css"), "utf-8");
   for (const selector of [".panel-map", ".panel-movement", ".universal-inspector-drawer", ".map-card"]) {
     assert.ok(css.includes(selector), `${selector} must have a presentation rule`);
   }
+  assert.equal(css.includes(".inspector-breadcrumb"), false, "dead rail style must not survive");
+  assert.equal(css.includes(".breadcrumb-separator"), false, "dead rail separator style must not survive");
+
+  const mainSource = fs.readFileSync(path.join(__dirname, "..", "src", "main.ts"), "utf-8");
+  assert.equal(mainSource.includes("inspector-breadcrumb"), false, "rail renderer must not survive in main.ts");
+  assert.equal(mainSource.includes("breadcrumb-separator"), false, "inter-area separator must not survive in main.ts");
+  assert.equal(mainSource.includes("inspectorHistory"), false, "accumulating rail history must not survive");
+  assert.equal(mainSource.includes("data-breadcrumb-index"), false, "rail navigation hook must not survive in main.ts");
+  assert.ok(mainSource.includes("currentInspector"), "single-current Inspector model must own the open state");
+  assert.ok(mainSource.includes('id="inspector-close-btn"') || mainSource.includes("inspector-close-btn"), "overview return wiring must survive");
 });
 
 test("Semantic Tone Contract: Case 1 - Issue headings always read as danger, body wording never flips tone", () => {

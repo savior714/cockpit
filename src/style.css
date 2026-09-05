@@ -644,7 +644,7 @@ body {
 .inspector-top-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
   border-bottom: 1px solid var(--line-subtle);
   padding-bottom: 8px;
@@ -1268,35 +1268,6 @@ body {
   padding: 16px 17px;
   border: 1px solid var(--accent-border);
   background: var(--panel);
-}
-
-.inspector-breadcrumb {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 5px;
-  min-width: 0;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: var(--text-kicker);
-  line-height: var(--leading-normal);
-}
-
-.inspector-breadcrumb button {
-  appearance: none;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--accent);
-  cursor: pointer;
-  font: inherit;
-  text-decoration: underline;
-  text-decoration-color: var(--accent-border);
-  text-underline-offset: 2px;
-}
-
-.breadcrumb-separator {
-  color: var(--muted);
 }
 
 .inspector-identity {
