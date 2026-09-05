@@ -2,7 +2,7 @@
  * Presentation / UI projection owner: domain -> Inspector/view-model.
  *
  * Sole owner for deterministic view derivation: semantic tone
- * classification, area InspectorEntity construction, evidence drill-down,
+ * classification, area InspectorEntity construction,
  * and map/text projection (renderNativeMap,
  * formatProjectMapText/formatAreaDetailsText). Consumes the clean domain
  * model (`./domain.js`), the authoring grammar (`./authoring-grammar.js`),
@@ -10,20 +10,20 @@
  * (`./markdown-structure.js`). Never traverses Tokens and never imports
  * the compatibility facade (`./parser.js`).
  *
- * The Inspector is a secondary drill-down (overview → area → evidence),
+ * The Inspector is a single-current area view (map → area),
  * not a primary taxonomy surface. There are no Stage/Posture/Frontier/
  * Thread/Movement entities, no trajectory/foundation/future journey
- * kinds, and no relation graph: map cards open areas, evidence buttons
- * open evidence depth. That is the whole navigation. Map groups render
- * uniformly in the project's own vocabulary; only the optional
- * `현재 단계` (`Current Stage`) group highlights its items as YOU ARE HERE.
+ * kinds, and no relation graph: map cards open areas. That is the whole
+ * navigation. Map groups render uniformly in the project's own vocabulary;
+ * only the optional `현재 단계` (`Current Stage`) group highlights its items
+ * as YOU ARE HERE.
  *
  * Information-depth ownership: the map card owns the short area label, the
- * area view owns 의미/현재 수준/남은 문제 (why + residual), and the evidence
- * drill-down owns full proof. The area lead is intentionally not rendered as
- * a separate summary (it would repeat the map label), and evidence sections
- * render in the area view as entry points only, with the full text preserved
- * in the evidence drill-down.
+ * area view owns 의미/현재 수준/남은 문제/근거 (why + residual + proof)
+ * inline. The area lead is intentionally not rendered as a separate summary
+ * (it would repeat the map label), and evidence sections render in the area
+ * view with their full text. Reading evidence never opens a separate
+ * navigation level.
  *
  * Semantic boundary: subsection tone follows the explicit heading structure
  * only. Body prose is never reinterpreted to judge factual or verification
@@ -104,18 +104,6 @@ export function findEntity(kind, title, lookup) {
         .flatMap((group) => group.items)
         .find((candidate) => normalizeTitle(candidate.title) === target);
     return item ? areaEntity(item, lookup.areaDetails) : null;
-}
-export function evidenceEntity(parent, section) {
-    return {
-        key: entityKey("evidence", `${parent.title}:${section.subheading}`),
-        kind: "evidence",
-        title: `${parent.title} · ${section.subheading}`,
-        summaryText: "이 판단을 뒷받침하는 세부 근거",
-        html: section.html,
-        rawText: section.rawText,
-        subsections: [],
-        evidenceParent: parent,
-    };
 }
 export function stateClass(state) {
     return normalizeKey(state ?? "").replace(/[^a-z0-9]+/g, "-") || "unknown";

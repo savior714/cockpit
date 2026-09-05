@@ -1207,11 +1207,6 @@ body {
   color: var(--ink);
 }
 
-.inspector-evidence-link:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
 .inspector-state {
   display: inline-flex;
   align-items: center;
@@ -1275,19 +1270,6 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-}
-
-.inspector-evidence-link {
-  appearance: none;
-  margin-top: 6px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--accent);
-  cursor: pointer;
-  font: inherit;
-  font-size: var(--text-micro);
-  font-weight: 600;
 }
 
 .universal-inspector-drawer .inspector-actions {

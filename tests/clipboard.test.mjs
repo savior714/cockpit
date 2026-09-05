@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const readSource = (rel) => fs.readFileSync(path.join(__dirname, "..", rel), "utf-8");
 
 // Reference simulation of the per-toast coalescing contract enforced in
-// src/main.ts (showCopyFeedback / hideCopyFeedback): clearing the previous
+// src/main.ts (showCopyFeedback): clearing the previous
 // timer plus an identity guard so a stale timeout can never hide newer feedback.
 // The static tests below pin the real implementation to this same contract;
 // this runtime test proves the contract itself holds under repeated use.
@@ -131,9 +131,11 @@ test("Feedback lifecycle reuses one common helper with per-toast timer coalescin
   assert.match(main, /const pending = copyFeedbackTimers\.get\(toast\);\s*\n\s*if \(pending !== undefined\) clearTimeout\(pending\);/);
   // Stale timeout callbacks cannot clear newer feedback (identity guard).
   assert.match(main, /if \(copyFeedbackTimers\.get\(toast\) === timer\)/);
-  // Render/entity transitions hide coherently without leaking a stale timer.
-  assert.match(main, /function hideCopyFeedback\(/);
-  assert.match(main, /if \(copyToast && entity\.kind !== "area"\) hideCopyFeedback\(copyToast\);/);
+  // INLINE-AREA-EVIDENCE-01: no evidence drill-down level remains, so no
+  // kind-conditional toast hiding is needed. Area→area keeps the shared
+  // toast element (auto-hide via timer); the evidence-depth hide is gone.
+  assert.equal(main.includes("hideCopyFeedback"), false, "dead evidence-depth toast hide must not survive");
+  assert.equal(main.includes('entity.kind !== "area"'), false, "kind-conditional toast branch must not survive");
 });
 
 test("Repeated feedback use never lets an older timer clear newer feedback", () => {

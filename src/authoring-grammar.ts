@@ -37,7 +37,7 @@ export const HEADING_ALIAS: Record<string, string> = {
   "프로젝트 지도": "project map",
   "project map": "project map",
 
-  // Area details — per-area meaning / level / evidence drill-down.
+  // Area details — per-area meaning / level / remaining / evidence.
   "영역 상세": "area details",
   "영역별 상세": "area details",
   "area details": "area details",

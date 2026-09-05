@@ -643,7 +643,7 @@ test("Contraction proof: no Stage/Posture/Frontier/Thread/Movement owners surviv
   assert.ok(readme.includes("질문 하나에 섹션 하나가 대응합니다"));
 });
 
-test("Contracted orientation invariant: map items drill to evidence, overview restores reader questions", () => {
+test("Contracted orientation invariant: map items open areas with inline evidence, overview restores reader questions", () => {
   for (const fixtureName of ["cockpit-self.md", "nextchart-emr.md", "canonical-minimal.md"]) {
     const content = fs.readFileSync(path.join(__dirname, "fixtures", fixtureName), "utf-8");
     const { sections } = splitSections(md.parse(content, {}));
@@ -730,4 +730,69 @@ test("Map selection projection invariant: selected area marks exactly its own ca
     false,
     "selection must not iterate only already-selected cards"
   );
+});
+
+test("INLINE-AREA-EVIDENCE-01: Area Detail renders evidence inline with no drill-down navigation", () => {
+  const content = fs.readFileSync(path.join(__dirname, "fixtures", "canonical-minimal.md"), "utf-8");
+  const { sections } = splitSections(md.parse(content, {}));
+  const map = parseProjectMap(sections.get("project map"));
+  const areaDetails = parseAreaDetails(sections.get("area details"));
+  const items = map.rails.flatMap((r) => r.groups).flatMap((g) => g.items);
+  const counter = items.find((i) => i.title === "수령 카운터");
+  const reception = items.find((i) => i.title === "주문 접수");
+  assert.ok(counter && reception);
+
+  // PROOF 1+4: opening an area already carries its evidence text (no click).
+  const counterEntity = areaEntity(counter, areaDetails);
+  const receptionEntity = areaEntity(reception, areaDetails);
+  assert.equal(counterEntity.kind, "area");
+  const counterEvidence = counterEntity.subsections.find((s) => s.tone === "evidence");
+  const receptionEvidence = receptionEntity.subsections.find((s) => s.tone === "evidence");
+  assert.ok(counterEvidence, "counter area carries an evidence subsection");
+  assert.ok(receptionEvidence, "reception area carries an evidence subsection");
+  assert.ok(counterEvidence.rawText.includes("수령 기록이 다음 전환의 닫힘 조건이다"));
+  assert.ok(counterEvidence.html.length > 0, "evidence html renders inline");
+  assert.ok(counterEntity.rawText.includes(counterEvidence.rawText), "area rawText already includes evidence");
+  assert.ok(counterEntity.html.includes(counterEvidence.html), "area html already includes evidence html");
+
+  // PROOF 4: sequential map selection shows only the current area's evidence.
+  assert.ok(receptionEvidence.rawText.includes("조리 큐 개통 이후"));
+  assert.equal(counterEvidence.rawText.includes(receptionEvidence.rawText), false);
+  assert.equal(receptionEntity.rawText.includes(counterEvidence.rawText), false);
+
+  // PRESERVE: meaning / level / remaining stay in the same area view.
+  for (const heading of ["의미", "현재 수준", "남은 문제", "근거"]) {
+    assert.ok(counterEntity.subsections.some((s) => s.subheading === heading), `counter keeps ${heading}`);
+  }
+
+  // PROOF 2+3: canonical rendering has no evidence drill-down affordance.
+  const mainSource = fs.readFileSync(path.join(__dirname, "..", "src", "main.ts"), "utf-8");
+  assert.equal(mainSource.includes("세부 근거 보기"), false, "evidence navigation affordance must not exist");
+  assert.equal(mainSource.includes("inspector-evidence-link"), false, "dead evidence link hook must not survive");
+  assert.equal(mainSource.includes("data-subsection-index"), false, "evidence drill-down hook must not survive");
+  assert.equal(mainSource.includes("evidenceEntity"), false, "evidence drill-down constructor must not survive");
+  assert.equal(mainSource.includes("evidenceParent"), false, "evidence drill-down state must not survive");
+  assert.ok(mainSource.includes('<div class="sub-body">${item.html}'), "every subsection renders its body inline");
+
+  const projectionSource = fs.readFileSync(path.join(__dirname, "..", "src", "inspector-projection.ts"), "utf-8");
+  assert.equal(projectionSource.includes("evidenceEntity"), false, "projection must not own an evidence drill-down");
+  assert.equal(projectionSource.includes("evidenceParent"), false, "projection must not keep evidence drill-down state");
+
+  const css = fs.readFileSync(path.join(__dirname, "..", "src", "style.css"), "utf-8");
+  assert.equal(css.includes(".inspector-evidence-link"), false, "dead evidence link style must not survive");
+
+  // PROOF 5: review action stays as the area bottom action.
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf-8");
+  assert.ok(html.includes("이 영역 검토하기"), "review action must survive");
+  assert.ok(html.includes('id="inspector-copy-btn"'), "review button hook must survive");
+  assert.ok(mainSource.includes("inspector-copy-btn"), "review wiring must survive");
+  assert.ok(mainSource.includes("buildAreaHandoffContext"), "review keeps area handoff context");
+
+  // PROOF 6: map navigation + single-current Inspector semantics intact.
+  assert.ok(mainSource.includes("currentInspector"), "single-current Inspector model must own the open state");
+  assert.ok(mainSource.includes("openInspector(areaEntity"), "map cards still open areas");
+  assert.ok(mainSource.includes('querySelectorAll(".map-card")'), "map selection still projects over all cards");
+  assert.equal(mainSource.includes("inspectorHistory"), false, "no accumulating history may return");
+  assert.ok(html.includes('id="inspector-close-btn"'), "overview return must survive");
+  assert.ok(html.includes("개요로 돌아가기"), "overview return label must survive");
 });

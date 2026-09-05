@@ -16,7 +16,6 @@ import {
 import {
   areaEntity,
   classifySubsectionTone,
-  evidenceEntity,
   findEntity,
   renderNativeMap,
   stateClass,
@@ -55,7 +54,6 @@ function currentLookup(): EntityLookup {
 
 const INSPECTOR_LABELS: Record<InspectorKind, string> = {
   area: "프로젝트 영역",
-  evidence: "근거",
 };
 
 function findMapItemById(id: string): MapItem | null {
@@ -127,16 +125,6 @@ function showCopyFeedback(
   copyFeedbackTimers.set(toast, timer);
 }
 
-function hideCopyFeedback(toast: HTMLElement | null): void {
-  if (!toast) return;
-  const pending = copyFeedbackTimers.get(toast);
-  if (pending !== undefined) {
-    clearTimeout(pending);
-    copyFeedbackTimers.delete(toast);
-  }
-  toast.hidden = true;
-}
-
 function renderInspector(entity: InspectorEntity): void {
   const aside = document.getElementById("inspector-aside");
   if (!aside) return;
@@ -156,36 +144,23 @@ function renderInspector(entity: InspectorEntity): void {
   if (summary) {
     // Summary ownership: the map card already owns the area short label, and
     // the 의미 subsection owns the explanation. Rendering summaryText again as
-    // an area lead repeats the same meaning, so only the evidence drill-down
-    // (which has no map card) carries its own lead.
-    const showSummary = Boolean(entity.summaryText) && entity.kind === "evidence";
-    summary.innerHTML = showSummary ? `<p class="inspector-lead">${escapeHtml(entity.summaryText)}</p>` : "";
-    summary.hidden = !showSummary;
+    // an area lead repeats the same meaning, so the area view carries no lead.
+    summary.innerHTML = "";
+    summary.hidden = true;
   }
 
   const sections = document.getElementById("inspector-sections");
   if (sections) {
+    // Evidence ownership: 의미/현재 수준/남은 문제/근거 all render inline in
+    // the area view. Reading evidence never opens a separate navigation level.
     sections.innerHTML = entity.subsections.length > 0
-      ? entity.subsections.map((item, index) => {
+      ? entity.subsections.map((item) => {
           const tone = item.tone ?? classifySubsectionTone(item.subheading, item.rawText, entity.state);
           const toneClass = `tone-${tone}`;
-          const isEvidence = tone === "evidence" || /evidence|근거/i.test(item.subheading);
-          // Evidence ownership: full proof lives in the evidence drill-down.
-          // The area view keeps only the badge + entry point so the same
-          // text is not shown twice (inline + drill-down).
-          if (entity.kind === "area" && isEvidence) {
-            return `
-          <section class="inspector-sub-card">
-            <div class="sub-header"><span class="sub-badge ${toneClass}">${escapeHtml(item.subheading)}</span></div>
-            <button type="button" class="inspector-evidence-link" data-subsection-index="${index}">세부 근거 보기 →</button>
-          </section>
-        `;
-          }
           return `
           <section class="inspector-sub-card">
             <div class="sub-header"><span class="sub-badge ${toneClass}">${escapeHtml(item.subheading)}</span></div>
             <div class="sub-body">${item.html}</div>
-            ${isEvidence ? `<button type="button" class="inspector-evidence-link" data-subsection-index="${index}">세부 근거 보기 →</button>` : ""}
           </section>
         `;
         }).join("")
@@ -195,7 +170,7 @@ function renderInspector(entity: InspectorEntity): void {
   const copyButton = document.getElementById("inspector-copy-btn") as HTMLButtonElement | null;
   const copyToast = document.getElementById("copy-toast");
   if (copyButton) {
-    copyButton.hidden = entity.kind !== "area";
+    copyButton.hidden = false;
     copyButton.onclick = async () => {
       if (!entity.areaItem) return;
       const detail = findAreaDetail(entity.areaItem, currentAreaDetails);
@@ -224,7 +199,6 @@ function renderInspector(entity: InspectorEntity): void {
       }
     };
   }
-  if (copyToast && entity.kind !== "area") hideCopyFeedback(copyToast);
 }
 
 function projectMapSelection(): void {
@@ -238,14 +212,14 @@ function projectMapSelection(): void {
 }
 
 function resolveSelectedAreaId(entity: InspectorEntity): string | null {
-  return entity.areaItem?.id ?? entity.evidenceParent?.areaItem?.id ?? null;
+  return entity.areaItem?.id ?? null;
 }
 
 function openInspector(entity: InspectorEntity): void {
   // Single-current model: Map navigation replaces the current area instead of
   // accumulating parallel areas into a sequential trail. The Project Map stays
-  // the sole owner of cross-area navigation; the Inspector shows one area (or
-  // its evidence depth) at a time with no inter-area `→` rail.
+  // the sole owner of cross-area navigation; the Inspector shows one area
+  // at a time with no inter-area `→` rail.
   currentInspector = entity;
   selectedAreaId = resolveSelectedAreaId(entity);
   projectMapSelection();
@@ -268,20 +242,9 @@ function closeInspector(): void {
 }
 
 function bindInspectorActions(): void {
-  const aside = document.getElementById("inspector-aside");
   const close = document.getElementById("inspector-close-btn");
-  if (!aside || !close) return;
+  if (!close) return;
   close.onclick = () => closeInspector();
-  aside.addEventListener("click", (event) => {
-    const target = event.target as HTMLElement;
-    const evidenceButton = target.closest<HTMLButtonElement>("[data-subsection-index]");
-    if (evidenceButton && currentInspector) {
-      const index = Number(evidenceButton.dataset.subsectionIndex);
-      const parent = currentInspector;
-      const section = parent.subsections[index];
-      if (section) openInspector(evidenceEntity(parent, section));
-    }
-  });
 }
 
 function setupFocusCopy(sections: Map<string, Token[]>, parsedMap: ParsedMap): void {
@@ -401,7 +364,7 @@ async function renderDoc(source: string): Promise<void> {
 
   if (currentInspector) {
     const current = currentInspector;
-    if (current.kind === "area" && current.areaItem) {
+    if (current.areaItem) {
       const refreshed = findEntity("area", current.areaItem.title, currentLookup());
       if (refreshed) {
         currentInspector = refreshed;
@@ -409,8 +372,6 @@ async function renderDoc(source: string): Promise<void> {
       } else {
         closeInspector();
       }
-    } else if (current.kind === "evidence") {
-      closeInspector();
     }
   }
 
