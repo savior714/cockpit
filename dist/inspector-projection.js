@@ -2,7 +2,8 @@
  * Presentation / UI projection owner: domain -> Inspector/view-model.
  *
  * Sole owner for deterministic view derivation: semantic tone
- * classification, area InspectorEntity construction,
+ * classification, area InspectorEntity construction, header-orientation
+ * compression (buildOrientationSummary/firstSentence/facingHead),
  * and map/text projection (renderNativeMap,
  * formatProjectMapText/formatAreaDetailsText). Consumes the clean domain
  * model (`./domain.js`), the authoring grammar (`./authoring-grammar.js`),
@@ -108,6 +109,71 @@ export function findEntity(kind, title, lookup) {
 export function stateClass(state) {
     return normalizeKey(state ?? "").replace(/[^a-z0-9]+/g, "-") || "unknown";
 }
+function stripInlineMarkupForLead(value) {
+    return value
+        .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+        .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+        .replace(/[*_~`]+/g, "")
+        .replace(/\\([\\`*_{}\[\]()#+.!>\-])/g, "$1")
+        .trim();
+}
+/** Compress running prose to its first sentence (whitespace-flattened, capped). */
+export function firstSentence(text, cap = 220) {
+    const flat = text.replace(/\s+/g, " ").trim();
+    if (!flat)
+        return "";
+    const match = /^.*?[.!?…](?=\s|$)/.exec(flat);
+    const head = (match ? match[0] : flat).trim();
+    if (head.length <= cap)
+        return head;
+    const cut = head.slice(0, cap);
+    const lastSpace = cut.lastIndexOf(" ");
+    return `${(lastSpace > cap * 0.5 ? cut.slice(0, lastSpace) : cut).trim()}…`;
+}
+/** Compress a facing section to its first bullet head (or first sentence). */
+export function facingHead(rawText) {
+    const text = rawText.trim();
+    if (!text)
+        return "";
+    const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const bullets = lines.filter((line) => /^([-*•]|\d+[.)])\s+/.test(line));
+    if (bullets.length > 0) {
+        const first = stripInlineMarkupForLead(bullets[0].replace(/^([-*•]|\d+[.)])\s+/, ""));
+        const split = /^(.*?)\s*[—–\-:：]\s*(.*)$/.exec(first);
+        return firstSentence((split ? split[1] : first).trim());
+    }
+    return firstSentence(stripInlineMarkupForLead(text));
+}
+/** Titles of the optional `현재 단계` group items (document-wide). */
+export function currentStageTitles(map) {
+    if (!map?.rails)
+        return [];
+    const out = [];
+    for (const rail of map.rails) {
+        for (const group of rail.groups) {
+            if (isCurrentStageHeading(group.title)) {
+                for (const item of group.items)
+                    out.push(item.title);
+            }
+        }
+    }
+    return out;
+}
+export function buildOrientationSummary(args) {
+    const facing = (args.facingText ?? "").trim();
+    const currentPosition = currentStageTitles(args.map ?? null);
+    const summary = {
+        purpose: firstSentence(stripInlineMarkupForLead(args.frameText ?? "")),
+        now: firstSentence(stripInlineMarkupForLead(args.situationText ?? "")),
+        next: firstSentence(stripInlineMarkupForLead(args.nextText ?? "")),
+        blocked: facingHead(facing),
+        blockedEmpty: facing.length === 0,
+        currentPosition,
+        hasOrientation: false,
+    };
+    summary.hasOrientation = Boolean(summary.purpose || summary.now || summary.next || !summary.blockedEmpty || currentPosition.length > 0);
+    return summary;
+}
 /** Render Native HTML Map.
  *
  * Groups render uniformly in the project's own vocabulary. Ordered lists
@@ -115,10 +181,19 @@ export function stateClass(state) {
  * author's own Markdown choice, not a Cockpit journey model. The only
  * Cockpit-owned position signal is the optional `현재 단계`
  * (`Current Stage`) group, whose items highlight as YOU ARE HERE.
+ *
+ * Position vs selection ownership: the `현재 단계` cards always carry a
+ * text `현재 위치` badge (position), while a clicked card carries the
+ * `.selected` outline plus `aria-pressed` (selection). A current card that
+ * is also selected shows both signals, so the two are never confused.
  */
 export function renderNativeMap(parsedMap, selectedAreaId = null, _areaDetails) {
     void _areaDetails;
     let html = `<div class="native-project-map">`;
+    const hasCurrentPosition = parsedMap.rails.some((rail) => rail.groups.some((group) => isCurrentStageHeading(group.title)));
+    if (hasCurrentPosition) {
+        html += `<p class="map-legend"><span class="legend-now">● 현재 위치</span><span class="legend-meaning">지금 중요한 곳</span><span class="legend-sep" aria-hidden="true"> · </span><span class="legend-pick">▢ 선택됨</span><span class="legend-meaning">눌러서 보는 영역</span></p>`;
+    }
     for (const rail of parsedMap.rails) {
         html += `<section class="map-rail map-rail-neutral">`;
         html += `
@@ -155,8 +230,10 @@ export function renderNativeMap(parsedMap, selectedAreaId = null, _areaDetails) 
               class="map-card card-current-stage ${isSelected ? "selected" : ""}"
               data-item-id="${escapeHtml(item.id)}"
               aria-label="현재 단계: ${escapeHtml(item.title)} 영역 상세 보기"
+              ${isSelected ? `aria-pressed="true"` : ""}
             >
               <div class="card-inner">
+                <span class="current-position-badge">● 현재 위치</span>
                 <span class="card-title">${escapeHtml(item.title)}</span>
                 ${item.description
                         ? `<span class="card-desc">${escapeHtml(item.description)}</span>`
@@ -187,6 +264,7 @@ export function renderNativeMap(parsedMap, selectedAreaId = null, _areaDetails) 
                 class="map-card card-ordered ${isSelected ? "selected" : ""}"
                 data-item-id="${escapeHtml(item.id)}"
                 aria-label="${escapeHtml(item.title)} 영역 상세 보기"
+                ${isSelected ? `aria-pressed="true"` : ""}
               >
                 <span class="step-num">${itemIdx + 1}</span>
                 <div class="step-body">
@@ -210,6 +288,7 @@ export function renderNativeMap(parsedMap, selectedAreaId = null, _areaDetails) 
                 class="map-card card-peer ${isSelected ? "selected" : ""}"
                 data-item-id="${escapeHtml(item.id)}"
                 aria-label="${escapeHtml(item.title)} 영역 상세 보기"
+                ${isSelected ? `aria-pressed="true"` : ""}
               >
                 <div class="card-inner">
                   <span class="card-title">${escapeHtml(item.title)}</span>

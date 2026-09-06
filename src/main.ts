@@ -15,7 +15,9 @@ import {
 } from "./semantic-construction.js";
 import {
   areaEntity,
+  buildOrientationSummary,
   classifySubsectionTone,
+  currentStageTitles,
   findEntity,
   renderNativeMap,
   stateClass,
@@ -140,6 +142,33 @@ function renderInspector(entity: InspectorEntity): void {
   }
   const title = document.getElementById("inspector-title");
   if (title) title.textContent = entity.title;
+  const pathLine = document.getElementById("inspector-path");
+  if (pathLine) {
+    // Position context: the Inspector never owns navigation, so it names the
+    // selected area's place in the project map (rail › group).
+    const crumbs = [entity.areaItem?.railTitle, entity.areaItem?.groupTitle].filter(Boolean);
+    pathLine.textContent = crumbs.join(" › ");
+    pathLine.hidden = crumbs.length === 0;
+  }
+  const positionNote = document.getElementById("inspector-position-note");
+  if (positionNote) {
+    // Orientation survives drill-down: name whether the open area is the
+    // current position or where the current position is instead.
+    const current = currentParsedMap ? currentStageTitles(currentParsedMap) : [];
+    if (!entity.areaItem) {
+      positionNote.textContent = "";
+      positionNote.hidden = true;
+    } else if (entity.areaItem.isCurrentStage) {
+      positionNote.textContent = "현재 위치의 영역입니다.";
+      positionNote.hidden = false;
+    } else if (current.length > 0) {
+      positionNote.textContent = `현재 위치: ${current.join(" · ")} — 이 영역은 현재 위치가 아닙니다.`;
+      positionNote.hidden = false;
+    } else {
+      positionNote.textContent = "";
+      positionNote.hidden = true;
+    }
+  }
   const summary = document.getElementById("inspector-summary");
   if (summary) {
     // Summary ownership: the map card already owns the area short label, and
@@ -205,10 +234,13 @@ function renderInspector(entity: InspectorEntity): void {
 function projectMapSelection(): void {
   const current = selectedAreaId;
   document.querySelectorAll(".map-card").forEach((card) => {
-    card.classList.toggle(
-      "selected",
-      current !== null && card.getAttribute("data-item-id") === current
-    );
+    const isSelected = current !== null && card.getAttribute("data-item-id") === current;
+    card.classList.toggle("selected", isSelected);
+    if (isSelected) {
+      card.setAttribute("aria-pressed", "true");
+    } else {
+      card.removeAttribute("aria-pressed");
+    }
   });
 }
 
@@ -274,6 +306,56 @@ function setupFocusCopy(sections: Map<string, Token[]>, parsedMap: ParsedMap): v
       );
     }
   };
+}
+
+function renderOrientationStrip(): void {
+  // Header-orientation leads: compressed from existing sections, always
+  // visible without a click, and outside the workspace so an open Inspector
+  // never hides them. Absence renders as absence ("막힌 것 없음") — never
+  // an invented blocker.
+  const strip = document.getElementById("orientation-strip");
+  if (!strip) return;
+  const summary = buildOrientationSummary({
+    frameText: extractSectionRawText(currentSections.get("project frame")),
+    situationText: extractSectionRawText(currentSections.get("situation")),
+    nextText: extractSectionRawText(currentSections.get("next")),
+    facingText: extractSectionRawText(currentSections.get("facing")),
+    map: currentParsedMap,
+  });
+  const setCell = (cellId: string, textId: string, value: string): void => {
+    const cell = document.getElementById(cellId);
+    const text = document.getElementById(textId);
+    if (text) text.textContent = value;
+    if (cell) cell.hidden = value.length === 0;
+  };
+  const purpose = document.getElementById("orientation-purpose");
+  if (purpose) {
+    purpose.textContent = summary.purpose;
+    purpose.hidden = summary.purpose.length === 0;
+  }
+  setCell("orientation-now-cell", "orientation-now", summary.now);
+  setCell("orientation-next-cell", "orientation-next", summary.next);
+  const blockedCell = document.getElementById("orientation-blocked-cell");
+  const blockedText = document.getElementById("orientation-blocked");
+  if (blockedCell && blockedText) {
+    if (summary.blockedEmpty) {
+      blockedText.textContent = "막힌 것 없음";
+      blockedCell.hidden = false;
+      blockedCell.dataset.empty = "true";
+    } else {
+      blockedText.textContent = summary.blocked;
+      blockedCell.hidden = summary.blocked.length === 0;
+      delete blockedCell.dataset.empty;
+    }
+  }
+  const position = document.getElementById("orientation-position");
+  if (position) {
+    position.textContent = summary.currentPosition.length > 0
+      ? `현재 위치: ${summary.currentPosition.join(" · ")}`
+      : "";
+    position.hidden = summary.currentPosition.length === 0;
+  }
+  strip.hidden = !summary.hasOrientation;
 }
 
 function renderExtraSections(sections: Map<string, Token[]>): void {
@@ -345,6 +427,9 @@ async function renderDoc(source: string): Promise<void> {
   setSectionPanel("next", "slot-next");
   setSectionPanel("facing", "slot-blocked");
   setSectionPanel("recent", "slot-recent");
+
+  // Header-orientation strip: compressed leads above the map, always visible.
+  renderOrientationStrip();
 
   // Stable context + user-owned focus last.
   const focusTokens = sections.get("current focus");

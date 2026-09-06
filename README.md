@@ -202,7 +202,7 @@ Cockpit 자체를 다른 실제 저장소로 수용 테스트할 때만 적용�
 
 질문 하나에 섹션 하나가 대응합니다. 같은 질문에 답하는 섹션을 둘로 나누지 않습니다.
 
-아래 표의 heading은 파일 작성 계약이다. 화면에는 같은 의미를 독자용 표시 이름(프로젝트 현황, 다음 단계, 진행 제약, 최근 업데이트, 우선 과제, 제품 목표, 주요 결정)으로 보여주며, 내부 의미 소유자(situation / next / facing / recent / focus / frame / settled)는 바뀌지 않는다.
+아래 표의 heading은 파일 작성 계약이다. 화면에는 같은 의미를 독자용 표시 이름(프로젝트 현황, 다음 단계, 진행 제약, 최근 업데이트, 우선 과제, 제품 목표, 주요 결정)으로 보여주며, 내부 의미 소유자(situation / next / facing / recent / focus / frame / settled)는 바뀌지 않는다. 첫 화면 상단의 방향 스트립(목적 한 줄·지금·다음·막힌 것·현재 위치)은 새 heading이 아니라 위 섹션과 `현재 단계` 표시를 압축한 읽기 전용 lead이며, 전체 문장은 기존 자리(개요 패널·지도)에 그대로 둔다. `직면한 문제`가 없으면 스트립에 `막힌 것 없음`으로 absence를 명시할 뿐 blocker를 만들지 않는다.
 
 | Heading (한국어 / English) | 답하는 질문 | 규칙 |
 |---|---|---|
@@ -288,13 +288,13 @@ npm pack
 cockpit/
 ├── index.html           # 대시보드 HTML 구조 (지도 우선, 개요, 상세 정보 창 슬롯)
 ├── src/
-│   ├── main.ts          # Map-first 뷰어 셸 (개요는 plain-text 투영, 상세는 Inspector)
+│   ├── main.ts          # Map-first 뷰어 셸 (방향 스트립 압축·개요 plain-text 투영·상세 Inspector)
 │   ├── domain.ts        # 지도 + 영역 상세 도메인 모델 (표현 오염 없음)
 │   ├── authoring-grammar.ts   # README §5의 결정론적 구현 어휘
 │   ├── markdown-structure.ts  # markdown-it 토큰 경계/원시 텍스트/문자열 렌더링
 │   ├── semantic-construction.ts # 지도/영역 구성 (문자열→문서 모델 진입점 포함)
 │   ├── structural-check.ts    # 구조적 유효성 검사 (의미 진실성 검사 아님)
-│   ├── inspector-projection.ts # 영역→Inspector/지도 투영 (tone/HTML 소유)
+│   ├── inspector-projection.ts # 영역→Inspector/지도 투영 + 방향 lead 압축 (tone/HTML 소유)
 │   ├── handoff-context.ts     # Focus/Area handoff 문맥 구성
 │   ├── handoff-contract.ts    # handoff 문구 계약 (프로젝트 맥락만)
 │   ├── parser.ts        # 호환/공개 파사드 (재노출만, 정식 구현 아님)

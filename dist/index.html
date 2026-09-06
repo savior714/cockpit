@@ -4,9 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cockpit</title>
-    <script type="module" crossorigin src="/assets/index-Cak6Uz9o.js"></script>
+    <script type="module" crossorigin src="/assets/index-tPgQ8vtR.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/preload-helper-BXl3LOEh.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-Cni1OxPu.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-BUWXMbPx.css">
   </head>
   <body>
     <main id="cockpit" class="cockpit">
@@ -23,6 +23,29 @@
           <span id="auto-refresh-status" class="refresh-status" role="status" aria-live="polite">꺼짐</span>
         </div>
       </header>
+
+      <!-- ORIENTATION-FIRST: compressed project direction, always visible without a click.
+        Derived leads (not new content): purpose = product frame head, 지금/다음/막힌 것 =
+        situation/next/facing heads, 현재 위치 = `현재 단계` titles. Full prose stays in the
+        side panels; the Inspector never hides this strip. -->
+      <section id="orientation-strip" class="orientation-strip" aria-label="프로젝트 방향" hidden>
+        <p id="orientation-purpose" class="orientation-purpose" hidden></p>
+        <div class="orientation-triple">
+          <div class="orientation-cell" id="orientation-now-cell" hidden>
+            <span class="orientation-kicker">지금</span>
+            <p id="orientation-now" class="orientation-text"></p>
+          </div>
+          <div class="orientation-cell" id="orientation-next-cell" hidden>
+            <span class="orientation-kicker">다음</span>
+            <p id="orientation-next" class="orientation-text"></p>
+          </div>
+          <div class="orientation-cell" id="orientation-blocked-cell" hidden>
+            <span class="orientation-kicker">막힌 것</span>
+            <p id="orientation-blocked" class="orientation-text"></p>
+          </div>
+        </div>
+        <p id="orientation-position" class="orientation-position" hidden></p>
+      </section>
 
       <div id="primary-workspace" class="primary-workspace">
         <!-- MAP-FIRST: the project map is the mental anchor and comes first. -->
@@ -80,6 +103,8 @@
               <span id="inspector-state" class="inspector-state" hidden></span>
             </div>
             <h2 id="inspector-title" class="inspector-title"></h2>
+            <p id="inspector-path" class="inspector-path" hidden></p>
+            <p id="inspector-position-note" class="inspector-position-note" hidden></p>
             <div id="inspector-summary" class="inspector-summary"></div>
             <div id="inspector-sections" class="inspector-subsections"></div>
             <div class="inspector-actions">
@@ -114,6 +139,7 @@
           <div class="panel-header">
             <div>
               <h2>최근 업데이트</h2>
+              <p class="panel-caption">지나간 전환 기록 · 현재 상태 아님</p>
             </div>
           </div>
           <div class="panel-body"></div>
