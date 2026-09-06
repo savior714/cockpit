@@ -50,7 +50,7 @@ Agent-mutable Git identity, worktree isolation, and publication safety are owned
 
 ## 4. Prompts and artifacts
 
-Prompts are disposable execution artifacts, not canonical project state. Investigation scratch work stays temporary; promote only durable verified conclusions to their actual authority owner. Do not store task queues, receipts, or execution progress in repository documentation.
+Prompts are disposable execution artifacts, not canonical project state. Investigation scratch work stays temporary; promote only durable verified conclusions to their actual authority owner. Do not store task queues, receipts, or execution progress in repository documentation. This repository-local rule does not prohibit an external, non-authoritative coordination surface kept outside the repository by a coordinator (§7); the prohibition is on the repository becoming that ledger.
 
 ## 5. Proof and stopping
 
@@ -148,7 +148,7 @@ OWNERSHIP
 - Shared contracts expected to change:
 - Dependencies:
 
-This block is transient execution context. Expected direct surfaces are locators, not semantic authority and not a file lock. Do not persist it as a central registry/manifest, and do not add parsing, validation, schema, lifecycle state, or tooling for it.
+This block is transient execution context. Expected direct surfaces are locators, not semantic authority and not a file lock. Do not persist it as a repository central registry/manifest, and do not add parsing, validation, schema, lifecycle state, or tooling for it. A coordinator may keep minimum advisory semantic-owner/dependency metadata in an external coordination surface outside the repository; that record is not repository authority, is not a lock, does not prove current topology or state, and requires no local executor access to it.
 
 ### Boundary drift
 

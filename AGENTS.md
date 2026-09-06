@@ -36,7 +36,7 @@ Read the routed owner plus the exact claimed boundary. Expand one dependency/aut
 
 ## 4. Execution
 
-Ordinary repository-native execution is canonical. Do not introduce runners, daemons, queues, schedulers, persistent work/task state, admission protocols, or other execution-lifecycle machinery. Detailed execution and publication semantics are owned by `docs/operations/DEVELOPMENT.md`; evidence semantics by `docs/operations/TESTING.md`.
+Ordinary repository-native execution is canonical. Do not introduce runners, daemons, queues, schedulers, persistent work/task state, admission protocols, or other execution-lifecycle machinery. This prohibition covers Cockpit/repository execution-lifecycle machinery; it does not prohibit an external, non-authoritative assistant coordination surface kept by a coordinator outside the repository (see `DEVELOPMENT.md` §7). Detailed execution and publication semantics are owned by `docs/operations/DEVELOPMENT.md`; evidence semantics by `docs/operations/TESTING.md`.
 
 ## 5. Commands and build facts
 
