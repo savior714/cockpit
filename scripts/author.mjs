@@ -288,6 +288,18 @@ README §5의 마크다운 구조에 맞춰 사실 기반으로 작성해줘. �
 모르는 범위와 경계를 명시해줘. 저장 후 반드시 \`cockpit check\`로 구조적 완전성을 확인해줘.`;
 }
 
+function coverageReconciliationBlock() {
+  return `최종 PROGRESS.md를 쓰기 직전, 재구성한 project model과 최종 projection 사이에 일회성 coverage reconciliation을 둬줘. 새 DB·index·warehouse·ontology를 만들지 말고 머릿속 대조로만 확인하고, 대조 과정 자체를 파일에 남기지 마. \`cockpit check\` PASS는 구조 검사이지 semantic coverage 증명이 아니다. 다음이 하나라도 깨지면 projection하지 말고 evidence로 돌아가줘.
+- 조사에서 발견한 materially independent 영역이 final Project Map의 map item 또는 명시적 child/detail에 traceable한가.
+- capability·workflow·ownership·authority·dependency·proof state·unfinished boundary 중 하나라도 materially 달라지는 영역을, 같은 broad category라는 이유만으로 하나의 map item으로 합치지 않았는가.
+- rail/group은 reader-friendly하게 압축해도 되지만, map item 자체가 실제 제품 구조를 소실시키지 않는가.
+- major executable/user workflow가 지도에서 사라지지 않았는가.
+- 서로 다른 project state를 가진 independent external contracts/providers는 구분되어 있는가.
+- UNKNOWN은 허용하되, 미조사를 UNKNOWN으로 위장하지 않았는가.
+- 조사된 project model에서 final PROGRESS로 설명 없이 사라진 material fact가 없는가.
+고정 map-item 개수나 고정 taxonomy를 만들지 마. 프로젝트 규모에 따라 map item 수는 자연스럽게 달라져야 한다.`;
+}
+
 function provenanceAnchorBlock() {
   return `durable 이해 표면은 PROGRESS.md 하나다. 별도 DB·index·warehouse를 만들지 마.
 마지막으로 관찰한 repository state를 남길 수 있는 가장 작은 provenance anchor만 허용한다:
@@ -359,6 +371,8 @@ BOOTSTRAP에서는 "대충 전체 그림이 보인다"는 이유로 멈추지 �
 완전한 certainty는 요구하지 않는다. UNKNOWN을 허용한다. 다만 "UNKNOWN 허용"을 shallow scan의
 면허로 쓰지 마. capability·boundary·transition·claim이 안정된 것만으로는 부족하고,
 위 coverage가 확보되기 전 조기 종료는 금지다.
+
+${coverageReconciliationBlock()}
 
 ${provenanceAnchorBlock()}
 
