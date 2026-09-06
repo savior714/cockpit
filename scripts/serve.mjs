@@ -411,8 +411,9 @@ Operator note:
   Live Reload (built-in file re-read after PROGRESS.md changes) always works.
   An ordinary launch without the author capability shows no auto-update
   control and guarantees no 10-minute semantic updates.
-  Missing-file bootstrap and periodic refresh share the same author
-  responsibility; Cockpit never analyzes repository truth itself.
+  Missing-file bootstrap (AUTHOR_MODE=bootstrap) and periodic refresh
+  (AUTHOR_MODE=refresh) share the same author owner with different
+  investigation strategies; Cockpit never analyzes repository truth itself.
 
 The default browser opens automatically once the server is ready.
 Pass --no-open to suppress this.

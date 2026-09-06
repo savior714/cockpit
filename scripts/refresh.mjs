@@ -16,11 +16,13 @@
 //
 // The LLM author (COCKPIT_AUTHOR_COMMAND, legacy fallback
 // COCKPIT_REFRESH_COMMAND — one capability, not two) is owned outside
-// Cockpit. It must reconcile fresh evidence with the existing document and
-// PATCH only material semantic deltas. When it is not configured, refresh
-// ticks are a no-op that preserve the current document and screen.
+// Cockpit. Existing-document ticks invoke it as AUTHOR_MODE=refresh: it must
+// reconcile fresh evidence with the existing document delta-first and PATCH
+// only material semantic deltas. When it is not configured, refresh ticks
+// are a no-op that preserve the current document and screen.
 // Bootstrap (missing PROGRESS.md) uses the same author capability via
-// scripts/author.mjs; this module never duplicates that execution mechanism.
+// scripts/author.mjs with AUTHOR_MODE=bootstrap; this module never duplicates
+// that execution mechanism and never widens into a repository analyzer.
 //
 // Lifecycle (last-viewer shutdown):
 //   - the cadence timer is unref'd, so it never keeps the Node process alive
@@ -36,16 +38,19 @@ import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import {
-  DEFAULT_AUTHOR_TIMEOUT_MS,
+  DEFAULT_REFRESH_TIMEOUT_MS as CANONICAL_REFRESH_TIMEOUT_MS,
+  REFRESH_MODE,
   resolveAuthorCommand,
-  resolveAuthorTimeoutMs,
+  resolveRefreshTimeoutMs as resolveCanonicalRefreshTimeoutMs,
   runAuthorCommand,
 } from "./author.mjs";
 import { saveRecoveryReplica as defaultSaveRecoveryReplica } from "./replica.mjs";
 
 export const DEFAULT_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
-// Backward-compatible alias: the author timeout owns the value.
-export const DEFAULT_REFRESH_TIMEOUT_MS = DEFAULT_AUTHOR_TIMEOUT_MS;
+// Refresh timeout default stays bounded (5 minutes). The canonical value
+// lives in scripts/author.mjs alongside the bootstrap budget; this alias
+// preserves the existing import surface.
+export const DEFAULT_REFRESH_TIMEOUT_MS = CANONICAL_REFRESH_TIMEOUT_MS;
 
 function parsePositiveInt(raw, fallback) {
   const n = Number.parseInt(String(raw ?? ""), 10);
@@ -67,7 +72,10 @@ export function resolveRefreshCommand(env = process.env) {
 export { resolveAuthorCommand };
 
 export function resolveRefreshTimeoutMs(env = process.env) {
-  return resolveAuthorTimeoutMs(env);
+  // Single timeout owner lives in scripts/author.mjs: refresh-specific
+  // override first, generic COCKPIT_AUTHOR_TIMEOUT_MS fallback, 5-minute
+  // bounded default. Never the bootstrap budget.
+  return resolveCanonicalRefreshTimeoutMs(env);
 }
 
 function hashBuffer(buf) {
@@ -83,10 +91,12 @@ async function readSnapshot(file, readFileFn = readFile) {
 export function createDefaultExecRefresh({ progressFile, projectDir, childRef } = {}) {
   return async () => {
     // Single author execution mechanism (shared with bootstrap): no second
-    // shell path lives here.
+    // shell path lives here. Existing-document invocation always authors as
+    // AUTHOR_MODE=refresh (delta-first, bounded budget).
     const result = await runAuthorCommand({
       projectDir: projectDir ?? path.dirname(progressFile),
       progressFile,
+      mode: REFRESH_MODE,
       onSpawn: (child) => {
         if (childRef && typeof childRef === "object") childRef.current = child;
       },

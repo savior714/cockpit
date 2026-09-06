@@ -189,22 +189,33 @@ test("author capability: canonical COCKPIT_AUTHOR_COMMAND wins, legacy fallback 
   assert.equal(resolveAuthorCommandSource({}), null);
 });
 
-test("handoff: parameterized, vendor-neutral, single author for bootstrap+PATCH", async (t) => {
+test("handoff: parameterized, vendor-neutral, one owner with bootstrap/refresh modes", async (t) => {
   const dir = await makeTempDir(t);
   const progressFile = path.join(dir, "PROGRESS.md");
+  // Missing-PROGRESS onboarding defaults to bootstrap (slow/deep reconstruction).
   const handoff = buildAuthorHandoff({ projectDir: dir, progressFile });
   assert.ok(handoff.includes(dir));
   assert.ok(handoff.includes(progressFile));
   assert.ok(handoff.includes("cockpit check"));
   assert.ok(handoff.includes("LLM author"));
   assert.ok(!/claude|chatgpt|gemini|openai|codex|qwen/i.test(handoff), "no hard-coded provider");
-  // Bootstrap + refresh share one responsibility: create-when-missing and
-  // PATCH-when-present are both described, not two owners.
-  assert.match(handoff, /PATCH/);
+  assert.match(handoff, /AUTHOR_MODE:\s*bootstrap/);
+  assert.match(handoff, /deep reconstruction/);
   assert.match(handoff, /최초/);
-  // Legacy name resolves to the same canonical text (one meaning, not two).
+  // Legacy name resolves to the same bootstrap text (one owner, not two).
   assert.equal(buildAgentHandoff({ projectDir: dir, progressFile }), handoff);
-  assert.equal(buildCanonicalHandoff({ projectDir: dir, progressFile }), handoff);
+  // Canonical owner without a mode keeps the legacy combined text for
+  // compatibility (both create-when-missing and PATCH described).
+  const legacy = buildCanonicalHandoff({ projectDir: dir, progressFile });
+  assert.match(legacy, /PATCH/);
+  assert.match(legacy, /최초/);
+  // Explicit modes diverge by investigation strategy under the same owner.
+  const bootstrap = buildCanonicalHandoff({ projectDir: dir, progressFile, mode: "bootstrap" });
+  const refresh = buildCanonicalHandoff({ projectDir: dir, progressFile, mode: "refresh" });
+  assert.equal(bootstrap, handoff);
+  assert.match(refresh, /AUTHOR_MODE:\s*refresh/);
+  assert.match(refresh, /PATCH/);
+  assert.notEqual(bootstrap, refresh);
 });
 
 test("bootstrap: Cockpit runtime never fabricates a starter file", async () => {

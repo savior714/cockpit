@@ -118,18 +118,21 @@ LLM author (단일 author capability가 실제 LLM 런타임을 선택)
      Cockpit
 ```
 
-최초 작성과 이후 refresh는 서로 다른 owner가 아니라 같은 author responsibility다.
+최초 작성과 이후 refresh는 서로 다른 owner가 아니라 같은 author responsibility의 두 investigation mode다.
+`scripts/author.mjs`가 단일 owner이며, 호출 경로가 이미 아는 mode를 vendor-neutral `AUTHOR_MODE`로 전달한다
+(없는 PROGRESS 온보딩 = `bootstrap`, 기존 문서 refresh = `refresh`).
 provider 종류를 Cockpit에 hard-code하지 않으며, command가 실제 LLM capable runtime을 선택한다.
 
 - **단일 문서 시각화**: Cockpit은 지정된 단일 `PROGRESS.md` 문서만을 읽어 화면에 표시하며, 저장소나 런타임을 직접 검사·분석하지 않습니다.
 - **실제 증거 우선**: `PROGRESS.md`는 Cockpit이 읽고 보여주는 단일 현황 문서일 뿐, 최신 코드/런타임/도메인 증거보다 상위의 권위를 갖지 않습니다. 실제 증거와 충돌 시 언제나 최신 실제 증거가 우선합니다.
 - **LLM author 갱신**: 프로젝트 상태가 달라지면 LLM author가 최신 실제 증거와 기존 문서를 대조하여 `PROGRESS.md`를 갱신합니다. 사람은 필요하면 파일을 직접 고칠 수 있는 filesystem 소유자일 뿐, 제품의 정상 author 계약은 LLM이다.
 - **자동 새로고침 (Live Reload, 기본 제공)**: 대상 `PROGRESS.md` 파일 저장을 감시하여 브라우저 새로고침 없이 화면을 즉시 갱신합니다. 보통 실행에서도 항상 동작하는 내장 기능이며 별도 설정이 필요 없습니다.
-- **자동 업데이트 (선택적 외부 연동, 미설정 시 숨김)**: `COCKPIT_AUTHOR_COMMAND`(기존 `COCKPIT_REFRESH_COMMAND`도 같은 의미의 fallback으로 인식)가 별도로 설정된 경우에만 우측 상단에 `자동 업데이트`가 나타나며, 기본값은 꺼짐입니다. 켜면 10분마다 LLM author에게 확인을 요청합니다. Cockpit은 직접 분석하거나 문서를 만들지 않고, 결과를 다시 읽어 실제 변경이 있을 때만 화면을 갱신합니다. 변경이 없으면 화면을 그대로 두고, 확인에 실패하면 기존 화면을 유지합니다. 보통 실행(미설정)에는 의미 자동 업데이트 주인이 없으며 10분 의미 갱신을 보장하지 않습니다. Cockpit은 실행자·author 연결을 선택·내장하지 않으며, provider 종류를 hard-code하지 않고 command가 실제 LLM capable runtime을 선택합니다. 최초 작성과 이후 refresh는 같은 author responsibility다. 자동 업데이트는 보고 있는 동안에만 동작하며, 마지막 뷰어가 닫히면 함께 종료됩니다.
+- **자동 업데이트 (선택적 외부 연동, 미설정 시 숨김)**: `COCKPIT_AUTHOR_COMMAND`(기존 `COCKPIT_REFRESH_COMMAND`도 같은 의미의 fallback으로 인식)가 별도로 설정된 경우에만 우측 상단에 `자동 업데이트`가 나타나며, 기본값은 꺼짐입니다. 켜면 10분마다 LLM author에게 `AUTHOR_MODE=refresh`로 확인을 요청합니다. Cockpit은 직접 분석하거나 문서를 만들지 않고, 결과를 다시 읽어 실제 변경이 있을 때만 화면을 갱신합니다. 변경이 없으면 화면을 그대로 두고, 확인에 실패하면 기존 화면을 유지합니다. 보통 실행(미설정)에는 의미 자동 업데이트 주인이 없으며 10분 의미 갱신을 보장하지 않습니다. Cockpit은 실행자·author 연결을 선택·내장하지 않으며, provider 종류를 hard-code하지 않고 command가 실제 LLM capable runtime을 선택합니다. 최초 작성(`bootstrap`)과 이후 refresh(`refresh`)는 같은 author의 두 investigation mode다. 자동 업데이트는 보고 있는 동안에만 동작하며, 마지막 뷰어가 닫히면 함께 종료됩니다.
+- **Author 시간 예산**: 최초 deep reconstruction이 5분에 잘리지 않도록 mode별 timeout을 분리합니다. `COCKPIT_AUTHOR_BOOTSTRAP_TIMEOUT_MS`(기본 30분), `COCKPIT_AUTHOR_REFRESH_TIMEOUT_MS`(기본 5분, bounded 유지). 기존 `COCKPIT_AUTHOR_TIMEOUT_MS`는 두 mode의 fallback으로 계속 인식됩니다.
 
-### 처음 시작할 때: PROGRESS.md가 없는 프로젝트
+### 처음 시작할 때: PROGRESS.md가 없는 프로젝트 (AUTHOR_MODE=bootstrap)
 
-`PROGRESS.md`가 아직 없는 프로젝트에서 `cockpit`을 실행하면(디렉터리 지정 포함) 막다른 오류 대신 준비 흐름으로 들어갑니다:
+`PROGRESS.md`가 아직 없는 프로젝트에서 `cockpit`을 실행하면(디렉터리 지정 포함) 막다른 오류 대신 준비 흐름으로 들어갑니다. 이 경로는 `AUTHOR_MODE=bootstrap`으로 호출되는 slow/deep 최초 reconstruction이다. 속도가 아니라 이해의 질이 우선이며, 몇 개 README와 최근 commit 요약으로 끝나지 않고 project model을 먼저 재구성한 뒤 마지막에만 `PROGRESS.md`로 projection한다:
 
 1. Cockpit이 대상 프로젝트와 찾는 위치(`<dir>/PROGRESS.md`)를 명시합니다.
 2. LLM author에게 그대로 전달할 준비 요청문을 보여줍니다. Cockpit 자체는 저장소를 분석하거나 내용을 자동으로 만들지 않으며, 중립 시작점을 자동 생성하지 않습니다.
@@ -137,39 +140,37 @@ provider 종류를 Cockpit에 hard-code하지 않으며, command가 실제 LLM c
 
 준비 요청문을 받은 LLM author가 실제 증거 기반으로 작성한 뒤 `cockpit check`로 확인하고 `cockpit <project-dir>`로 다시 실행하세요. (사람이 직접 파일을 고치는 경우는 filesystem 소유자로서 보조 경로일 뿐이다.)
 
-참고로 준비 요청문은 다음과 같으며, 실제 실행 시에는 대상 프로젝트·작성 위치가 채워진 형태로 출력됩니다. 최초 작성과 이후 refresh는 같은 author responsibility다. 정식 실행 문구는 `scripts/author.mjs`의 `buildAuthorHandoff`가 소유하며, 아래는 그 핵심이다:
+참고로 준비 요청문은 다음과 같으며, 실제 실행 시에는 대상 프로젝트·작성 위치가 채워진 형태로 출력됩니다. 최초 작성(`bootstrap`)과 이후 refresh(`refresh`)는 같은 author의 두 investigation mode다. 정식 실행 문구는 `scripts/author.mjs`의 `buildAuthorHandoff`가 mode별로 소유하며, 아래는 bootstrap 핵심이다:
 
 ```text
-너는 이 프로젝트의 LLM author다. Cockpit이 읽는 `PROGRESS.md`의 의미 내용은 네가 소유한다.
+AUTHOR_MODE: bootstrap — 최초 deep reconstruction (느려도 좋다, 이해의 질이 우선이다)
 
-먼저 저장소의 권위 문서(AGENTS.md, README.md, docs/, package.json 등), 실제 소스 코드 진입점과 실행 경로,
-테스트 스위트, 최근 변경 이력을 각각 독립적으로 확인하고 서로 대조해줘. 한 축의 존재를 다른 축의
-증명으로 비약하지 말고 (문서에 적혀 있다고 구현된 것이 아님), 모순은 미리 해결하고, 확인되지 않은
-주장은 쓰지 마.
-
-PROGRESS.md 문장을 처음부터 요약해서 쓰지 말고, 문서/spec·구현 경로·테스트/런타임 증거·최근 material change를
-대조해 현재 가능한 capability·대표 workflow·권위 경계·미완료/미확인 경계·claim 강도를 먼저 재구성한 뒤
-마지막 projection에서만 압축해줘. 주요 상태 문장은 실제 제품 객체·workflow·관찰 상태·미완료 경계·닫힘 조건 중
-하나 이상을 보존하고, "통합·실체·완결·기반·성숙도" 같은 추상어만으로 대체하지 마. 개요는 압축적으로·내용은
-구체적으로, 저수준 proof(SHA·경로·command)는 overview에서 내리되 product truth까지 지우지 마.
-최근 변경 목록 요약으로 현재 상황을 만들지 말고 fresh evidence로 현재 state를 재구성해 material fact만 투영해줘.
-capability·boundary·가장 가까운 observable transition·claim 강도가 안정되고 짧은 반증에도 뒤집히지 않으면 멈추고,
-UNKNOWN을 없애기 위해 사실을 invent하거나 끝없이 조사하지 마.
-
-기존 PROGRESS.md가 있으면 최신 증거와 대조하여 실질적으로 잘못 이해하게 되는 표면만 보수적으로 PATCH해줘.
-시간이 흘렀다는 이유만으로 수정하지 말고, 실질적 변화가 없으면 파일을 그대로 두고, 닫힌 문제를 되살리거나
-미확인 문제를 만들지 마. 기존 파일이 없으면 증거 기반 최초 문서를 작성해줘.
+PROGRESS.md가 없으므로 몇 개 README와 최근 commit 요약으로 끝내지 말고,
+project model을 먼저 재구성한 뒤 마지막에만 PROGRESS.md로 projection해줘.
+authority 문서·topology·product surface·implementation·external boundary·proof·
+history(필요한 만큼)·contradictions/unknown 축을 독립 증거로 대조하고,
+주요 영역 식별·실제 동작 이해·workflow 연결·dependency/boundary 파악·
+구현/입증/주장/unknown 구분·현재 위치와 unfinished boundary 설명·coverage gap 명시·
+짧은 반증에도 뒤집히지 않음이 성립할 때 멈춰줘. UNKNOWN은 허용하되 shallow scan의 면허로 쓰지 마.
 
 아래 §5의 마크다운 구조에 맞춰 사실 기반으로 작성해줘. 불확실한 영역은 지어내지 말고 생략하거나
 모르는 범위와 경계를 명시해줘. 저장 후 반드시 `cockpit check`로 구조적 완전성을 확인해줘.
 ```
 
-### 작업 중 PROGRESS.md 갱신하기
+### 작업 중 PROGRESS.md 갱신하기 (AUTHOR_MODE=refresh)
 
-작업을 진행한 뒤 같은 LLM author에게 다음과 같이 요청하여 `PROGRESS.md`를 갱신합니다.
-최초 작성과 refresh는 서로 다른 owner가 아니라 같은 author responsibility다:
+작업을 진행한 뒤 같은 LLM author에게 `AUTHOR_MODE=refresh`로 요청하여 `PROGRESS.md`를 갱신합니다.
+최초 작성과 refresh는 서로 다른 owner가 아니라 같은 author의 두 investigation mode다.
+refresh는 전체를 얕게 다시 훑지 않고 delta-first로 본다: 기존 이해 + 마지막 관찰 state + fresh 증거를
+대조해 무엇이 달라졌는지 먼저 보고, semantic blast radius(API→domain→persistence→boundary→proof→Area→frontier)를
+따라가 필요한 부분만 conservative PATCH한다. 영향 없는 영역은 그대로 둔다.
+Git delta는 출발점일 뿐 최종 문서는 changelog 요약이 아니라 material current truth만 담는다.
+기존 project model 자체가 깨진 구조적 drift에서만 필요한 범위를 다시 reconstruct한다
+(small targeted reconstruction 우선, 낡은 구조 억지 보존 금지):
 
 ```text
+AUTHOR_MODE: refresh — delta-first conservative PATCH
+
 current repository / runtime 증거와 기존 PROGRESS.md를 대조하여, 기존 문서를 그대로 보여주면
 프로젝트의 역량·위치·다음 전환·제약을 실질적으로 잘못 이해하게 되는 표면만 보수적으로 갱신해줘.
 최근 commit/task 목록 요약으로 현재 상황을 만들지 말고 fresh evidence로 현재 state를 재구성해
@@ -179,6 +180,11 @@ capability·product state·frontier·settled semantics를 바꾸는 material fac
 주요 상태 문장은 실제 제품 객체·workflow·관찰 상태·미완료 경계·닫힘 조건 중 하나 이상을 보존해줘.
 저장 전 반드시 `cockpit check`를 실행해줘.
 ```
+
+`PROGRESS.md`는 계속 durable human-facing 이해 표면이다. 별도 project DB·index·warehouse를 만들지 않는다.
+이후 delta-first refresh를 돕는 가장 작은 provenance anchor만 허용한다: Git 저장소라면 관찰 시점 HEAD를
+non-rendered comment 한 줄(`<!-- cockpit-author-observed: <SHA> -->`)로 남길 수 있다. viewer 구조 검사에
+영향을 주지 않고, stale anchor가 fresh 증거를 override하지 않으며, Git이 아니면 만들지 않고 생략한다(fail-open).
 
 LLM author가 `PROGRESS.md`를 저장하면, 열려 있는 Cockpit 화면은 같은 파일을 다시 읽어 변경사항을 반영합니다. 이는 현재 문서의 재렌더링이며 Git 조회나 자동 semantic refresh가 아닙니다.
 
@@ -296,9 +302,9 @@ cockpit/
 ├── scripts/
 │   ├── cockpit.mjs        # 정식 bin 진입점 (`package.json` bin 소유) + 빌드 신선도 가드 후 serve 위임
 │   ├── freshness.mjs      # 로컬 체크아웃용 빌드 지문·스탬프·자동 갱신
-│   ├── author.mjs         # LLM author capability 단일 owner (COCKPIT_AUTHOR_COMMAND, fallback COCKPIT_REFRESH_COMMAND; bootstrap+refresh 공통 실행)
-│   ├── target.mjs       # CLI target 획득·progress resolution·온보딩의 단일 canonical owner (author 호출 + read-back 검증, starter 생성 없음)
-│   ├── refresh.mjs      # opt-in 자동 refresh 스케줄러 (같은 author capability 호출 + read-back 비교, 의미 판단 없음)
+│   ├── author.mjs         # LLM author capability 단일 owner (COCKPIT_AUTHOR_COMMAND, fallback COCKPIT_REFRESH_COMMAND; AUTHOR_MODE=bootstrap/refresh 두 investigation mode, mode별 timeout)
+│   ├── target.mjs       # CLI target 획득·progress resolution·온보딩의 단일 canonical owner (bootstrap mode author 호출 + read-back 검증, starter 생성 없음)
+│   ├── refresh.mjs      # opt-in 자동 refresh 스케줄러 (같은 author capability를 refresh mode로 호출 + read-back 비교, 의미 판단 없음)
 │   └── serve.mjs        # 루프백 HTTP 서버 + SSE 파일 변경 감시 CLI
 ├── docs/operations/
 │   ├── DEVELOPMENT.md   # 개발 실행 원칙

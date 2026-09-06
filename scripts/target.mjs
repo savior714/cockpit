@@ -30,6 +30,7 @@ import process from "node:process";
 import { stat, readFile } from "node:fs/promises";
 import { createInterface } from "node:readline/promises";
 import {
+  BOOTSTRAP_MODE,
   buildAuthorHandoff as buildCanonicalAuthorHandoff,
   resolveAuthorCommand,
   resolveAuthorCommandSource,
@@ -265,20 +266,23 @@ export async function acquireTargetInteractively({
 // explicit confirmation, then verifies via read-back and structural check.
 
 /**
- * Canonical LLM author handoff request. Bootstrap and refresh share one
- * author responsibility; the author decides create-vs-PATCH from file
- * existence and fresh evidence. Single owner lives in scripts/author.mjs.
+ * Canonical LLM author handoff request for the missing-PROGRESS onboarding
+ * path. This path always authors as AUTHOR_MODE=bootstrap (slow/deep initial
+ * reconstruction). An explicit `mode` override is accepted only for
+ * contract tests; production onboarding never passes refresh. Omitting it
+ * defaults to bootstrap. Single text owner lives in scripts/author.mjs.
  */
-export function buildAuthorHandoff({ projectDir, progressFile }) {
-  return buildCanonicalAuthorHandoff({ projectDir, progressFile });
+export function buildAuthorHandoff({ projectDir, progressFile, mode = BOOTSTRAP_MODE }) {
+  return buildCanonicalAuthorHandoff({ projectDir, progressFile, mode });
 }
 
 /**
  * Legacy name for the same single author handoff — not an independent
  * executor. Kept so existing callers keep resolving to the canonical text.
+ * Defaults to the bootstrap text like the canonical wrapper above.
  */
-export function buildAgentHandoff({ projectDir, progressFile }) {
-  return buildCanonicalAuthorHandoff({ projectDir, progressFile });
+export function buildAgentHandoff({ projectDir, progressFile, mode = BOOTSTRAP_MODE }) {
+  return buildCanonicalAuthorHandoff({ projectDir, progressFile, mode });
 }
 
 export function formatMissingGuidance({ projectDir, progressFile }) {
@@ -295,7 +299,7 @@ export function formatAuthorMissingGuidance() {
 연결 방법: COCKPIT_AUTHOR_COMMAND 환경 변수에 LLM author를 호출하는 명령을 지정하세요.
 예: COCKPIT_AUTHOR_COMMAND="my-llm-author --write" cockpit <project-dir>
 기존 COCKPIT_REFRESH_COMMAND도 같은 의미의 fallback으로 인식됩니다.
-명령은 PROJECT_DIR / PROGRESS_FILE 환경 변수로 호출되며, 해당 위치에 증거 기반 PROGRESS.md를 작성해야 합니다.`;
+명령은 PROJECT_DIR / PROGRESS_FILE / AUTHOR_MODE(bootstrap) 환경 변수로 호출되며, 해당 위치에 증거 기반 PROGRESS.md를 작성해야 합니다.`;
 }
 
 const NEXT_STEPS = `다음:
@@ -395,7 +399,7 @@ export async function runMissingProgressFlow({
   }
 
   stdout.write(`LLM author에게 전달할 준비 요청문:\n\n`);
-  stdout.write(`${buildAuthorHandoff({ projectDir, progressFile })}\n\n`);
+  stdout.write(`${buildAuthorHandoff({ projectDir, progressFile, mode: BOOTSTRAP_MODE })}\n\n`);
 
   const resolveCommand = resolveAuthorCommandFn ?? resolveAuthorCommand;
   const command = resolveCommand();
@@ -432,10 +436,10 @@ export async function runMissingProgressFlow({
     return { action: "exists-now" };
   }
 
-  const invoke = runAuthorFn ?? (async () => runAuthorCommand({ projectDir, progressFile }));
+  const invoke = runAuthorFn ?? (async () => runAuthorCommand({ projectDir, progressFile, mode: BOOTSTRAP_MODE }));
   let authorResult;
   try {
-    authorResult = await invoke({ projectDir, progressFile });
+    authorResult = await invoke({ projectDir, progressFile, mode: BOOTSTRAP_MODE });
   } catch (err) {
     stdout.write(`\nLLM author 호출에 실패했습니다: ${err.message}\n`);
     stdout.write(`기존 문서를 유지합니다. 위 요청문으로 다시 시도하세요.\n`);
