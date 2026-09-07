@@ -372,7 +372,7 @@ test("D missing with no replica keeps the existing fresh authorship path", async
 // E. boundary regression: no repository-inspection capability added
 // ---------------------------------------------------------------------------
 
-test("E boundary: Cockpit gains no repository/history inspection capability", async () => {
+test("E boundary: only narrow storage-hygiene Git metadata, never history/workflow", async () => {
   const sources = {};
   for (const rel of [
     "scripts/replica.mjs",
@@ -381,20 +381,51 @@ test("E boundary: Cockpit gains no repository/history inspection capability", as
     "scripts/serve.mjs",
     "scripts/author.mjs",
     "scripts/cockpit.mjs",
+    "scripts/git-local-exclude.mjs",
   ]) {
     sources[rel] = await fs.readFile(path.join(REPO_ROOT, rel), "utf-8");
   }
   const all = Object.values(sources).join("\n");
   // Executable repository-history inspection signals (not prose): actual
-  // git invocations, revision plumbing, exclude-file paths, embedded DBs.
-  assert.doesNotMatch(all, /"\s*git\s|'\s*git\s|`\s*git\s/);
+  // revision plumbing stays forbidden everywhere.
   assert.doesNotMatch(all, /rev-list/);
   assert.doesNotMatch(all, /cat-file/);
   assert.doesNotMatch(all, /reflog/);
   assert.doesNotMatch(all, /--reflog|show-ref|for-each-ref/);
-  assert.doesNotMatch(all, /\.git\/info\/exclude/);
+  // Git workflow subcommands as quoted argv (commit/push/branch/merge/
+  // rebase/checkout/add/rm/notes/log/diff/status): forbidden everywhere.
+  // The only git argv owner is the narrow storage-hygiene allowlist in
+  // scripts/git-local-exclude.mjs (rev-parse/ls-files/check-ignore).
+  assert.doesNotMatch(all, /"(commit|push|pull|merge|rebase|checkout|stash|notes|log|diff|status|branch)"|'(commit|push|pull|merge|rebase|checkout|stash|notes|log|diff|status|branch)'/);
+  assert.doesNotMatch(all, /"\.git\/info\/exclude"|'\.git\/info\/exclude/);
+  assert.doesNotMatch(all, /"\.git"|\.git['"]\s*\+|path\.join\([^)]*\.git/);
+  // Repository .gitignore is never a filesystem path literal: shared
+  // policy is read by Git itself (check-ignore) and never written.
+  assert.doesNotMatch(all, /"[^"\n]*\.gitignore[^"\n]*"|'[^'\n]*\.gitignore[^'\n]*'/);
   assert.doesNotMatch(all, /mongoose|sqlite|postgres|redis|leveldb/i);
   assert.doesNotMatch(all, /calculateProgress|progressPercent|semanticStateMachine/i);
+  // The git transport lives exactly once, inside the storage-hygiene
+  // owner. No other module shells out to git.
+  assert.equal([...all.matchAll(/execFile\(\s*"git"/g)].length, 1, "exactly one git transport");
+  for (const rel of [
+    "scripts/replica.mjs",
+    "scripts/target.mjs",
+    "scripts/refresh.mjs",
+    "scripts/serve.mjs",
+    "scripts/author.mjs",
+    "scripts/cockpit.mjs",
+  ]) {
+    assert.doesNotMatch(sources[rel], /"rev-parse"|"ls-files"|"check-ignore"/, `${rel} must not own git argv`);
+  }
+  // Single storage-disposition owner: bootstrap/restore (target) and
+  // refresh converge on it; the viewer/serve path, the author, and the
+  // replica stay git-free so viewing/checking never claims a file.
+  assert.match(sources["scripts/git-local-exclude.mjs"], /ensureManagedStorage/);
+  assert.match(sources["scripts/target.mjs"], /from\s+["']\.\/git-local-exclude\.mjs["']/);
+  assert.match(sources["scripts/refresh.mjs"], /from\s+["']\.\/git-local-exclude\.mjs["']/);
+  assert.doesNotMatch(sources["scripts/serve.mjs"], /git-local-exclude/);
+  assert.doesNotMatch(sources["scripts/author.mjs"], /git-local-exclude|rev-parse|ls-files|check-ignore/);
+  assert.doesNotMatch(sources["scripts/replica.mjs"], /git-local-exclude|rev-parse|ls-files|check-ignore/);
   // No scheduler/daemon/registry machinery beyond the one existing refresh
   // cadence timer owned by refresh.mjs.
   const refreshTimers = [...sources["scripts/refresh.mjs"].matchAll(/setInterval/g)].length;
@@ -406,4 +437,11 @@ test("E boundary: Cockpit gains no repository/history inspection capability", as
   // Target keeps single author ownership; replica is a byte copy only.
   assert.match(sources["scripts/target.mjs"], /from\s+["']\.\/author\.mjs["']/);
   assert.match(sources["scripts/target.mjs"], /from\s+["']\.\/replica\.mjs["']/);
+  // The narrowed product boundary stays documented: history/branch/diff/
+  // repository semantics are not analyzed; only local storage hygiene
+  // metadata is handled, never as truth analysis or workflow control.
+  const readme = await fs.readFile(path.join(REPO_ROOT, "README.md"), "utf-8");
+  assert.match(readme, /Git history\/branch\/diff\/repository semantics를 분석하지 않/);
+  assert.match(readme, /storage hygiene/);
+  assert.match(readme, /repository `\.gitignore`는 건드리지 않는다|\.gitignore.*건드리지/);
 });

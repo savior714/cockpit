@@ -7,6 +7,9 @@
 //   - invoking the canonical LLM author capability once per tick
 //   - read-back of the target PROGRESS.md and before/after comparison
 //   - non-destructive status reporting (never writes PROGRESS.md itself)
+//   - keeping the Git-local storage disposition stable after author
+//     success via scripts/git-local-exclude.mjs (warning-only,
+//     never before success, never flipping it)
 //
 // What this module explicitly does NOT own:
 //   - repository / project semantics analysis
@@ -45,6 +48,7 @@ import {
   runAuthorCommand,
 } from "./author.mjs";
 import { saveRecoveryReplica as defaultSaveRecoveryReplica } from "./replica.mjs";
+import { ensureManagedStorage as defaultEnsureManagedStorage } from "./git-local-exclude.mjs";
 
 export const DEFAULT_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 // Refresh timeout default stays bounded (5 minutes). The canonical value
@@ -122,6 +126,7 @@ export function createRefreshOrchestrator({
   readFileFn = readFile,
   nowFn = () => new Date().toISOString(),
   saveReplicaFn,
+  ensureStorageFn,
 } = {}) {
   if (!progressFile) throw new Error("createRefreshOrchestrator requires progressFile");
   const resolvedProjectDir = projectDir ?? path.dirname(progressFile);
@@ -242,6 +247,25 @@ export function createRefreshOrchestrator({
       } catch (err) {
         try {
           console.error(`cockpit: warning: recovery replica를 저장하지 못했습니다: ${err?.message ?? err}`);
+        } catch {}
+      }
+      // Refresh author success is a live adoption event: the reconciled
+      // file is Cockpit-managed. Keep the Git-local disposition stable
+      // (checkout-local exclude, never repository .gitignore).
+      // Warning-only; never flips refresh success.
+      try {
+        const ensureStorage = ensureStorageFn ?? ((f) => defaultEnsureManagedStorage(f, { adopted: true }));
+        const storage = await ensureStorage(progressFile);
+        if (storage && storage.ok === false) {
+          try {
+            console.error(
+              `cockpit: warning: local Git exclude를 적용하지 못했습니다: ${storage.error?.message ?? storage.error ?? "unknown error"}`
+            );
+          } catch {}
+        }
+      } catch (err) {
+        try {
+          console.error(`cockpit: warning: local Git exclude를 적용하지 못했습니다: ${err?.message ?? err}`);
         } catch {}
       }
       return {

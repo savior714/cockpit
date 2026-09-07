@@ -19,11 +19,17 @@
 // (scripts/replica.mjs, exact bytes, stale-possible) before fresh authorship,
 // invokes that one author capability after explicit confirmation, verifies
 // via read-back (+ structural check when a checker is provided), and then
-// stores the exact bytes as a recovery replica (warning-only on failure).
+//   stores the exact bytes as a recovery replica (warning-only on failure).
 //
 // serve.mjs keeps the loopback/read-only runtime; it must not duplicate
 // path semantics. `cockpit check` shares resolution but never prompts,
 // never writes, and never starts onboarding.
+//
+// Storage disposition (Git-local by default, tracked opt-in) is owned by
+// scripts/git-local-exclude.mjs: after author/check success (bootstrap) or
+// explicit restore success (recovery), this module applies it warning-only
+// with a live adoption event. It never runs before semantic success and
+// never flips that success.
 
 import path from "node:path";
 import process from "node:process";
@@ -41,6 +47,10 @@ import {
   restoreRecoveryReplica as defaultRestoreRecoveryReplica,
   saveRecoveryReplica as defaultSaveRecoveryReplica,
 } from "./replica.mjs";
+import {
+  ensureManagedStorage as defaultEnsureManagedStorage,
+  storageWarningFor,
+} from "./git-local-exclude.mjs";
 
 export const PROGRESS_FILENAME = "PROGRESS.md";
 export const DEFAULT_PORT = 4321;
@@ -323,8 +333,9 @@ const NEXT_STEPS = `다음:
  *   - author configured     -> explicit confirmation, then invoke the ONE
  *     author capability (shared with refresh), read back the file, and
  *     verify with the structural check when a checker is provided. After
- *     that success, store the exact bytes as a recovery replica;
- *     replica failure only warns and never flips author success.
+ *     that success, store the exact bytes as a recovery replica and apply
+ *     Git-local storage disposition (both warning-only, never flipping
+ *     author success).
  *
  * Non-interactive callers must not invoke this with an auto-affirmative
  * prompt: no silent canonical writes. Returns an action descriptor; the
@@ -343,6 +354,7 @@ export async function runMissingProgressFlow({
   readReplicaFn,
   restoreReplicaFn,
   saveReplicaFn,
+  ensureStorageFn,
 } = {}) {
   stdout.write(`${formatMissingGuidance({ projectDir, progressFile })}\n\n`);
 
@@ -390,6 +402,10 @@ export async function runMissingProgressFlow({
       } else {
         stdout.write(`\nrecovery copy를 복원했습니다: ${progressFile}\n`);
         stdout.write(`주의: 복원된 파일은 recovery copy이므로 stale할 수 있습니다. LLM author가 최신 증거와 대조해야 합니다.\n`);
+        // Explicit restore success is a live adoption event: the restored
+        // bytes are Cockpit-managed by construction. Apply Git-local
+        // disposition warning-only; it never flips restore success.
+        await applyManagedStorageDisposition({ progressFile, stdout, ensureStorageFn });
         stdout.write(`다음:\n  1. LLM author에게 최신 증거 대조를 요청하고\n  2. cockpit check ${progressFile} 로 구조적 완전성을 확인하고\n  3. cockpit ${projectDir} 로 다시 실행하세요.\n`);
         return { action: "restored", key: restored.key ?? replica.key, replicaFile: restored.replicaFile ?? replica.replicaFile };
       }
@@ -503,9 +519,34 @@ export async function runMissingProgressFlow({
     stdout.write(`canonical 작성은 성공했습니다: ${progressFile}\n`);
   }
 
+  // Author + read-back + check success is a live adoption event: the
+  // authored file is Cockpit-managed by construction. Apply Git-local
+  // disposition (checkout-local exclude, never repository .gitignore)
+  // warning-only; it never flips author success and never runs before it.
+  await applyManagedStorageDisposition({ progressFile, stdout, ensureStorageFn });
+
   stdout.write(`\nLLM author가 PROGRESS.md를 작성하고 구조적 검사를 통과했습니다: ${progressFile}\n`);
   stdout.write(`  cockpit ${projectDir}\n`);
   return { action: "authored" };
+}
+
+/**
+ * Shared warning-only storage-disposition step for the two live adoption
+ * events owned here (bootstrap author success, explicit restore success).
+ * Resolves to nothing; failures and unmanaged outcomes only warn.
+ */
+async function applyManagedStorageDisposition({ progressFile, stdout, ensureStorageFn }) {
+  const ensureStorage = ensureStorageFn ?? ((f) => defaultEnsureManagedStorage(f, { adopted: true }));
+  try {
+    const storage = await ensureStorage(progressFile);
+    const warning = storageWarningFor(storage);
+    if (warning) {
+      stdout.write(`\n${warning}\n`);
+    }
+  } catch (err) {
+    stdout.write(`\ncockpit: warning: local Git exclude를 적용하지 못했습니다: ${err?.message ?? err}\n`);
+    stdout.write(`PROGRESS.md 내용은 그대로 유지됩니다: ${progressFile}\n`);
+  }
 }
 
 export const __testOnly = { AFFIRMATIVE };

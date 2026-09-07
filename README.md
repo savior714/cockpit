@@ -65,7 +65,7 @@ cockpit /path/to/my-project
 ```
 
 - **동작 방식**: Cockpit은 프로젝트 디렉터리의 `PROGRESS.md`를 있는 그대로 읽어 브라우저(`http://127.0.0.1:4321`)에 표시하는 초경량 읽기 전용(Read-only) 뷰어입니다. 인자 없이 실행하면 대화형 터미널에서는 대상 경로를 먼저 묻고(비우면 현재 디렉터리), 비대화형에서는 `./PROGRESS.md`를 사용합니다.
-- **책임 경계**: LLM이 `PROGRESS.md`를 작성·대조하고, Cockpit은 결정론적으로 검사·읽기·렌더링만 합니다. Cockpit 바이너리 자체는 저장소를 분석하거나, Git 이력을 검사하거나, `PROGRESS.md`를 수정하거나, AI를 호출하지 않습니다. `PROGRESS.md`가 없을 때 Cockpit이 중립 시작점을 자동 생성하지 않으며, 연결된 LLM author capability가 있어도 대화형에서 명시적 확인(`y`)이 있을 때만 호출합니다.
+- **책임 경계**: LLM이 `PROGRESS.md`를 작성·대조하고, Cockpit은 결정론적으로 검사·읽기·렌더링만 합니다. Cockpit 바이너리 자체는 Git history/branch/diff/repository semantics를 분석하지 않으며, `PROGRESS.md`를 수정하거나 AI를 호출하지 않습니다. 유일한 예외는 progress storage hygiene를 위한 좁은 local Git metadata(tracked/ignored/repo-relative exclude disposition)이며, project truth 분석이나 Git workflow control이 아닙니다. 저장소 공유 정책인 `.gitignore` 자동 수정, commit, branch, push, merge, rebase는 계속 Cockpit 책임 밖입니다. `PROGRESS.md`가 없을 때 Cockpit이 중립 시작점을 자동 생성하지 않으며, 연결된 LLM author capability가 있어도 대화형에서 명시적 확인(`y`)이 있을 때만 호출합니다.
 - **새로고침 의미**: 브라우저 새로고침과 파일 변경 시 live reload는 지정된 현재 `PROGRESS.md`를 다시 읽어 렌더링할 뿐이며, Git을 조회하는 `Git refresh`가 아닙니다. 문서에 새 전환을 넣는 일은 LLM author가 최신 실제 증거와 대조해 반영할 일입니다.
 
 ### 다른 프로젝트·파일 지정하기
@@ -123,7 +123,7 @@ LLM author (단일 author capability가 실제 LLM 런타임을 선택)
 (없는 PROGRESS 온보딩 = `bootstrap`, 기존 문서 refresh = `refresh`).
 provider 종류를 Cockpit에 hard-code하지 않으며, command가 실제 LLM capable runtime을 선택한다.
 
-- **단일 문서 시각화**: Cockpit은 지정된 단일 `PROGRESS.md` 문서만을 읽어 화면에 표시하며, 저장소나 런타임을 직접 검사·분석하지 않습니다.
+- **단일 문서 시각화**: Cockpit은 지정된 단일 `PROGRESS.md` 문서만을 읽어 화면에 표시합니다. Git history/branch/diff나 repository semantics를 분석하지 않으며, 런타임 truth를 직접 검사하지 않습니다. 유일한 예외는 progress storage hygiene를 위한 좁은 local Git metadata(tracked/ignored/repo-relative exclude disposition)이며, project truth 분석이나 Git workflow control이 아닙니다.
 - **실제 증거 우선**: `PROGRESS.md`는 Cockpit이 읽고 보여주는 단일 현황 문서일 뿐, 최신 코드/런타임/도메인 증거보다 상위의 권위를 갖지 않습니다. 실제 증거와 충돌 시 언제나 최신 실제 증거가 우선합니다.
 - **LLM author 갱신**: 프로젝트 상태가 달라지면 LLM author가 최신 실제 증거와 기존 문서를 대조하여 `PROGRESS.md`를 갱신합니다. 사람은 필요하면 파일을 직접 고칠 수 있는 filesystem 소유자일 뿐, 제품의 정상 author 계약은 LLM이다.
 - **자동 새로고침 (Live Reload, 기본 제공)**: 대상 `PROGRESS.md` 파일 저장을 감시하여 브라우저 새로고침 없이 화면을 즉시 갱신합니다. 보통 실행에서도 항상 동작하는 내장 기능이며 별도 설정이 필요 없습니다.
@@ -187,6 +187,26 @@ non-rendered comment 한 줄(`<!-- cockpit-author-observed: <SHA> -->`)로 남�
 영향을 주지 않고, stale anchor가 fresh 증거를 override하지 않으며, Git이 아니면 만들지 않고 생략한다(fail-open).
 
 LLM author가 `PROGRESS.md`를 저장하면, 열려 있는 Cockpit 화면은 같은 파일을 다시 읽어 변경사항을 반영합니다. 이는 현재 문서의 재렌더링이며 Git 조회나 자동 semantic refresh가 아닙니다.
+
+### PROGRESS.md 저장 수명주기 (Git-local by default, tracked opt-in)
+
+`PROGRESS.md`는 project-local durable understanding surface다. 파일 위치는 계속 프로젝트 안에 두며, Git repository 안의 새 Cockpit-managed `PROGRESS.md`는 기본적으로 checkout-local exclude로 관리한다:
+
+- **기본 LOCAL**: bootstrap author 성공(read-back + `cockpit check` PASS 이후)이나 명시적 recovery 복원 성공, refresh author 성공 뒤에만 정확한 repo-relative 경로(예: `/PROGRESS.md`, monorepo면 `/apps/foo/PROGRESS.md`) 하나를 checkout-local exclude(`git rev-parse --git-path info/exclude` 위치, linked worktree 포함)에 idempotent하게 등록한다. `PROGRESS.md` 전역 wildcard ignore는 쓰지 않는다.
+- **repository `.gitignore`는 건드리지 않는다**: 공유 Git policy 변경이므로 Cockpit이 수정하지 않는다. global gitignore·`core.excludesFile`·global Git config 수정도 하지 않는다.
+- **이미 tracked된 파일은 존중한다**: 기존 repository 의도가 Cockpit default보다 우선한다. untrack(`git rm --cached`), `skip-worktree`/`assume-unchanged`을 쓰지 않으며, 이후 변경은 일반 tracked modification으로 Git에 보인다.
+- **남의 파일을 claim하지 않는다**: 기존 untracked `PROGRESS.md`를 이름·check PASS만으로 자동 exclude하지 않는다. live Cockpit authorship/refresh/restore 성공(adoption event) 또는 파일 안의 Cockpit authorship marker(`<!-- cockpit-author-observed: ... -->` provenance anchor 또는 `<!-- cockpit-progress -->`)가 있을 때만 Cockpit-managed로 본다.
+- **이미 ignore된 파일은 존중한다**: repository `.gitignore`나 기존 exclude가 이미 가리면 중복 rule을 만들지 않고 파일을 건드리지 않는다.
+- **Git이 아니면 그대로**: non-Git 프로젝트에서는 오류 없이 파일을 사용하며 Git side effect가 없다.
+- **실패 의미**: exclude housekeeping 실패는 semantic authorship 성공을 뒤집지 않고 파일을 삭제하지 않으며 warning만 남긴다. author/check 실패 전에 exclude부터 적용하지 않는다.
+- **tracked opt-in**: `PROGRESS.md`를 Git으로 추적하고 싶으면 일반 Git으로 직접 하면 된다. 한번 tracked가 되면 ignore 여부와 관계없이 Git tracked semantics가 우선한다:
+
+  ```bash
+  git add -f PROGRESS.md
+  git commit ...
+  ```
+
+  Cockpit은 자동 commit/push하지 않으며, 별도 progress branch·Git notes·progress DB/index/registry를 만들지 않는다.
 
 ### 다른 실제 저장소로 Cockpit을 검증할 때의 경계
 
@@ -303,6 +323,7 @@ cockpit/
 │   ├── cockpit.mjs        # 정식 bin 진입점 (`package.json` bin 소유) + 빌드 신선도 가드 후 serve 위임
 │   ├── freshness.mjs      # 로컬 체크아웃용 빌드 지문·스탬프·자동 갱신
 │   ├── author.mjs         # LLM author capability 단일 owner (COCKPIT_AUTHOR_COMMAND, fallback COCKPIT_REFRESH_COMMAND; AUTHOR_MODE=bootstrap/refresh 두 investigation mode, mode별 timeout)
+│   ├── git-local-exclude.mjs # PROGRESS.md Git-local storage disposition 단일 owner (tracked/ignored/repo-relative exclude 판정 + checkout-local exact rule idempotent 추가; history/branch/commit/push 없음)
 │   ├── target.mjs       # CLI target 획득·progress resolution·온보딩의 단일 canonical owner (bootstrap mode author 호출 + read-back 검증, starter 생성 없음)
 │   ├── refresh.mjs      # opt-in 자동 refresh 스케줄러 (같은 author capability를 refresh mode로 호출 + read-back 비교, 의미 판단 없음)
 │   └── serve.mjs        # 루프백 HTTP 서버 + SSE 파일 변경 감시 CLI
